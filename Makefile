@@ -27,7 +27,7 @@ lint: # Format with black and lint with ruff.
 lint-ci: # Format with black, lint with ruff, generate report for CI.
 	@echo "[+] Linting (CI)"
 	black --check .
-	ruff check --output-format=gitlab . | tee code-quality-report.json
+	ruff check --output-format=github .
 
 type-check: # Run mypy.
 	@echo "[+] Type checking"
@@ -81,12 +81,12 @@ test: init
 coverage: # Run coverage, generate HTML report.
 coverage: init
 	@echo "[+] Testing and checking coverage"
-	pytest --cov="crypto_condor" --cov-report html -n auto tests/
+	pytest --cov="crypto_condor" --cov-report html --numprocesses=auto tests/
 
 coverage-ci: # Run coverage, generate JUnit test report and XML coverage report.
 coverage-ci: init
 	@echo "[+] Testing and checking coverage (CI)"
-	pytest -v --junitxml=report.xml --cov="crypto_condor" --cov-report xml -n auto tests/
+	pytest --verbose --junitxml=junit/test-results.xml --cov="crypto_condor" --cov-report=xml --numprocesses=auto tests/
 # Print coverage report so that CI picks up stats
 	coverage report
 

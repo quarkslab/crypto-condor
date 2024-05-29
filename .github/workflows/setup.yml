@@ -1,0 +1,24 @@
+name: setup
+
+on: [push]
+
+jobs:
+  setup:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          export PYTHONDONTWRITEBYTECODE=1
+          python --version; python -m pip --version
+          python -m pip install poetry
+          poetry --version
+          poetry config virtualenvs.in-project true
+          poetry install -vv
+          source `poetry env info --path`/bin/activate
