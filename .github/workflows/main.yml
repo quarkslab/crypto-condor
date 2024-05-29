@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Install dependencies
+      - name: Run the linter
         run: |
           export PYTHONDONTWRITEBYTECODE=1
           python --version; python -m pip --version
@@ -22,8 +22,7 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install -vv
           source `poetry env info --path`/bin/activate
-      - name: Run the linter
-        run: make lint-ci
+          make lint-ci
 
   type-check:
     runs-on: ubuntu-22.04
