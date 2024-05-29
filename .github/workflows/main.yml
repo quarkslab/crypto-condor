@@ -34,7 +34,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Install dependencies
+      - name: Run the type-checker
         run: |
           export PYTHONDONTWRITEBYTECODE=1
           python --version; python -m pip --version
@@ -43,8 +43,7 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install -vv
           source `poetry env info --path`/bin/activate
-      - name: Run the type-checker
-        run: make type-check-ci
+          make type-check-ci
 
   test:
     runs-on: ubuntu-22.04
@@ -57,7 +56,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Install dependencies
+      - name: Run the test suite and coverage
         run: |
           export PYTHONDONTWRITEBYTECODE=1
           python --version; python -m pip --version
@@ -66,8 +65,6 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install -vv
           source `poetry env info --path`/bin/activate
-      - name: Run the test suite and coverage
-        run: |
           make coverage-ci
           make doctest
 
@@ -82,7 +79,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Install dependencies
+      - name: Build the docs
         run: |
           export PYTHONDONTWRITEBYTECODE=1
           python --version; python -m pip --version
@@ -91,8 +88,7 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install -vv
           source `poetry env info --path`/bin/activate
-      - name: Build the docs
-        run: make docs
+          make docs
 
   upload-docs:
     if: success() && github.ref == 'refs/heads/main'
@@ -106,7 +102,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Install dependencies
+      - name: Build docs for publishing
         run: |
           export PYTHONDONTWRITEBYTECODE=1
           python --version; python -m pip --version
@@ -115,8 +111,7 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install -vv
           source `poetry env info --path`/bin/activate
-      - name: Build docs for publishing
-        run: make pages-ci
+          make pages-ci
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
@@ -133,22 +128,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-      - name: Install dependencies
-        run: |
-          export PYTHONDONTWRITEBYTECODE=1
-          python --version; python -m pip --version
-          python -m pip install poetry
-          poetry --version
-          poetry config virtualenvs.in-project true
-          poetry install -vv
-          source `poetry env info --path`/bin/activate
       - name: Publish to pages
         id: deployment
         uses: actions/deploy-pages@v4
@@ -165,7 +144,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Install dependencies
+      - name: Build the package
         run: |
           export PYTHONDONTWRITEBYTECODE=1
           python --version; python -m pip --version
@@ -174,8 +153,7 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install -vv
           source `poetry env info --path`/bin/activate
-      - name: Build the package
-        run: make build-ci
+          make build-ci
 
   publish:
     needs: [pages,build]
@@ -189,7 +167,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Install dependencies
+      - name: Publish the package
         run: |
           export PYTHONDONTWRITEBYTECODE=1
           python --version; python -m pip --version
@@ -198,5 +176,4 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install -vv
           source `poetry env info --path`/bin/activate
-      # - name: Publish the package
       #   run: make publish-ci
