@@ -2,12 +2,8 @@ name: main
 
 on: [push]
 
-defaults:
-  run:
-    working-directory: ${{ github.workspace }}
-
 jobs:
-  setup:
+  lint:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repo
@@ -26,24 +22,53 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install -vv
           source `poetry env info --path`/bin/activate
-
-  lint:
-    runs-on: ubuntu-22.04
-    needs: [setup]
-    steps:
-      - run: make lint-ci
+      - name: Run the linter
+        run: make lint-ci
 
   type-check:
     runs-on: ubuntu-22.04
-    needs: [setup]
     steps:
-      - run: make type-check-ci
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          export PYTHONDONTWRITEBYTECODE=1
+          python --version; python -m pip --version
+          python -m pip install poetry
+          poetry --version
+          poetry config virtualenvs.in-project true
+          poetry install -vv
+          source `poetry env info --path`/bin/activate
+      - name: Run the type-checker
+        run: make type-check-ci
 
   test:
     runs-on: ubuntu-22.04
     needs: [lint,type-check]
     steps:
-      - run: |
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          export PYTHONDONTWRITEBYTECODE=1
+          python --version; python -m pip --version
+          python -m pip install poetry
+          poetry --version
+          poetry config virtualenvs.in-project true
+          poetry install -vv
+          source `poetry env info --path`/bin/activate
+      - name: Run the test suite and coverage
+        run: |
           make coverage-ci
           make doctest
 
@@ -51,14 +76,47 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [lint,type-check]
     steps:
-      - run: make docs
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          export PYTHONDONTWRITEBYTECODE=1
+          python --version; python -m pip --version
+          python -m pip install poetry
+          poetry --version
+          poetry config virtualenvs.in-project true
+          poetry install -vv
+          source `poetry env info --path`/bin/activate
+      - name: Build the docs
+        run: make docs
 
   upload-docs:
     if: success() && github.ref == 'refs/heads/main'
     needs: [test,docs]
     runs-on: ubuntu-22.04
     steps:
-      - name: Build docs
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          export PYTHONDONTWRITEBYTECODE=1
+          python --version; python -m pip --version
+          python -m pip install poetry
+          poetry --version
+          poetry config virtualenvs.in-project true
+          poetry install -vv
+          source `poetry env info --path`/bin/activate
+      - name: Build docs for publishing
         run: make pages-ci
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
@@ -76,6 +134,22 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-22.04
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          export PYTHONDONTWRITEBYTECODE=1
+          python --version; python -m pip --version
+          python -m pip install poetry
+          poetry --version
+          poetry config virtualenvs.in-project true
+          poetry install -vv
+          source `poetry env info --path`/bin/activate
       - name: Publish to pages
         id: deployment
         uses: actions/deploy-pages@v4
@@ -85,11 +159,45 @@ jobs:
     if: success() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-22.04
     steps:
-      - run: make build-ci
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          export PYTHONDONTWRITEBYTECODE=1
+          python --version; python -m pip --version
+          python -m pip install poetry
+          poetry --version
+          poetry config virtualenvs.in-project true
+          poetry install -vv
+          source `poetry env info --path`/bin/activate
+      - name: Build the package
+        run: make build-ci
 
   publish:
     needs: [pages,build]
     if: success() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-22.04
     steps:
-      - run: make publish-ci
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          export PYTHONDONTWRITEBYTECODE=1
+          python --version; python -m pip --version
+          python -m pip install poetry
+          poetry --version
+          poetry config virtualenvs.in-project true
+          poetry install -vv
+          source `poetry env info --path`/bin/activate
+      # - name: Publish the package
+      #   run: make publish-ci
