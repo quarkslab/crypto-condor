@@ -1,0 +1,197 @@
+@inproceedings{gentry_trapdoors_2008,
+	address = {Victoria British Columbia Canada},
+	title = {Trapdoors for hard lattices and new cryptographic constructions},
+	isbn = {978-1-60558-047-0},
+	url = {https://dl.acm.org/doi/10.1145/1374376.1374407},
+	doi = {10.1145/1374376.1374407},
+	abstract = {We show how to construct a variety of “trapdoor” cryptographic tools assuming the worst-case hardness of standard lattice problems (such as approximating the length of the shortest nonzero vector to within certain polynomial factors). Our contributions include a new notion of preimage sampleable functions, simple and efficient “hash-and-sign” digital signature schemes, and identity-based encryption. A core technical component of our constructions is an efficient algorithm that, given a basis of an arbitrary lattice, samples lattice points from a discrete Gaussian probability distribution whose standard deviation is essentially the length of the longest Gram-Schmidt vector of the basis. A crucial security property is that the output distribution of the algorithm is oblivious to the particular geometry of the given basis.},
+	language = {en},
+	urldate = {2023-07-18},
+	booktitle = {Proceedings of the fortieth annual {ACM} symposium on {Theory} of computing},
+	publisher = {ACM},
+	author = {Gentry, Craig and Peikert, Chris and Vaikuntanathan, Vinod},
+	month = may,
+	year = {2008},
+	pages = {197--206},
+}
+
+@incollection{fischlin_practical_2016,
+	address = {Berlin, Heidelberg},
+	title = {Practical, {Predictable} {Lattice} {Basis} {Reduction}},
+	volume = {9665},
+	isbn = {978-3-662-49889-7 978-3-662-49890-3},
+	url = {http://link.springer.com/10.1007/978-3-662-49890-3_31},
+	abstract = {Lattice reduction algorithms are notoriously hard to predict, both in terms of running time and output quality, which poses a major problem for cryptanalysis. While easy to analyze algorithms with good worst-case behavior exist, previous experimental evidence suggests that they are outperformed in practice by algorithms whose behavior is still not well understood, despite more than 30 years of intensive research. This has lead to a situation where a rather complex simulation procedure seems to be the most common way to predict the result of their application to an instance. In this work we present new algorithmic ideas towards bridging this gap between theory and practice. We report on an extensive experimental study of several lattice reduction algorithms, both novel and from the literature, that shows that theoretical algorithms are in fact surprisingly practical and competitive. In light of our results we come to the conclusion that in order to predict lattice reduction, simulation is superfluous and can be replaced by a closed formula using weaker assumptions.},
+	language = {en},
+	urldate = {2023-07-20},
+	booktitle = {Advances in {Cryptology} - {EUROCRYPT} 2016},
+	publisher = {Springer Berlin Heidelberg},
+	author = {Micciancio, Daniele and Walter, Michael},
+	editor = {Fischlin, Marc and Coron, Jean-Sébastien},
+	year = {2016},
+	doi = {10.1007/978-3-662-49890-3_31},
+	note = {Series Title: Lecture Notes in Computer Science},
+	pages = {820--849},
+}
+
+
+@inproceedings{becker_new_2016,
+	title = {New directions in nearest neighbor searching with applications to lattice sieving},
+	isbn = {978-1-61197-433-1},
+	url = {http://epubs.siam.org/doi/10.1137/1.9781611974331.ch2},
+	doi = {10.1137/1.9781611974331.ch2},
+	abstract = {To solve the approximate nearest neighbor search problem (NNS) on the sphere, we propose a method using locality-sensitive filters (LSF), with the property that nearby vectors have a higher probability of surviving the same filter than vectors which are far apart. We instantiate the filters using spherical caps of height 1 - a, where a vector survives a filter if it is contained in the corresponding spherical cap, and where ideally each filter has an independent, uniformly random direction.},
+	language = {en},
+	urldate = {2023-07-20},
+	booktitle = {Proceedings of the {Twenty}-{Seventh} {Annual} {ACM}-{SIAM} {Symposium} on {Discrete} {Algorithms}},
+	publisher = {Society for Industrial and Applied Mathematics},
+	author = {Becker, Anja and Ducas, Léo and Gama, Nicolas and Laarhoven, Thijs},
+	month = jan,
+	year = {2016},
+	pages = {10--24},
+}
+
+
+@phdthesis{b0cf4f60d1cf454ca5c294f2b4608119,
+title = "Search problems in cryptography: from fingerprinting to lattice sieving",
+author = "Thijs Laarhoven",
+note = "Proefschrift",
+year = "2016",
+month = feb,
+day = "16",
+language = "English",
+isbn = "978-90-386-4021-1",
+publisher = "Technische Universiteit Eindhoven",
+school = "Mathematics and Computer Science",
+
+}
+
+@misc{cryptoeprint:2015/1092,
+      author = {Erdem Alkim and Léo Ducas and Thomas Pöppelmann and Peter Schwabe},
+      title = {Post-quantum key exchange - a new hope},
+      howpublished = {Cryptology ePrint Archive, Paper 2015/1092},
+      year = {2015},
+      note = {\url{https://eprint.iacr.org/2015/1092}},
+      url = {https://eprint.iacr.org/2015/1092}
+}
+
+
+@misc{cryptoeprint:2023/224,
+      author = {Shiduo Zhang and Xiuhan Lin and Yang Yu and Weijia Wang},
+      title = {Improved Power Analysis Attacks on Falcon},
+      howpublished = {Cryptology ePrint Archive, Paper 2023/224},
+      year = {2023},
+      note = {\url{https://eprint.iacr.org/2023/224}},
+      url = {https://eprint.iacr.org/2023/224}
+}
+
+@INPROCEEDINGS{9586131,
+  author={Karabulut, Emre and Aysu, Aydin},
+  booktitle={2021 58th ACM/IEEE Design Automation Conference (DAC)}, 
+  title={FALCON Down: Breaking FALCON Post-Quantum Signature Scheme through Side-Channel Attacks}, 
+  year={2021},
+  volume={},
+  number={},
+  pages={691-696},
+  abstract={This paper proposes the first side-channel attack on FALCON—a NIST Round-3 finalist for the post-quantum digital signature standard. We demonstrate a known-plaintext attack that uses the electromagnetic measurements of the device to extract the secret signing keys, which then can be used to forge signatures on arbitrary messages. The proposed attack targets the unique floating-point multiplications within FALCON’s Fast Fourier Transform through a novel extend-and-prune strategy that extracts the sign, mantissa, and exponent variables without false positives. The extracted floating-point values are then mapped back to the secret key’s coefficients. Our attack, notably, does not require pre-characterizing the power profile of the target device or crafting special inputs. Instead, the statistical differences on obtained traces are sufficient to successfully execute our proposed differential electromagnetic analysis. The results on an ARM-Cortex-M4 running the FALCON NIST’s reference software show that approximately 10k measurements are sufficient to extract the entire key.},
+  keywords={},
+  doi={10.1109/DAC18074.2021.9586131},
+  ISSN={0738-100X},
+  month={Dec},
+}
+
+@misc{cryptoeprint:2023/422,
+      author = {Sven Bauer and Fabrizio De Santis},
+      title = {A Differential Fault Attack against Deterministic Falcon Signatures},
+      howpublished = {Cryptology ePrint Archive, Paper 2023/422},
+      year = {2023},
+      note = {\url{https://eprint.iacr.org/2023/422}},
+      url = {https://eprint.iacr.org/2023/422}
+}
+
+@misc{cryptoeprint:2010/428,
+      author = {Dan Boneh and Özgür Dagdelen and Marc Fischlin and Anja Lehmann and Christian Schaffner and Mark Zhandry},
+      title = {Random Oracles in a Quantum World},
+      howpublished = {Cryptology ePrint Archive, Paper 2010/428},
+      year = {2010},
+      note = {\url{https://eprint.iacr.org/2010/428}},
+      url = {https://eprint.iacr.org/2010/428}
+}
+
+@incollection{sarkar_efficient_2014,
+	address = {Berlin, Heidelberg},
+	title = {Efficient {Identity}-{Based} {Encryption} over {NTRU} {Lattices}},
+	volume = {8874},
+	isbn = {978-3-662-45607-1 978-3-662-45608-8},
+	url = {http://link.springer.com/10.1007/978-3-662-45608-8_2},
+	abstract = {Efficient implementations of lattice-based cryptographic schemes have been limited to only the most basic primitives like encryption and digital signatures. The main reason for this limitation is that at the core of many advanced lattice primitives is a trapdoor sampling algorithm (Gentry, Peikert, Vaikuntanathan, STOC 2008) that produced outputs that were too long for practical applications. In this work, we show that using a particular distribution over NTRU lattices can make GPV-based schemes suitable for practice. More concretely, we present the worst lattice-based IBE scheme with practical parameters – key and ciphertext sizes are between two and four kilobytes, and all encryption and decryption operations take approximately one millisecond on a moderately-powered laptop. As a by-product, we also obtain digital signature schemes which are shorter than the previously most-compact ones of Ducas, Durmus, Lepoint, and Lyubashevsky from Crypto 2013.},
+	language = {en},
+	urldate = {2023-07-18},
+	booktitle = {Advances in {Cryptology} - {ASIACRYPT} 2014},
+	publisher = {Springer Berlin Heidelberg},
+	author = {Ducas, Léo and Lyubashevsky, Vadim and Prest, Thomas},
+	editor = {Sarkar, Palash and Iwata, Tetsu},
+	year = {2014},
+	doi = {10.1007/978-3-662-45608-8_2},
+	note = {Series Title: Lecture Notes in Computer Science},
+	pages = {22--41},
+}
+
+@misc{cryptoeprint:2013/004,
+      author = {Damien Stehlé and Ron Steinfeld},
+      title = {Making NTRUEncrypt and NTRUSign as Secure as Standard Worst-Case Problems over Ideal Lattices},
+      howpublished = {Cryptology ePrint Archive, Paper 2013/004},
+      year = {2013},
+      note = {\url{https://eprint.iacr.org/2013/004}},
+      url = {https://eprint.iacr.org/2013/004}
+}
+
+@inproceedings{10.1145/2930889.2930923,
+author = {Ducas, L\'{e}o and Prest, Thomas},
+title = {Fast Fourier Orthogonalization},
+year = {2016},
+isbn = {9781450343800},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2930889.2930923},
+doi = {10.1145/2930889.2930923},
+abstract = {The classical fast Fourier transform (FFT) allows to compute in quasi-linear time the product of two polynomials, in the circular convolution ring R[x]/(xd -1) --- a task that naively requires quadratic time. Equivalently, it allows to accelerate matrix-vector products when the matrix is circulant. In this work, we discover that the ideas of the FFT can be applied to speed up the orthogonalization process of matrices with circulant blocks of size d x d. We show that, when d is composite, it is possible to proceed to the orthogonalization in an inductive way ---up to an appropriate re-indexation of rows and columns. This leads to a structured Gram-Schmidt decomposition. In turn, this structured Gram-Schmidt decomposition accelerates a cornerstone lattice algorithm: the nearest plane algorithm. The complexity of both algorithms may be brought down to Θ(d log d).Our results easily extend to cyclotomic rings, and can be adapted to Gaussian samplers. This finds applications in lattice-based cryptography, improving the performances of trapdoor functions.},
+booktitle = {Proceedings of the ACM on International Symposium on Symbolic and Algebraic Computation},
+pages = {191-198},
+numpages = {8},
+keywords = {nearest plane algorithm, circulant matrices, fast-fourier transform, matrix factorization, gram-schmidt orthogonalization, lattice algorithms},
+location = {Waterloo, ON, Canada},
+series = {ISSAC '16}
+}
+
+@inproceedings{10.5555/338219.338661,
+author = {Klein, Philip},
+title = {Finding the Closest Lattice Vector When It's Unusually Close},
+year = {2000},
+isbn = {0898714532},
+publisher = {Society for Industrial and Applied Mathematics},
+address = {USA},
+booktitle = {Proceedings of the Eleventh Annual ACM-SIAM Symposium on Discrete Algorithms},
+pages = {937-941},
+numpages = {5},
+location = {San Francisco, California, USA},
+series = {SODA '00}
+}
+
+@misc{cryptoeprint:2010/088,
+      author = {Chris Peikert},
+      title = {An Efficient and Parallel Gaussian Sampler for Lattices},
+      howpublished = {Cryptology ePrint Archive, Paper 2010/088},
+      year = {2010},
+      note = {\url{https://eprint.iacr.org/2010/088}},
+      url = {https://eprint.iacr.org/2010/088}
+}
+
+@misc{cryptoeprint:2017/480,
+      author = {Thomas Prest},
+      title = {Sharper Bounds in Lattice-Based Cryptography using the Rényi Divergence},
+      howpublished = {Cryptology ePrint Archive, Paper 2017/480},
+      year = {2017},
+      note = {\url{https://eprint.iacr.org/2017/480}},
+      url = {https://eprint.iacr.org/2017/480}
+}

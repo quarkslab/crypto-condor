@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# This script can be used to rebuild the derived configuration files
+# whenever the primary configuration files have been changed or when
+# a new source file is added or removed.
+# This script should not be used by the user compiling the package.
+
+set -x
+set -e
+cd include
+./makedef
+cd ..
+HOSTOS=$(uname | awk '{print toupper($0)}')
+if [ "$HOSTOS" = "DARWIN" ]; then
+  glibtoolize --copy --force
+else
+  libtoolize --copy --force
+fi
+aclocal
+autoheader
+automake --add-missing --copy
+autoconf

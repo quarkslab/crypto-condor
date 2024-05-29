@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single Kyber test vector.
+message KyberNistTest {
+    int32 count = 1;
+
+    bytes seed = 2;
+    bytes pk = 3;
+    bytes sk = 4;
+    bytes ct = 5;
+    bytes ss = 6;
+}
+
+
+// A group of test vectors for a single parameter set.
+message KyberNistVectors {
+    // The name of the parameter set, e.g. Kyber512.
+    string name = 1;
+    repeated KyberNistTest tests = 2;
+}

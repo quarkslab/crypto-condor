@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single NIST test vector for AES.
+message AesNistTest {
+    // Custom ID: simply the index of the test in the NIST file.
+    int32 id = 1;
+    // The COUNT field from the test vector file.
+    int32 count = 2;
+    string key = 3;
+    string plaintext = 4;
+    string ciphertext = 5;
+    string iv = 6;
+    string aad = 7;
+    string tag = 8;
+
+    // Whether the test should pass or fail.
+    bool is_valid = 10;
+    // Whether to encrypt or decrypt.
+    bool encrypt = 11;
+
+    // Points to the start of the test vector inside the file.
+    int32 line_number = 15;
+}
+
+
+// A group of test vectors corresponding to a single mode of operation.
+message AesNistVectors {
+    // The name of the file/mode of operation, to display to the user.
+    string name = 1;
+    repeated AesNistTest tests = 2;
+    string mode = 3;
+    int32 key_length = 4;
+}

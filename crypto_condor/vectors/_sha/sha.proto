@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single SHA test vector.
+message ShaNistTest {
+    int32 len = 1;
+    string msg = 2;
+    string md = 3;
+
+    // Points to the start of the test vector inside the file.
+    int32 line_number = 15;
+}
+
+message ShaNistVectors {
+    string filename = 1;
+    repeated ShaNistTest tests = 2;
+}
+
+// Monte-Carlo test vectors.
+message ShaMonteCarloNistVectors {
+    string filename = 1;
+    string seed = 2;
+    map<int32, string> tests = 3;
+}
+
+message ShakeNistTest {
+    int32 len = 1;
+    string msg = 2;
+    string output = 3;
+
+    int32 line_number = 15;
+}
+
+message ShakeNistVectors {
+    string filename = 1;
+    int32 output_len = 2;
+    repeated ShakeNistTest tests = 3;
+}
+
+message ShakeMonteNistVectors {
+    string filename = 1;
+
+    string msg = 2;
+    int32 max_len = 3;
+    int32 min_len = 4;
+
+    // Maps the count to the output, outputlen must be re-computed.
+    map<int32, string> tests = 5;
+}
+
+message ShakeVariableNistTest {
+    int32 count = 1;
+    int32 output_len = 2;
+    string msg = 3;
+    string output = 4;
+
+    int32 line_number = 15;
+}
+
+message ShakeVariableNistVectors {
+    string filename = 1;
+
+    repeated ShakeVariableNistTest tests = 3;
+}

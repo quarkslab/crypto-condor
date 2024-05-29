@@ -1,0 +1,150 @@
+VECTORS_DIR := crypto_condor/vectors
+
+_PROTO_NAMES := $(shell find $(VECTORS_DIR) -name '*.proto' -printf "%f\n")
+PROTO_NAMES := $(_PROTO_NAMES:%.proto=%)
+
+PROTO_FILES := $(shell find crypto_condor -name '*.proto')
+
+PB2_FILES := $(PROTO_FILES:%.proto=%_pb2.py)
+
+# PROTO_FILES := $(PROTO_NAMES:%.proto=$(VECTORS_DIR)/_%/%.proto)
+# PB2_FILES := $(PROTO_NAMES:%.proto=$(VECTORS_DIR)/_%/%_pb2.py)
+
+
+default: help
+
+.PHONY: help
+help: # Show help for each of the Makefile recipes.
+	@grep -E '^[a-zA-Z0-9 -]+:.*#'  Makefile | sort | while read -r l; do printf "\033[1;32m$$(echo $$l | cut -f 1 -d':')\033[00m:$$(echo $$l | cut -f 2- -d'#')\n"; done
+
+all: lint coverage docs doctest
+
+lint: # Format with black and lint with ruff.
+	@echo "[+] Linting"
+	black --check .
+	ruff check .
+
+lint-ci: # Format with black, lint with ruff, generate report for CI.
+	@echo "[+] Linting (CI)"
+	black --check .
+	ruff check --output-format=gitlab . | tee code-quality-report.json
+
+type-check: # Run mypy.
+	@echo "[+] Type checking"
+	mypy --config-file pyproject.toml .
+
+type-check-ci: # Run mypy, generate report for CI.
+	@echo "[+] Type checking (CI)"
+	mypy --config-file pyproject.toml --junit-xml mypy.xml .
+
+.PHONY: import-nist-vectors
+import-nist-vectors: # Serialize NIST test vectors with protobuf.
+import-nist-vectors: $(PROTO_FILES:%.proto=%.imported)
+
+%.imported: %_import.py %_pb2.py
+	@NAME=`dirname $@`; echo "[+] Importing NIST $$NAME test vectors"
+	@python $<
+
+compile-primitives: # Compile primitives written in C.
+	@echo "[+] Compiling primitives"
+	cd crypto_condor/primitives && $(MAKE) all -j4
+	@echo
+
+copy-guides: # Copy guides from the docs for the method command.
+	@echo "[+] Copying guides from the documentation"
+	python utils/copy_guides.py
+	@echo
+
+copy-contributing: # Copy CONTRIBUTING from the docs to the root of the repo.
+	@echo "[+] Copying CONTRIBUTING"
+	cp docs/source/development/CONTRIBUTING.md .
+	@echo
+
+# To ensure the latest version is used for e.g. testing.
+install: # Install using poetry.
+	@echo "[+] Installing with poetry"
+	poetry install --with=dev,docs
+	@echo
+
+init: # Common requirements for several targets.
+init: install import-nist-vectors compile-primitives copy-guides copy-contributing
+
+doctest: # Run doctest
+doctest: install
+	$(MAKE) -C docs doctest
+
+test: # Run pytest.
+test: init
+	@echo "[+] Testing"
+	pytest -n auto -v tests/ -x
+
+coverage: # Run coverage, generate HTML report.
+coverage: init
+	@echo "[+] Testing and checking coverage"
+	pytest --cov="crypto_condor" --cov-report html -n auto tests/
+
+coverage-ci: # Run coverage, generate JUnit test report and XML coverage report.
+coverage-ci: init
+	@echo "[+] Testing and checking coverage (CI)"
+	pytest -v --junitxml=report.xml --cov="crypto_condor" --cov-report xml -n auto tests/
+# Print coverage report so that CI picks up stats
+	coverage report
+
+# Separate build target to fully build locally.
+build: # Build the package.
+build: init
+	@echo "[+] Building package"
+	poetry build
+
+# This is redundant since publish-ci also builds the package, but we use this to check
+# for building errors before trying to publish.
+build-ci: # Build the package in the CI.
+build-ci: init
+	@echo "[+] Building package (CI)"
+# Ensure that the tag and version match to avoid pushing a package without
+# the corresponding documentation.
+	python utils/check_tag_and_version.py
+	poetry build
+
+publish-ci: # Publish package using the CI pipeline.
+publish-ci: init
+	@echo "[+] Publishing package (CI)"
+	poetry config repositories.gitlab $(CI_API_V4_URL)/projects/$(CI_PROJECT_ID)/packages/pypi
+# JOB_TOKEN is an ephemeral token that is valid while the pipeline is running.
+	@poetry publish -v --build --repository gitlab --cert $(CI_SERVER_TLS_CA_FILE) -u gitlab-ci-token -p $(CI_JOB_TOKEN)
+
+compile-proto: # Compile .proto files and prints current protoc version.
+compile-proto: $(PB2_FILES)
+	@protoc_version=`protoc --version`; echo "Protoc version: $$protoc_version"
+
+%_pb2.py: %.proto
+	@echo "[+] Recompiling $<"
+	@protoc -I=$(VECTORS_DIR) --python_out=$(VECTORS_DIR) --mypy_out=$(VECTORS_DIR) $<
+
+# This should only be called on main since the published docs are based on that
+# branch.
+pages-ci: # Build the documentation for GitLab Pages.
+pages-ci: install
+	@echo "[+] Building all docs"
+	$(MAKE) -C docs all-versions
+	mv docs/build/public .
+# Move the current docs to devel
+	mv public/main public/devel
+# Move latest tag to latest.
+# This step might fail if the version is bumped since the CI runs once for the
+# commit and once more for the tag, so the latest tag might not be present in
+# the first run. We ignore the error and copy what would be the staging docs to
+# stable.  Since this should only occur when pushing a tag, the staging docs
+# *are* the stable docs and the CI pipeline for the tag will overwrite these
+# anyway.
+	-LATEST_TAG="$(shell git describe --tags --abbrev=0 --exclude='*rc[0-9]')"; cp -R public/$$LATEST_TAG public/latest
+
+.PHONY: docs
+docs: # Build the documentation
+docs: install
+	$(MAKE) -C docs html
+
+livedocs: # Build the documentation with live reload.
+livedocs: install
+	$(MAKE) -C docs livehtml
+

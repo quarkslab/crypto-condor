@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single Falcon test vector.
+message FalconNistKatTest {
+    int32 count = 1;
+    string seed = 2;
+    int32 mlen = 3;
+    string msg = 4;
+    string pk = 5;
+    string sk = 6;
+    int32 smlen = 7;
+    string sm = 8;
+
+    // Points to the start of the test vector inside the file.
+    int32 line_number = 15;
+}
+
+
+// A group of test vectors for a single parameter set.
+message FalconNistKatVectors {
+    // The name of the parameter set, e.g. falcon512.
+    string name = 1;
+    repeated FalconNistKatTest tests = 2;
+}

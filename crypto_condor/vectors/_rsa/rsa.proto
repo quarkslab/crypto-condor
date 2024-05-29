@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+message RsaNistSigGenTest {
+    string alg = 1;
+    string msg = 2;
+    string sig = 3;
+
+    // Reserving a slot for the Saltval of PSS vectors in case it's needed later on.
+    reserved 4;
+    reserved "salt";
+
+    // Points to the start of the test vector inside the file.
+    int32 line_number = 15;
+}
+
+message RsaNistSigGenVectors {
+    string filename = 1;
+
+    int32 mod = 2;
+    
+    string n = 3;
+    string e = 4;
+    string d = 5;
+
+    repeated RsaNistSigGenTest tests = 15;
+}
+
+
+message RsaNistSigVerTest {
+    string e = 1;
+
+    // Only for RSASSA-PSS tests.
+    string d = 2;
+
+    string msg = 4;
+    string sig = 5;
+
+    string salt = 6;
+
+    // Some fields for RSASSA-PSS that aren't currently used.
+    reserved 7, 8;
+    reserved "em", "em_comment";
+
+    bool result = 9;
+    string reason = 10;
+}
+
+message RsaNistSigVerVectors {
+    // Counter of test group.
+    int32 id = 1;
+
+    int32 mod = 2;
+
+    string n = 3;
+
+    // Only for RSASSA-PSS tests.
+    string p = 4;
+    string q = 5;
+
+    string sha = 7;
+
+    repeated RsaNistSigVerTest tests = 8;
+}

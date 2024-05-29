@@ -1,0 +1,24 @@
+diff --git a/avx2/Makefile b/avx2/Makefile
+index 80a7adb..2593ca8 100644
+--- a/avx2/Makefile
++++ b/avx2/Makefile
+@@ -6,6 +6,7 @@ NISTFLAGS += -Wno-unused-result -mavx2 -mpopcnt -maes \
+   -march=native -mtune=native -O3
+ SOURCES = sign.c packing.c polyvec.c poly.c ntt.S invntt.S pointwise.S \
+   shuffle.S consts.c rejsample.c rounding.c
++SOURCES += fips202.c randombytes.c
+ HEADERS = align.h config.h params.h api.h sign.h packing.h polyvec.h poly.h ntt.h \
+   consts.h shuffle.inc rejsample.h rounding.h symmetric.h randombytes.h
+ KECCAK_SOURCES = $(SOURCES) fips202.c fips202x4.c f1600x4.S symmetric-shake.c
+diff --git a/ref/Makefile b/ref/Makefile
+index f871404..e9b9953 100644
+--- a/ref/Makefile
++++ b/ref/Makefile
+@@ -3,6 +3,7 @@ CFLAGS += -Wall -Wextra -Wpedantic -Wmissing-prototypes -Wredundant-decls \
+   -Wshadow -Wvla -Wpointer-arith -O3 -fomit-frame-pointer
+ NISTFLAGS += -Wno-unused-result -O3 -fomit-frame-pointer
+ SOURCES = sign.c packing.c polyvec.c poly.c ntt.c reduce.c rounding.c
++SOURCES += fips202.c randombytes.c
+ HEADERS = config.h params.h api.h sign.h packing.h polyvec.h poly.h ntt.h \
+   reduce.h rounding.h symmetric.h randombytes.h
+ KECCAK_SOURCES = $(SOURCES) fips202.c symmetric-shake.c

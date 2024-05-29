@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single ECDSA signature verification test vector.
+message EcdsaNistSigVerTest {
+    // Custom ID: simply the index of the test in the NIST file.
+    int32 id = 1;
+    string message = 2;
+    string qx = 3;
+    string qy = 4;
+    string r = 5;
+    string s = 6;
+    // Either valid or invalid.
+    string result = 7;
+    // When a test is invalid, a comment is included.
+    string fail_reason = 8;
+
+    // Points to the start of the test vector inside the file.
+    int32 line_number = 15;
+}
+
+
+// A group of test vectors for a given curve and hashing algorithm.
+message EcdsaNistSigVerVectors {
+    // A name to show to the user (CURVE + HASH).
+    string name = 1;
+    string curve = 2;
+    string hash_algo = 3;
+
+    repeated EcdsaNistSigVerTest tests = 4;
+}
+
+
+// A single ECDSA signature generation test vector.
+message EcdsaNistSigGenTest {
+    // Custom ID: simply the index of the test in the NIST file.
+    int32 id = 1;
+    string message = 2;
+    string d = 3;
+    string qx = 4;
+    string qy = 5;
+    string k = 6;
+    string r = 7;
+    string s = 8;
+
+    // Points to the start of the test vector inside the file.
+    int32 line_number = 15;
+}
+
+
+// A group of test vectors for a given curve and hashing algorithm.
+message EcdsaNistSigGenVectors {
+    // A name to show to the user (CURVE + HASH).
+    string name = 1;
+    string curve = 2;
+    string hash_algo = 3;
+
+    repeated EcdsaNistSigGenTest tests = 4;
+}

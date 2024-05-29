@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single NIST test for ECDH. The coordinates and private value are in bytes to ensure
+// that they fit - the values used for e.g B-571 are roughly 70 bits long.
+message EcdhNistTest {
+    // The test ID. It should be unique among tests for the same curve.
+    int32 count = 1;
+    // The peer's public x-coordinate.
+    bytes peer_x = 2;
+    // The peer's public y-coordinate.
+    bytes peer_y = 3;
+    // Our secret value.
+    bytes own_d = 4;
+    // Our public x-coordinate.
+    bytes own_x = 5;
+    // Our public y-coordinate.
+    bytes own_y = 6;
+    // The resulting shared secret.
+    bytes z = 7;
+}
+
+// NIST test vectors for a given curve.
+message EcdhNistVectors {
+    // The name of the curve.
+    string curve = 1;
+    // A list of tests for this curve.
+    repeated EcdhNistTest tests = 2;
+}
+
+// A single Wycheproof test vector for ECDH. It is common to both types of tests
+// (encoded point and encoded public key).
+message EcdhWycheproofTest {
+    // Test ID. Should be unique in a file of vectors.
+    int32 id = 1;
+    // A comment describing what is being tested.
+    string comment = 2;
+    // The peer's public key - either an encoded point or an encoded public key. See the type
+    // of EcdhWycheproofGroup.
+    bytes public = 3;
+    // The private value. Stored as bytes to ensure it fits.
+    bytes private = 4;
+    // The resulting shared secret.
+    bytes shared = 5;
+    // The TestType.
+    string result = 6;
+    // Flags annotating this test.
+    repeated string flags = 7;
+}
+
+// A group of Wycheproof tests.
+message EcdhWycheproofGroup {
+    // The name of the curve.
+    string curve = 1;
+    // The type of encoding used for the public key.
+    string encoding = 2;
+    // The type of test: either EcdhTest where the public key is wholly encoded, or
+    // EcdhEcpointTest where only the encoded coordinates are given.
+    string type = 3;
+    // A list of tests.
+    repeated EcdhWycheproofTest tests = 4;
+}
+
+// A file of Wycheproof test vectors for ECDH.
+message EcdhWycheproofVectors {
+    // The algorithm - ECDH in this case.
+    string algorithm = 1;
+    // The version of the generator used - refer to Wycheproof.
+    string generator_version = 2;
+    // The total number of tests included in this file.
+    int32 number_of_tests = 3;
+    // Additional information about these tests.
+    string header = 4;
+    // Notes describing the flags that annotate the tests.
+    map<string, string> notes = 5;
+    // The JSON scheme of the original file.
+    string schema = 6;
+    // The groups of tests.
+    repeated EcdhWycheproofGroup groups = 7;
+
+    // The name of the source file.
+    string filename = 15;
+}

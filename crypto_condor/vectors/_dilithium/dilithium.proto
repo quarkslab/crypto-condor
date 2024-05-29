@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single Dilithium test vector.
+message DilithiumNistTest {
+    int32 count = 1;
+
+    bytes seed = 2;
+    int32 mlen = 3;
+    bytes msg = 4;
+    bytes pk = 5;
+    bytes sk = 6;
+    int32 smlen = 7;
+    bytes sm = 8;
+}
+
+
+// A group of test vectors for a single parameter set.
+message DilithiumNistVectors {
+    // The name of the parameter set, e.g. Dilithium2.
+    string name = 1;
+    repeated DilithiumNistTest tests = 2;
+}

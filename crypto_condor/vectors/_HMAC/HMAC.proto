@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+message HmacNistTest {
+    int32 count = 1;
+
+    int32 klen = 2;
+    int32 tlen = 3;
+    bytes key = 4;
+    bytes msg = 5;
+    bytes mac = 6;
+
+    // Points to the line where the count value of this vector is defined.
+    int32 line_number = 15;
+}
+
+message HmacNistVectors {
+    string filename = 1;
+    string hashname = 2;
+    repeated HmacNistTest tests = 3;
+}
+
+message HmacWycheproofTest {
+    int32 count = 1;
+    string comment = 2;
+
+    bytes key = 3;
+    bytes msg = 4;
+    bytes mac = 5;
+
+    string result = 6;
+    repeated string flags = 7;
+}
+
+message HmacWycheproofGroup {
+    int32 key_size = 1;
+    int32 tag_size = 2;
+
+    repeated HmacWycheproofTest tests = 3;
+}
+
+message HmacWycheproofVectors {
+    string filename = 1;
+
+    string algorithm = 2;
+    string version = 3;
+    repeated string header = 4;
+    int32 number_of_tests = 5;
+    map<string, string> notes = 6;
+
+    repeated HmacWycheproofGroup groups = 7;
+}

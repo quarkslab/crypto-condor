@@ -1,0 +1,126 @@
+[tool.poetry]
+name = "crypto-condor"
+version = "2024.02.05"
+description = "Compliance testing for implementations of cryptographic primitives"
+license = "Apache-2.0"
+authors = [
+  "Julio Loayza Meneses <jloayzameneses@quarkslab.com>",
+  "Angèle Bossuat <abossuat@quarkslab.com>",
+  "Dahmun Goudarzi <dgoudarzi@quarkslab.com>",
+]
+readme = "README.md"
+homepage = "https://github.com/quarkslab/crypto-condor"
+repository = "https://github.com/quarkslab/crypto-condor"
+documentation = "https://github.com/quarkslab/crypto-condor"
+keywords = ["cryptography", "compliance"]
+include = [
+  "crypto_condor/primitives/_aes/main",
+  "crypto_condor/vectors/_aes/dat/*.dat",
+  "crypto_condor/vectors/_dilithium/dat/*.dat",
+  "crypto_condor/vectors/_ECDH/dat/*.dat",
+  "crypto_condor/vectors/_ecdsa/dat/*.dat",
+  "crypto_condor/vectors/_falcon/dat/*.dat",
+  "crypto_condor/vectors/_HMAC/dat/*.dat",
+  "crypto_condor/vectors/_kyber/dat/*.dat",
+  "crypto_condor/vectors/_rsa/dat/*.dat",
+  "crypto_condor/vectors/_sha/dat/*.dat",
+  "crypto_condor/vectors/_sphincs/dat/*.dat",
+  "crypto_condor/primitives/_testu01/examples/excel.dat",
+]
+exclude = [
+  "crypto_condor/primitives/_kyber",
+  "crypto_condor/primitives/_dilithium",
+  "crypto_condor/vectors/_aes/rsp",
+  "crypto_condor/vectors/_dilithium/rsp",
+  "crypto_condor/vectors/_ECDH/src",
+  "crypto_condor/vectors/_ecdsa/rsp",
+  "crypto_condor/vectors/_falcon/rsp",
+  "crypto_condor/vectors/_HMAC/rsp",
+  "crypto_condor/vectors/_HMAC/wycheproof",
+  "crypto_condor/vectors/_kyber/rsp",
+  "crypto_condor/vectors/_rsa/rsp",
+  "crypto_condor/vectors/_sha/rsp",
+  "crypto_condor/vectors/_sphincs/rsp",
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pycryptodome = "^3.17"
+protobuf = "^4.22.3"
+typer = { version = "^0.9.0", extras = ["all"] }
+cryptography = "^41.0.1"
+attrs = "^23.1.0"
+cffi = "^1.16.0"
+
+[tool.poetry.group.dev.dependencies]
+black = { extras = ["jupyter"], version = "^24.1.1" }
+ruff = "^0.1.11"
+pytest = "^7.3.1"
+pytest-xdist = { extras = ["psutil"], version = "^3.5.0" }
+pytest-cov = "^4.1.0"
+mypy = "^1.8.0"
+types-protobuf = "4.24.0.4"
+types-cffi = "^1.16.0.20240331"
+mypy-protobuf = "^3.6.0"
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "^7.0.0"
+sphinx-autobuild = "^2021.3.14"
+furo = "^2023.5.20"
+nbsphinx = "^0.9.2"
+sphinx-copybutton = "^0.5.2"
+tomli = "^2.0.1"
+myst-parser = "^2.0.0"
+sphinxcontrib-bibtex = "^2.5.0"
+enum-tools = { extras = ["sphinx"], version = "^0.11.0" }
+sphinx-toolbox = "^3.5.0"
+
+[tool.poetry.scripts]
+crypto-condor-cli = "crypto_condor.cli.main:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+# Exclude protobuf-generated classes.
+extend-exclude = ["*_pb2.py", "*.pyi", "utils/templates/*"]
+
+[tool.ruff.lint]
+# Enable flake8-bugbear rules.
+select = ["D", "E", "F", "B", "Q", "I"]
+# Avoid trying to fix flake8-bugbear (`B`) violations.
+unfixable = ["B"]
+ignore = [
+  "D107", # missing docstring in __init__, we add docstrings to the class
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+# Prevent pytest from capturing logs.
+addopts = "-p no:logging"
+
+[tool.coverage.run]
+source = ["crypto_condor/"]
+omit = ["*_pb2.py", "nist_to_proto.py"]
+
+[tool.black]
+extend-exclude = '''
+(
+  .*_pb2.py  # exclude protobuf generated classes
+  | nist_to_proto.py  # exclude internal script
+)
+'''
+
+[tool.mypy]
+python_version = "3.11"
+# warn_return_any = true
+# warn_unused_configs = true
+
+exclude = [
+  "^crypto_condor/resources/wrappers/",
+  '_import\.py$',
+  "^utils/templates/",
+]

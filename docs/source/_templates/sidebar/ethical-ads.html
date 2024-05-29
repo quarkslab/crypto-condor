@@ -1,0 +1,19 @@
+{% if versions %}
+<div class="sidebar-tree">
+  <p class="caption" role="heading">
+    <span class="caption-text">Versions</span>
+  </p>
+  <ul>
+    {% set versions_list = versions.split(" ") %}
+    {% for version in versions_list %}
+      {% if version == "main" %}
+      <li class="toctree-l1"><a class="reference internal" href="https://quarkslab.github.io/crypto-condor/devel/index.html">devel ({{ latest_commit }})</a></li>
+      {% elif version == latest_tag %}
+      <li class="toctree-l1"><a class="reference internal" href="https://quarkslab.github.io/crypto-condor/latest/index.html">latest ({{ latest_tag }})</a></li>
+      {% else %}
+      <li class="toctree-l1"><a class="reference internal" href="https://quarkslab.github.io/crypto-condor/{{ version }}/index.html">{{ version }}</a></li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
