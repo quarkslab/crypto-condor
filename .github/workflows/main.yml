@@ -65,6 +65,7 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install -vv
           source `poetry env info --path`/bin/activate
+          sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
           make coverage-ci
           make doctest
 
@@ -88,6 +89,7 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install -vv
           source `poetry env info --path`/bin/activate
+          sudo apt-get install -y --no-install-recommends pandoc
           make docs
 
   upload-docs:
@@ -111,6 +113,7 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install -vv
           source `poetry env info --path`/bin/activate
+          sudo apt-get install -y --no-install-recommends pandoc
           make pages-ci
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
@@ -153,6 +156,7 @@ jobs:
           poetry config virtualenvs.in-project true
           poetry install -vv
           source `poetry env info --path`/bin/activate
+          sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
           make build-ci
 
   publish:
