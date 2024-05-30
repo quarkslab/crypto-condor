@@ -53,6 +53,7 @@ jobs:
       - name: Run the test suite and coverage
         run: |
           export PYTHONDONTWRITEBYTECODE=1
+          python -m pip install poetry
           poetry config virtualenvs.in-project true; poetry install -vv; source `poetry env info --path`/bin/activate
           sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
           make coverage-ci
@@ -72,6 +73,7 @@ jobs:
       - name: Build the docs
         run: |
           export PYTHONDONTWRITEBYTECODE=1
+          python -m pip install poetry
           poetry config virtualenvs.in-project true; poetry install -vv; source `poetry env info --path`/bin/activate
           sudo apt-get install -y --no-install-recommends pandoc
           make docs
@@ -91,6 +93,7 @@ jobs:
       - name: Build docs for publishing
         run: |
           export PYTHONDONTWRITEBYTECODE=1
+          python -m pip install poetry
           poetry config virtualenvs.in-project true; poetry install -vv; source `poetry env info --path`/bin/activate
           sudo apt-get install -y --no-install-recommends pandoc
           make pages-ci
@@ -129,6 +132,7 @@ jobs:
       - name: Build the package
         run: |
           export PYTHONDONTWRITEBYTECODE=1
+          python -m pip install poetry
           poetry config virtualenvs.in-project true; poetry install -vv; source `poetry env info --path`/bin/activate
           sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
           make build-ci
