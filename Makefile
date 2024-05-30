@@ -153,6 +153,8 @@ pages-ci: init-ci
 	@echo "[+] Building all docs"
 	sudo apt-get install -y --no-install-recommends pandoc
 	. .venv/bin/activate && $(MAKE) -C docs all-versions
+	cp docs/source/_static/redirect-index.html docs/build/public/index.html
+# Rename docs from main to devel.
 	mv docs/build/public/main docs/build/public/devel
 # Move latest tag to latest.
 	-LATEST_TAG="$(shell git describe --tags --abbrev=0 --exclude='*rc[0-9]')" && cp -R docs/build/public/$$LATEST_TAG docs/build/public/latest
