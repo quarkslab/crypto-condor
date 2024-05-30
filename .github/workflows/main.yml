@@ -136,7 +136,7 @@ jobs:
           source .venv/bin/activate
           make pages-ci
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v4
         with:
           path: docs/build/public
 
