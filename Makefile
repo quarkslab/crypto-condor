@@ -53,7 +53,7 @@ ci-setup:
 	export PYTHONDONTWRITEBYTECODE=1
 	export POETRY_VIRTUALENVS_IN_PROJECT=1
 	python --version
-	python -m pip version
+	python -m pip --version
 	python -m pip install poetry
 	poetry --version
 	poetry install --with=dev,docs
