@@ -43,3 +43,6 @@ docs/build
 **/_dilithium/dilithium2
 **/_dilithium/dilithium3
 **/_dilithium/dilithium5
+
+# built package
+dist/
