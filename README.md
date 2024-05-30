@@ -55,7 +55,8 @@ python -m pip install crypto-condor
 ```
 
 An up-to-date list of the requirements can be found in the
-`[tool.poetry.dependencies]` section of the [pyproject.toml]
+`[tool.poetry.dependencies]` section of the
+[pyproject.toml](https://github.com/quarkslab/crypto-condor/blob/main/pyproject.toml)
 file.
 
 ## Usage
@@ -74,7 +75,8 @@ implementations.
 
 ## Development
 
-See [CONTRIBUTING].
+See
+[CONTRIBUTING](https://github.com/quarkslab/crypto-condor/blob/main/CONTRIBUTING.md).
 
 ## Changelog and versioning
 
