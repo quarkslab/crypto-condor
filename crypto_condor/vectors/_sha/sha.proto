@@ -4,62 +4,83 @@ package crypto_condor;
 
 // A single SHA test vector.
 message ShaNistTest {
+    // The length of the message in bits.
     int32 len = 1;
-    string msg = 2;
-    string md = 3;
-
-    // Points to the start of the test vector inside the file.
-    int32 line_number = 15;
+    // The message to hash.
+    bytes msg = 2;
+    // The resulting digest.
+    bytes md = 3;
 }
 
+// A file of NIST SHA vectors.
 message ShaNistVectors {
+    // The name of the source file.
     string filename = 1;
+    // The test vectors.
     repeated ShaNistTest tests = 2;
 }
 
-// Monte-Carlo test vectors.
+// A file of NIST Monte-Carlo SHA vectors. Consists of one seed and several checkpoints.
 message ShaMonteCarloNistVectors {
+    // The name of the source file.
     string filename = 1;
-    string seed = 2;
-    map<int32, string> tests = 3;
+    // The seed 
+    bytes seed = 2;
+    // A dictionary of checkpoints: the indexes are the keys, the checkpoints are the
+    // values.
+    map<int32, bytes> checkpoints = 3;
 }
 
+// A single NIST SHAKE vector.
 message ShakeNistTest {
+    // The length of the message in bits.
     int32 len = 1;
-    string msg = 2;
-    string output = 3;
-
-    int32 line_number = 15;
+    // The input message.
+    bytes msg = 2;
+    // The resulting digest.
+    bytes output = 3;
 }
 
+// A file of NIST SHAKE vectors.
 message ShakeNistVectors {
+    // The name of the source file.
     string filename = 1;
+    // The SHAKE variant.
     int32 output_len = 2;
+    // A list of test vectors.
     repeated ShakeNistTest tests = 3;
 }
 
+// A file of NIST SHAKE Monte-Carlo vectors.
 message ShakeMonteNistVectors {
+    // The name of the source file.
     string filename = 1;
-
-    string msg = 2;
+    // The initial message.
+    bytes msg = 2;
+    // The maximum length that is tested, in bits.
     int32 max_len = 3;
+    // The minimum length that is tested, in bits.
     int32 min_len = 4;
-
     // Maps the count to the output, outputlen must be re-computed.
-    map<int32, string> tests = 5;
+    map<int32, bytes> checkpoints = 5;
 }
 
+// A single NIST SHAKE variable length test.
 message ShakeVariableNistTest {
+    // The ID of the test.
     int32 count = 1;
+    // The length of the output in bits.
     int32 output_len = 2;
-    string msg = 3;
-    string output = 4;
-
-    int32 line_number = 15;
+    // The input message.
+    bytes msg = 3;
+    // The resulting digest.
+    bytes output = 4;
 }
 
+// A file of SHAKE NIST variable length vectors.
 message ShakeVariableNistVectors {
+    // The name of the source file.
     string filename = 1;
-
+    // A list of test vectors.
     repeated ShakeVariableNistTest tests = 3;
 }

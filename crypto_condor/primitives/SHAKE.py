@@ -171,18 +171,16 @@ def test(xof: Xof, xof_algorithm: Algorithm, orientation: Orientation) -> Result
         enumerate(vectors.short_msg.tests, start=1), "[NIST] short message vectors"
     ):
         info = TestInfo.new(tid, TestType.VALID, ["Compliance"])
-        msg = bytes.fromhex(test.msg)
-        expected_output = bytes.fromhex(test.output)
-        data = ShakeData(msg, expected_output)
+        data = ShakeData(test.msg, test.output)
         try:
-            output = xof(msg, len(expected_output))
+            output = xof(test.msg, len(test.output))
         except Exception as error:
             info.fail(f"Digest failed: {str(error)}", data)
             logger.debug("Digest failed", exc_info=True)
             short_results.add(info)
             continue
-        if output == expected_output:
-            data.result = output
+        data.result = output
+        if output == test.output:
             info.ok(data)
         else:
             info.fail("Wrong digest", data)
@@ -193,18 +191,16 @@ def test(xof: Xof, xof_algorithm: Algorithm, orientation: Orientation) -> Result
         "[NIST] short message vectors",
     ):
         info = TestInfo.new(tid, TestType.VALID, ["Compliance"])
-        msg = bytes.fromhex(test.msg)
-        expected_output = bytes.fromhex(test.output)
-        data = ShakeData(msg, expected_output)
+        data = ShakeData(test.msg, test.output)
         try:
-            output = xof(msg, len(expected_output))
+            output = xof(test.msg, len(test.output))
         except Exception as error:
             info.fail(f"Digest failed: {str(error)}", data)
             logger.debug("Digest failed", exc_info=True)
             long_results.add(info)
             continue
-        if output == expected_output:
-            data.result = output
+        data.result = output
+        if output == test.output:
             info.ok(data)
         else:
             info.fail("Wrong digest", data)
@@ -213,7 +209,7 @@ def test(xof: Xof, xof_algorithm: Algorithm, orientation: Orientation) -> Result
     # Monte-Carlo vectors.
     mv = vectors.montecarlo
     # Start with the 'seed' message.
-    output = bytes.fromhex(mv.msg)
+    output = mv.msg
     # max_len and min_len are lengths in bytes.
     max_len = (mv.max_len + 7) // 8
     min_len = (mv.min_len + 7) // 8
@@ -228,7 +224,7 @@ def test(xof: Xof, xof_algorithm: Algorithm, orientation: Orientation) -> Result
             rb = int.from_bytes(output[-2:])
             rg = max_len - min_len + 1
             output_len = min_len + (rb % rg)
-        if output != bytes.fromhex(mv.tests[j]):
+        if output != mv.checkpoints[j]:
             res = False
             break
     mc_info = TestInfo.new(1, TestType.VALID, ["Compliance"])
@@ -244,18 +240,16 @@ def test(xof: Xof, xof_algorithm: Algorithm, orientation: Orientation) -> Result
         enumerate(vectors.variable.tests, start=1), "[NIST] Variable length vectors"
     ):
         info = TestInfo.new(tid, TestType.VALID, ["Compliance"])
-        msg = bytes.fromhex(test.msg)
-        expected_output = bytes.fromhex(test.output)
-        data = ShakeData(msg, expected_output)
+        data = ShakeData(test.msg, test.output)
         try:
-            output = xof(msg, test.output_len // 8)
+            output = xof(test.msg, test.output_len // 8)
         except Exception as error:
             info.fail(f"Digest failed: {str(error)}", data)
             logger.debug("Digest failed", exc_info=True)
             var_results.add(info)
             continue
-        if output == expected_output:
-            data.result = output
+        data.result = output
+        if output == test.output:
             info.ok(data)
         else:
             info.fail("Wrong digest", data)

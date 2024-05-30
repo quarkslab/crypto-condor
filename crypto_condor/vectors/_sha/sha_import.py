@@ -66,13 +66,12 @@ def import_vectors(src: str, dst: str):
             case "Len":
                 vector = vectors.tests.add()
                 vector.len = int(value)
-                vector.line_number = line_number
             case "Msg":
                 if vector.len == 0:  # If the message is empty, skip it.
                     continue
-                setattr(vector, key.lower(), value)
+                setattr(vector, key.lower(), bytes.fromhex(value))
             case "MD":
-                setattr(vector, key.lower(), value)
+                setattr(vector, key.lower(), bytes.fromhex(value))
             case _:
                 raise ValueError("Unknown key %s" % key)
 
@@ -121,11 +120,11 @@ def import_monte_carlo_vectors(src: str, dst: str):
         key, value = line.split(" = ")
         match key:
             case "Seed":
-                vectors.seed = value
+                vectors.seed = bytes.fromhex(value)
             case "COUNT":
                 count = int(value)
             case "MD":
-                vectors.tests[count] = value
+                vectors.checkpoints[count] = bytes.fromhex(value)
             case _:
                 raise ValueError("Unknown key %s" % key)
 
@@ -182,13 +181,12 @@ def import_shake_vectors(src: str, dst: str):
             case "Len":
                 vector = vectors.tests.add()
                 vector.len = int(value)
-                vector.line_number = line_number
             case "Msg":
                 if vector.len == 0:  # If the message is empty, skip it.
                     continue
-                setattr(vector, key.lower(), value)
+                setattr(vector, key.lower(), bytes.fromhex(value))
             case "Output":
-                setattr(vector, key.lower(), value)
+                setattr(vector, key.lower(), bytes.fromhex(value))
             case _:
                 raise ValueError("Unknown key %s" % key)
 
@@ -243,11 +241,11 @@ def import_shake_monte_carlo_vectors(src: str, dst: str):
         key, value = line.split(" = ")
         match key:
             case "Msg":
-                vectors.msg = value
+                vectors.msg = bytes.fromhex(value)
             case "COUNT":
                 count = int(value)
             case "Output":
-                vectors.tests[count] = value
+                vectors.checkpoints[count] = bytes.fromhex(value)
             case "Outputlen":
                 # We ignore the output length to simplify the data structure.
                 continue
@@ -300,11 +298,10 @@ def import_shake_variable_vectors(src: str, dst: str):
             case "COUNT":
                 vector = vectors.tests.add()
                 vector.count = int(value)
-                vector.line_number = line_number
             case "Outputlen":
                 vector.output_len = int(value)
             case "Msg" | "Output":
-                setattr(vector, key.lower(), value)
+                setattr(vector, key.lower(), bytes.fromhex(value))
             case _:
                 raise ValueError("Unknown key %s" % key)
 

@@ -270,43 +270,39 @@ def test(
         enumerate(vectors.short_msg.tests, start=1), "[NIST] short message vectors"
     ):
         info = DebugInfo(tid, TestType.VALID, ["Compliance"])
-        msg = bytes.fromhex(test.msg)
-        md = bytes.fromhex(test.md)
         try:
-            digest = hash_function(msg)
+            digest = hash_function(test.msg)
         except Exception as error:
             info.error_msg = f"Error running hash function: {str(error)}"
             logger.debug("Error running hash function", exc_info=True)
-            data = ShaData(info, msg, md, None)
+            data = ShaData(info, test.msg, test.md, None)
             short_results.add(data)
             continue
 
-        if digest == md:
+        if digest == test.md:
             info.result = True
         else:
             info.error_msg = "Wrong digest"
-        data = ShaData(info, msg, md, digest)
+        data = ShaData(info, test.msg, test.md, digest)
         short_results.add(data)
 
     for tid, test in track(
         enumerate(vectors.long_msg.tests, start=1), "[NIST] long message vectors"
     ):
         info = DebugInfo(tid, TestType.VALID, ["Compliance"])
-        msg = bytes.fromhex(test.msg)
-        md = bytes.fromhex(test.md)
         try:
-            digest = hash_function(msg)
+            digest = hash_function(test.msg)
         except Exception as error:
             info.error_msg = f"Error running hash function: {str(error)}"
             logger.debug("Error running hash function", exc_info=True)
-            data = ShaData(info, msg, md, None)
+            data = ShaData(info, test.msg, test.md, None)
             short_results.add(data)
             continue
-        if digest == md:
+        if digest == test.md:
             info.result = True
         else:
             info.error_msg = "Wrong digest"
-        data = ShaData(info, msg, md, digest)
+        data = ShaData(info, test.msg, test.md, digest)
         long_results.add(data)
 
     # The Monte-Carlo tests are not built the same way for SHA-2 and SHA-3.
@@ -316,21 +312,19 @@ def test(
         info = DebugInfo(1, TestType.VALID, ["Compliance"])
         res = True
         mc_vectors = vectors.montecarlo
-        seed = bytes.fromhex(mc_vectors.seed)
-        md = seed
+        md = mc_vectors.seed
         for j in track(range(0, 100), "[NIST] Monte-Carlo vectors"):
             for _ in range(1, 1001):
                 msg = md
                 md = hash_function(msg)
-            d = bytes.fromhex(mc_vectors.tests[j])
-            if md != d:
+            if md != mc_vectors.checkpoints[j]:
                 res = False
                 break
         if res:
             info.result = True
         else:
             info.error_msg = f"Failed at checkpoint {j}"
-        mc_data = ShaMcData(info, seed)
+        mc_data = ShaMcData(info, mc_vectors.seed)
         mc_results.add(mc_data)
     else:
         # The specification of this test is in section 6.4 of
@@ -338,7 +332,7 @@ def test(
         info = DebugInfo(1, TestType.VALID, ["Compliance"])
         res = True
         mc_vectors = vectors.montecarlo
-        seed = bytes.fromhex(mc_vectors.seed)
+        seed = mc_vectors.seed
         for j in track(range(0, 100), "[NIST] Monte-Carlo vectors"):
             md0 = md1 = md2 = seed
             for _ in range(3, 1003):
@@ -346,8 +340,7 @@ def test(
                 mdi = hash_function(mi)
                 md0, md1, md2 = md1, md2, mdi
             mdj = seed = mdi
-            md = bytes.fromhex(mc_vectors.tests[j])
-            if mdj != md:
+            if mdj != mc_vectors.checkpoints[j]:
                 res = False
                 break
         if res:

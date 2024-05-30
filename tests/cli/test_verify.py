@@ -453,14 +453,14 @@ class TestSha:
             if failed > 0:
                 digest = SHA._sha(algo, random.randbytes(256)).hex()
             else:
-                digest = vector.md
-            data.append(f"{vector.msg}/{digest}")
+                digest = vector.md.hex()
+            data.append(f"{vector.msg.hex()}/{digest}")
         for vector in vectors.long_msg.tests:
             if failed > 0:
                 digest = SHA._sha(algo, random.randbytes(256)).hex()
             else:
-                digest = vector.md
-            data.append(f"{vector.msg}/{digest}")
+                digest = vector.md.hex()
+            data.append(f"{vector.msg.hex()}/{digest}")
 
         out.write_text("\n".join(data))
         return len(data)
