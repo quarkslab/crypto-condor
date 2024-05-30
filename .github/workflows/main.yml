@@ -3,7 +3,7 @@ name: main
 on: [push]
 
 jobs:
-  lint:
+  setup:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repo
@@ -13,16 +13,45 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Run the linter
+      - name: Install dependencies
         run: |
-          export PYTHONDONTWRITEBYTECODE=1
+          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
           python --version; python -m pip --version
           python -m pip install poetry; poetry --version
-          poetry config virtualenvs.in-project true; poetry install -vv; source `poetry env info --path`/bin/activate
+          make install
+      - name: Cache venv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv
+
+  lint:
+    runs-on: ubuntu-22.04
+    needs: [setup]
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Restore venv
+        id: cache-venv-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv
+      - name: Run the linter
+        run: |
+          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
+          python -m pip install poetry
           make lint-ci
 
   type-check:
     runs-on: ubuntu-22.04
+    needs: [setup]
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -31,12 +60,16 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+      - name: Restore venv
+        id: cache-venv-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv
       - name: Run the type-checker
         run: |
-          export PYTHONDONTWRITEBYTECODE=1
-          python --version; python -m pip --version
-          python -m pip install poetry; poetry --version
-          poetry config virtualenvs.in-project true; poetry install -vv; source `poetry env info --path`/bin/activate
+          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
+          python -m pip install poetry
           make type-check-ci
 
   test:
@@ -50,13 +83,19 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+      - name: Restore venv
+        id: cache-venv-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv
       - name: Run the test suite and coverage
         run: |
-          export PYTHONDONTWRITEBYTECODE=1
+          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
           python -m pip install poetry
-          poetry config virtualenvs.in-project true; poetry install -vv; source `poetry env info --path`/bin/activate
           sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
           make coverage-ci
+          source .venv/bin/activate
           make doctest
 
   docs:
@@ -70,12 +109,18 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+      - name: Restore venv
+        id: cache-venv-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv
       - name: Build the docs
         run: |
-          export PYTHONDONTWRITEBYTECODE=1
+          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
           python -m pip install poetry
-          poetry config virtualenvs.in-project true; poetry install -vv; source `poetry env info --path`/bin/activate
           sudo apt-get install -y --no-install-recommends pandoc
+          source .venv/bin/activate
           make docs
 
   upload-docs:
@@ -90,12 +135,18 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+      - name: Restore venv
+        id: cache-venv-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv
       - name: Build docs for publishing
         run: |
-          export PYTHONDONTWRITEBYTECODE=1
+          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
           python -m pip install poetry
-          poetry config virtualenvs.in-project true; poetry install -vv; source `poetry env info --path`/bin/activate
           sudo apt-get install -y --no-install-recommends pandoc
+          source .venv/bin/activate
           make pages-ci
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
@@ -129,11 +180,16 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+      - name: Restore venv
+        id: cache-venv-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv
       - name: Build the package
         run: |
-          export PYTHONDONTWRITEBYTECODE=1
+          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
           python -m pip install poetry
-          poetry config virtualenvs.in-project true; poetry install -vv; source `poetry env info --path`/bin/activate
           sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
           make build-ci
       - name: Upload build

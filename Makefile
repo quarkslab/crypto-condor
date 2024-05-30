@@ -26,8 +26,8 @@ lint: # Format with black and lint with ruff.
 
 lint-ci: # Format with black, lint with ruff, generate report for CI.
 	@echo "[+] Linting (CI)"
-	black --check .
-	ruff check --output-format=github .
+	poetry run black --check .
+	poetry run ruff check --output-format=github .
 
 type-check: # Run mypy.
 	@echo "[+] Type checking"
@@ -35,7 +35,7 @@ type-check: # Run mypy.
 
 type-check-ci: # Run mypy, generate report for CI.
 	@echo "[+] Type checking (CI)"
-	mypy --config-file pyproject.toml --junit-xml mypy.xml .
+	poetry run mypy --config-file pyproject.toml --junit-xml mypy.xml .
 
 .PHONY: import-nist-vectors
 import-nist-vectors: # Serialize NIST test vectors with protobuf.
@@ -86,9 +86,9 @@ coverage: init
 coverage-ci: # Run coverage, generate JUnit test report and XML coverage report.
 coverage-ci: init
 	@echo "[+] Testing and checking coverage (CI)"
-	pytest --verbose --junitxml=junit/test-results.xml --cov="crypto_condor" --cov-report=xml --numprocesses=auto tests/
+	poetry run pytest --verbose --junitxml=junit/test-results.xml --cov="crypto_condor" --cov-report=xml --numprocesses=auto tests/
 # Print coverage report so that CI picks up stats
-	coverage report
+	poetry run coverage report
 
 # Separate build target to fully build locally.
 build: # Build the package.
@@ -109,9 +109,8 @@ build-ci: init
 publish-ci: # Publish package using the CI pipeline.
 publish-ci: init
 	@echo "[+] Publishing package (CI)"
-	poetry config repositories.gitlab $(CI_API_V4_URL)/projects/$(CI_PROJECT_ID)/packages/pypi
-# JOB_TOKEN is an ephemeral token that is valid while the pipeline is running.
-	@poetry publish -v --build --repository gitlab --cert $(CI_SERVER_TLS_CA_FILE) -u gitlab-ci-token -p $(CI_JOB_TOKEN)
+	@poetry config pypi-token.pypi $(PYPI_TOKEN)
+	@poetry publish -v --build
 
 compile-proto: # Compile .proto files and prints current protoc version.
 compile-proto: $(PB2_FILES)
