@@ -146,9 +146,10 @@ pages-ci: # Build the documentation for GitLab Pages.
 pages-ci: init-ci
 	@echo "[+] Building all docs"
 	. .venv/bin/activate && $(MAKE) -C docs all-versions
-	mv docs/build/public .
+	mv docs/build/public/main docs/build/public/devel
+	# mv docs/build/public .
 # Move the current docs to devel
-	mv public/main public/devel
+	# mv public/main public/devel
 # Move latest tag to latest.
 # This step might fail if the version is bumped since the CI runs once for the
 # commit and once more for the tag, so the latest tag might not be present in
