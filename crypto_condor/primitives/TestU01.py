@@ -91,34 +91,21 @@ def install_testu01():
 
     with Progress() as progress:
         task = progress.add_task("Compiling TestU01, please wait", total=None)
+        # Only capture output if it's not running in the CI, otherwise we want to see
+        # what's going on in case of an error.
+        capture_output = not os.environ.get("GITHUB_ACTIONS", False)
         try:
-            result = subprocess.run(
+            _ = subprocess.run(
                 [str(make)],
                 cwd=t_dir,
-                capture_output=True,
+                capture_output=capture_output,
                 text=True,
                 check=True,
-                timeout=60,
+                timeout=300,
             )
             progress.update(task, completed=True)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             logger.exception("Could not compile TestU01")
-            # The compilation log is very long so we save it to a file to make it
-            # easier to read/share. In CI, print it so we get it in the captured output.
-            if os.environ.get("GITLAB_CI", False):  # pragma: no cover (CI)
-                print("STDOUT:", result.stdout)
-                print("STDERR:", result.stderr)
-            else:
-                try:
-                    with open("testu01.log", "w") as tlog:
-                        tlog.write("STDOUT:")
-                        tlog.write(result.stdout)
-                        tlog.write("\n\n\nSTDERR:")
-                        tlog.write(result.stderr)
-                    logger.info("Saved compilation log to testu01.log")
-                except OSError:
-                    logger.exception("Could not save compilation log to testu01.log")
-                    logger.info("Dumping log to stdout")
             raise
 
 
