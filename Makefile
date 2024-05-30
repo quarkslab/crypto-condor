@@ -58,12 +58,11 @@ ci-setup: # Basic commands to run before the other CI targets.
 ci-setup:
 	@echo "[+] Setup CI"
 	export PYTHONDONTWRITEBYTECODE=1
-	export POETRY_VIRTUALENVS_IN_PROJECT=1
 	python --version
 	python -m pip --version
 	python -m pip install poetry
 	poetry --version
-	poetry install --with=dev,docs
+	POETRY_VIRTUALENVS_IN_PROJECT=1 poetry install --with=dev,docs
 
 init: # Common requirements for several targets.
 init: install import-nist-vectors compile-primitives copy-guides copy-contributing
