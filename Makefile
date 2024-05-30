@@ -63,7 +63,7 @@ init: # Common requirements for several targets.
 init: install import-nist-vectors compile-primitives copy-guides copy-contributing
 
 init-ci: # Common requirements before other CI targets.
-init-ci: ci-setup import-nist-vectors compile-primitives copy-guides copy-contributing
+init-ci: ci-setup import-nist-vectors copy-guides copy-contributing
 
 lint: # Format with black and lint with ruff.
 	@echo "[+] Linting"
@@ -104,7 +104,7 @@ coverage: init
 	pytest --cov="crypto_condor" --cov-report html --numprocesses=auto tests/
 
 coverage-ci: # Run coverage, generate JUnit test report and XML coverage report.
-coverage-ci: init-ci
+coverage-ci: init-ci compile-primitives
 	@echo "[+] Testing and checking coverage (CI)"
 	poetry run pytest --verbose --junitxml=junit/test-results.xml --cov="crypto_condor" --cov-report=xml --numprocesses=auto tests/
 # Print coverage report so that CI picks up stats
@@ -119,7 +119,7 @@ build: init
 # This is redundant since publish-ci also builds the package, but we use this to check
 # for building errors before trying to publish.
 build-ci: # Build the package in the CI.
-build-ci: init-ci
+build-ci: init-ci compile-primitives
 	@echo "[+] Building package (CI)"
 # Ensure that the tag and version match to avoid pushing a package without
 # the corresponding documentation.
