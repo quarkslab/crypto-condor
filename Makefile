@@ -57,7 +57,6 @@ ci-setup:
 	python -m pip install poetry
 	poetry --version
 	poetry install --with=dev,docs
-	sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
 
 init: # Common requirements for several targets.
 init: install import-nist-vectors compile-primitives copy-guides copy-contributing
@@ -91,6 +90,7 @@ doctest: init
 
 doctest-ci: # Run doctest
 doctest-ci: init-ci
+	sudo apt-get install -y --no-install-recommends pandoc
 	. .venv/bin/activate && $(MAKE) -C docs doctest
 
 test: # Run pytest.
@@ -106,6 +106,7 @@ coverage: init
 coverage-ci: # Run coverage, generate JUnit test report and XML coverage report.
 coverage-ci: init-ci compile-primitives
 	@echo "[+] Testing and checking coverage (CI)"
+	sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
 	poetry run pytest --verbose --junitxml=junit/test-results.xml --cov="crypto_condor" --cov-report=xml --numprocesses=auto tests/
 # Print coverage report so that CI picks up stats
 	poetry run coverage report
@@ -121,6 +122,7 @@ build: init
 build-ci: # Build the package in the CI.
 build-ci: init-ci compile-primitives
 	@echo "[+] Building package (CI)"
+	sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
 # Ensure that the tag and version match to avoid pushing a package without
 # the corresponding documentation.
 	. .venv/bin/activate && python utils/check_tag_and_version.py
@@ -145,6 +147,7 @@ compile-proto: $(PB2_FILES)
 pages-ci: # Build the documentation for GitLab Pages.
 pages-ci: init-ci
 	@echo "[+] Building all docs"
+	sudo apt-get install -y --no-install-recommends pandoc
 	. .venv/bin/activate && $(MAKE) -C docs all-versions
 	mv docs/build/public/main docs/build/public/devel
 	# mv docs/build/public .
@@ -166,6 +169,7 @@ docs: install
 
 docs-ci: # Build the documentation
 docs-ci: init-ci
+	sudo apt-get install -y --no-install-recommends pandoc
 	. .venv/bin/activate && $(MAKE) -C docs html
 
 livedocs: # Build the documentation with live reload.
