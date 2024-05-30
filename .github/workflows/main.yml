@@ -112,7 +112,7 @@ jobs:
           make docs-ci
 
   upload-docs:
-    # if: success() && github.ref == 'refs/heads/main'
+    if: success() && github.ref == 'refs/heads/main'
     needs: [test,docs]
     runs-on: ubuntu-22.04
     steps:
@@ -142,7 +142,7 @@ jobs:
 
   pages:
     needs: [upload-docs]
-    # if: success() && github.ref == 'refs/heads/main'
+    if: success() && github.ref == 'refs/heads/main'
     permissions:
       pages: write
       id-token: write
@@ -157,7 +157,7 @@ jobs:
 
   build:
     needs: [test,docs]
-    # if: success() && github.ref == 'refs/heads/main'
+    if: success() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repo
