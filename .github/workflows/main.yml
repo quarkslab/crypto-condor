@@ -20,7 +20,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: ${{ runner.os }}-venv
+          key: ${{ github.sha }}-venv
 
   lint:
     runs-on: ubuntu-22.04
@@ -38,7 +38,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .venv
-          key: ${{ runner.os }}-venv
+          key: ${{ github.sha }}-venv
+          fail-on-cache-miss: true
       - name: Run the linter
         run: |
           source .venv/bin/activate
@@ -60,7 +61,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .venv
-          key: ${{ runner.os }}-venv
+          key: ${{ github.sha }}-venv
+          fail-on-cache-miss: true
       - name: Run the type-checker
         run: |
           source .venv/bin/activate
@@ -82,7 +84,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .venv
-          key: ${{ runner.os }}-venv
+          key: ${{ github.sha }}-venv
+          fail-on-cache-miss: true
       - name: Run the test suite and coverage
         run: |
           source .venv/bin/activate
@@ -105,7 +108,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .venv
-          key: ${{ runner.os }}-venv
+          key: ${{ github.sha }}-venv
+          fail-on-cache-miss: true
       - name: Build the docs
         run: |
           source .venv/bin/activate
@@ -130,7 +134,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .venv
-          key: ${{ runner.os }}-venv
+          key: ${{ github.sha }}-venv
+          fail-on-cache-miss: true
       - name: Build docs for publishing
         run: |
           source .venv/bin/activate
@@ -172,7 +177,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .venv
-          key: ${{ runner.os }}-venv
+          key: ${{ github.sha }}-venv
+          fail-on-cache-miss: true
       - name: Build the package
         run: |
           source .venv/bin/activate
