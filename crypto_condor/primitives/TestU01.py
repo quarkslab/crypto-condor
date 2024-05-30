@@ -95,7 +95,7 @@ def install_testu01():
         # what's going on in case of an error.
         capture_output = not os.environ.get("GITHUB_ACTIONS", False)
         try:
-            result = subprocess.run(
+            _ = subprocess.run(
                 [str(make)],
                 cwd=t_dir,
                 capture_output=capture_output,
