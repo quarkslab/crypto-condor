@@ -14,7 +14,7 @@ help:
 
 .PHONY: help Makefile
 
-VERSIONS = main 2024.02.05 2024.01.08
+VERSIONS = main
 
 all-versions: $(VERSIONS)
 	git checkout main
