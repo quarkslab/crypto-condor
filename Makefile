@@ -157,7 +157,6 @@ pages-ci: init-ci
 # *are* the stable docs and the CI pipeline for the tag will overwrite these
 # anyway.
 	# -LATEST_TAG="$(shell git describe --tags --abbrev=0 --exclude='*rc[0-9]')"; cp -R public/$$LATEST_TAG public/latest
-	cp -R public/main public/latest
 
 .PHONY: docs
 docs: # Build the documentation
