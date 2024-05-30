@@ -85,7 +85,6 @@ jobs:
           key: ${{ runner.os }}-venv
       - name: Run the test suite and coverage
         run: |
-          sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
           source .venv/bin/activate
           make coverage-ci
           make doctest-ci
@@ -109,7 +108,6 @@ jobs:
           key: ${{ runner.os }}-venv
       - name: Build the docs
         run: |
-          sudo apt-get install -y --no-install-recommends pandoc
           source .venv/bin/activate
           make docs-ci
 
@@ -133,7 +131,6 @@ jobs:
           key: ${{ runner.os }}-venv
       - name: Build docs for publishing
         run: |
-          sudo apt-get install -y --no-install-recommends pandoc
           source .venv/bin/activate
           make pages-ci
       - name: Upload artifact
@@ -176,7 +173,6 @@ jobs:
           key: ${{ runner.os }}-venv
       - name: Build the package
         run: |
-          sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
           source .venv/bin/activate
           make build-ci
       - name: Upload build

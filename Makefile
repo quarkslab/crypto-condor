@@ -57,6 +57,7 @@ ci-setup:
 	python -m pip install poetry
 	poetry --version
 	poetry install --with=dev,docs
+	sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
 
 init: # Common requirements for several targets.
 init: install import-nist-vectors compile-primitives copy-guides copy-contributing
