@@ -14,11 +14,7 @@ jobs:
           python-version: "3.11"
           cache: "pip"
       - name: Install dependencies
-        run: |
-          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
-          python --version; python -m pip --version
-          python -m pip install poetry; poetry --version
-          make install
+        run: make ci-setup
       - name: Cache venv
         id: cache-venv
         uses: actions/cache@v4
@@ -44,10 +40,7 @@ jobs:
           path: .venv
           key: ${{ runner.os }}-venv
       - name: Run the linter
-        run: |
-          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
-          python -m pip install poetry
-          make lint-ci
+        run: make lint-ci
 
   type-check:
     runs-on: ubuntu-22.04
@@ -67,10 +60,7 @@ jobs:
           path: .venv
           key: ${{ runner.os }}-venv
       - name: Run the type-checker
-        run: |
-          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
-          python -m pip install poetry
-          make type-check-ci
+        run: make type-check-ci
 
   test:
     runs-on: ubuntu-22.04
@@ -91,12 +81,9 @@ jobs:
           key: ${{ runner.os }}-venv
       - name: Run the test suite and coverage
         run: |
-          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
-          python -m pip install poetry
           sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
           make coverage-ci
-          source .venv/bin/activate
-          make doctest
+          make doctest-ci
 
   docs:
     runs-on: ubuntu-22.04
@@ -117,14 +104,11 @@ jobs:
           key: ${{ runner.os }}-venv
       - name: Build the docs
         run: |
-          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
-          python -m pip install poetry
           sudo apt-get install -y --no-install-recommends pandoc
-          source .venv/bin/activate
           make docs
 
   upload-docs:
-    if: success() && github.ref == 'refs/heads/main'
+    # if: success() && github.ref == 'refs/heads/main'
     needs: [test,docs]
     runs-on: ubuntu-22.04
     steps:
@@ -143,10 +127,7 @@ jobs:
           key: ${{ runner.os }}-venv
       - name: Build docs for publishing
         run: |
-          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
-          python -m pip install poetry
           sudo apt-get install -y --no-install-recommends pandoc
-          source .venv/bin/activate
           make pages-ci
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
@@ -155,7 +136,7 @@ jobs:
 
   pages:
     needs: [upload-docs]
-    if: success() && github.ref == 'refs/heads/main'
+    # if: success() && github.ref == 'refs/heads/main'
     permissions:
       pages: write
       id-token: write
@@ -170,7 +151,7 @@ jobs:
 
   build:
     needs: [test,docs]
-    if: success() && github.ref == 'refs/heads/main'
+    # if: success() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repo
@@ -188,8 +169,6 @@ jobs:
           key: ${{ runner.os }}-venv
       - name: Build the package
         run: |
-          export PYTHONDONTWRITEBYTECODE=1; export POETRY_VIRTUALENVS_IN_PROJECT=1
-          python -m pip install poetry
           sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
           make build-ci
       - name: Upload build

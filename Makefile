@@ -19,24 +19,6 @@ help: # Show help for each of the Makefile recipes.
 
 all: lint coverage docs doctest
 
-lint: # Format with black and lint with ruff.
-	@echo "[+] Linting"
-	black --check .
-	ruff check .
-
-lint-ci: # Format with black, lint with ruff, generate report for CI.
-	@echo "[+] Linting (CI)"
-	poetry run black --check .
-	poetry run ruff check --output-format=github .
-
-type-check: # Run mypy.
-	@echo "[+] Type checking"
-	mypy --config-file pyproject.toml .
-
-type-check-ci: # Run mypy, generate report for CI.
-	@echo "[+] Type checking (CI)"
-	poetry run mypy --config-file pyproject.toml --junit-xml mypy.xml .
-
 .PHONY: import-nist-vectors
 import-nist-vectors: # Serialize NIST test vectors with protobuf.
 import-nist-vectors: $(PROTO_FILES:%.proto=%.imported)
@@ -66,11 +48,49 @@ install: # Install using poetry.
 	poetry install --with=dev,docs
 	@echo
 
+ci-setup: # Basic commands to run before the other CI targets.
+ci-setup:
+	export PYTHONDONTWRITEBYTECODE=1
+	export POETRY_VIRTUALENVS_IN_PROJECT=1
+	python --version
+	python -m pip version
+	python -m pip install poetry
+	poetry --version
+	poetry install --with=dev,docs
+	source .venv/bin/activate
+
 init: # Common requirements for several targets.
 init: install import-nist-vectors compile-primitives copy-guides copy-contributing
 
+init-ci: # Common requirements before other CI targets.
+init-ci: ci-setup import-nist-vectors compile-primitives copy-guides copy-contributing
+
+lint: # Format with black and lint with ruff.
+	@echo "[+] Linting"
+	black --check .
+	ruff check .
+
+lint-ci: # Format with black, lint with ruff, generate report for CI.
+lint-ci: init-ci
+	@echo "[+] Linting (CI)"
+	black --check .
+	ruff check --output-format=github .
+
+type-check: # Run mypy.
+	@echo "[+] Type checking"
+	mypy --config-file pyproject.toml .
+
+type-check-ci: # Run mypy, generate report for CI.
+type-check-ci: init-ci
+	@echo "[+] Type checking (CI)"
+	mypy --config-file pyproject.toml --junit-xml mypy.xml .
+
 doctest: # Run doctest
-doctest: install
+doctest: init
+	$(MAKE) -C docs doctest
+
+doctest-ci: # Run doctest
+doctest-ci: init-ci
 	$(MAKE) -C docs doctest
 
 test: # Run pytest.
@@ -84,11 +104,11 @@ coverage: init
 	pytest --cov="crypto_condor" --cov-report html --numprocesses=auto tests/
 
 coverage-ci: # Run coverage, generate JUnit test report and XML coverage report.
-coverage-ci: init
+coverage-ci: init-ci
 	@echo "[+] Testing and checking coverage (CI)"
-	poetry run pytest --verbose --junitxml=junit/test-results.xml --cov="crypto_condor" --cov-report=xml --numprocesses=auto tests/
+	pytest --verbose --junitxml=junit/test-results.xml --cov="crypto_condor" --cov-report=xml --numprocesses=auto tests/
 # Print coverage report so that CI picks up stats
-	poetry run coverage report
+	coverage report
 
 # Separate build target to fully build locally.
 build: # Build the package.
@@ -99,7 +119,7 @@ build: init
 # This is redundant since publish-ci also builds the package, but we use this to check
 # for building errors before trying to publish.
 build-ci: # Build the package in the CI.
-build-ci: init
+build-ci: init-ci
 	@echo "[+] Building package (CI)"
 # Ensure that the tag and version match to avoid pushing a package without
 # the corresponding documentation.
@@ -123,7 +143,7 @@ compile-proto: $(PB2_FILES)
 # This should only be called on main since the published docs are based on that
 # branch.
 pages-ci: # Build the documentation for GitLab Pages.
-pages-ci: install
+pages-ci: init-ci
 	@echo "[+] Building all docs"
 	$(MAKE) -C docs all-versions
 	mv docs/build/public .
