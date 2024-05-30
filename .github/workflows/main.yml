@@ -186,7 +186,7 @@ jobs:
       - name: Upload build
         uses: actions/upload-artifact@v3
         with:
-          name: package-build
+          name: package-build-${{ github.sha }}
           path: ./dist/*
 
   publish:
@@ -210,7 +210,7 @@ jobs:
       - name: Download build
         uses: actions/download-artifact@v3
         with:
-          # By omitting the name we are downloading all the artifacts
+          name: package-build-${{ github.sha }}
           path: ./dist/
       - name: Publish the package
         uses: pypa/gh-action-pypi-publish@release/v1
