@@ -164,7 +164,7 @@ docs: install
 	$(MAKE) -C docs html
 
 docs-ci: # Build the documentation
-docs-ci: install
+docs-ci: init-ci
 	. .venv/bin/activate && $(MAKE) -C docs html
 
 livedocs: # Build the documentation with live reload.
