@@ -32,6 +32,12 @@ compile-primitives: # Compile primitives written in C.
 	cd crypto_condor/primitives && $(MAKE) all -j4
 	@echo
 
+compile-primitives-ci: # Compile primitives written in C.
+	@echo "[+] Compiling primitives (CI)"
+	sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
+	cd crypto_condor/primitives && $(MAKE) all -j4
+	@echo
+
 copy-guides: # Copy guides from the docs for the method command.
 	@echo "[+] Copying guides from the documentation"
 	python utils/copy_guides.py
@@ -50,6 +56,7 @@ install: # Install using poetry.
 
 ci-setup: # Basic commands to run before the other CI targets.
 ci-setup:
+	@echo "[+] Setup CI"
 	export PYTHONDONTWRITEBYTECODE=1
 	export POETRY_VIRTUALENVS_IN_PROJECT=1
 	python --version
@@ -104,9 +111,8 @@ coverage: init
 	pytest --cov="crypto_condor" --cov-report html --numprocesses=auto tests/
 
 coverage-ci: # Run coverage, generate JUnit test report and XML coverage report.
-coverage-ci: init-ci compile-primitives
+coverage-ci: init-ci compile-primitives-ci
 	@echo "[+] Testing and checking coverage (CI)"
-	sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
 	poetry run pytest --verbose --junitxml=junit/test-results.xml --cov="crypto_condor" --cov-report=xml --numprocesses=auto tests/
 # Print coverage report so that CI picks up stats
 	poetry run coverage report
@@ -120,9 +126,8 @@ build: init
 # This is redundant since publish-ci also builds the package, but we use this to check
 # for building errors before trying to publish.
 build-ci: # Build the package in the CI.
-build-ci: init-ci compile-primitives
+build-ci: init-ci compile-primitives-ci
 	@echo "[+] Building package (CI)"
-	sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
 # Ensure that the tag and version match to avoid pushing a package without
 # the corresponding documentation.
 	. .venv/bin/activate && python utils/check_tag_and_version.py
