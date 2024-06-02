@@ -4,7 +4,7 @@ import typer
 
 from crypto_condor.cli import run, verify
 
-_test_help = """Test implementation of cryptographic primitives.
+_test_help = """Test an implementation of a cryptographic primitive.
 
 The `test` command provides two subcommands to test implementations: [red]wrapper[/] and
 [blue]output[/]."""

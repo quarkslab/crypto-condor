@@ -24,7 +24,7 @@ app = typer.Typer(
     no_args_is_help=True,
     context_settings={"max_content_width": console.width},
 )
-app.add_typer(test.app, name="test")
+app.add_typer(test.app, name="test", rich_help_panel="Test implementations")
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +165,7 @@ def _wrap_autocomplete_primitive():  # pragma: no cover (auto-completion)
     return [p for p in SUPPORTED_MODES if SUPPORTED_MODES[p]["wrapper"]]
 
 
-@app.command(name="get-wrapper", help=_wrap_help, no_args_is_help=True)
+@app.command(name="get-wrapper", help=_wrap_help, no_args_is_help=True, rich_help_panel="Test implementations")
 def wrap(
     primitive: Annotated[
         str,
@@ -299,7 +299,7 @@ crypto-condor bundles this library with Quarkslab's modifications to run the NIS
 """  # noqa: E501
 
 
-@app.command(name="testu01", help=_testu01_help)
+@app.command(name="testu01", help=_testu01_help, rich_help_panel="Test PRNG")
 def testu01(
     file: Annotated[
         Path,
