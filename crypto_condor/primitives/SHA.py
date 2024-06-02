@@ -203,7 +203,9 @@ def _sha(algorithm: Algorithm, msg: bytes) -> bytes:
 
 
 def test(
-    hash_function: HashFunction, hash_algorithm: Algorithm, orientation: Orientation
+    hash_function: HashFunction,
+    hash_algorithm: Algorithm,
+    orientation: Orientation = Orientation.BYTE,
 ) -> ResultsDict:
     """Tests a SHA implementation.
 
