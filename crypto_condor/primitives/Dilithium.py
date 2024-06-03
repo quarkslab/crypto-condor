@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import cffi
 import strenum
 from rich.progress import track
 
@@ -130,7 +131,10 @@ class Wrapper(strenum.StrEnum):
 
 
 class Sign(Protocol):
-    """Represents a function that signs messages with Dilithium."""
+    """Represents a function that signs messages with Dilithium.
+
+    The function to test must conform to :meth:`__call__`.
+    """
 
     def __call__(self, secret_key: bytes, message: bytes) -> bytes:
         """Signs a message with Dilithium.
@@ -140,20 +144,23 @@ class Sign(Protocol):
             message: The message to sign.
 
         Returns:
-            The signature.
+            The signed message, i.e. the concatenation of the signature and message.
         """
 
 
 class Verify(Protocol):
-    """Represents a function that verifies Dilithium signatures."""
+    """Represents a function that verifies Dilithium signatures.
 
-    def __call__(self, public_key: bytes, message: bytes, signature: bytes) -> bool:
+    The function to test must conform to :meth:`__call__`.
+    """
+
+    def __call__(self, public_key: bytes, signature: bytes, message: bytes) -> bool:
         """Verifies a Dilithium signature.
 
         Args:
             public_key: The public part of the key used to sign the message.
-            message: The signed message.
             signature: The signature to verify.
+            message: The message that was signed.
 
         Returns:
             True if the signature is valid for the given key and message.
@@ -171,23 +178,23 @@ class SignData:
         info: Common debug info, see :class:`crypto_condor.primitives.common.DebugInfo`.
         sk: The secret key.
         msg: The message to sign.
-        sig: The expected signature.
+        sm: The expected signed message.
         res: The resulting signature.
     """
 
     info: DebugInfo
     sk: bytes
     msg: bytes
-    sig: bytes
-    res: bytes
+    sm: bytes
+    res: bytes | None
 
     def __str__(self) -> str:
         """Returns a string representation."""
         s = f"""{str(self.info)}
 sk = {self.sk.hex()}
 msg = {self.msg.hex()}
-sig = {self.sig.hex()}
-res = {self.res.hex()}
+sm = {self.sm.hex()}
+res = {self.res.hex() if self.res else '<none>'}
 """
         return s
 
@@ -199,21 +206,21 @@ class VerifyData:
     Args:
         info: Common debug info, see :class:`crypto_condor.primitives.common.DebugInfo`.
         pk: The public key.
-        msg: The signed message.
         sig: The signature to verify.
+        msg: The signed message.
     """
 
     info: DebugInfo
     pk: bytes
-    msg: bytes
     sig: bytes
+    msg: bytes
 
     def __str__(self) -> str:
         """Returns a string representation."""
         s = f"""{str(self.info)}
 pk = {self.pk.hex()}
-msg = {self.msg.hex()}
 sig = {self.sig.hex()}
+msg = {self.msg.hex()}
 """
         return s
 
@@ -317,7 +324,7 @@ def _verify(
     pk = (ctypes.c_uint8 * len(public_key)).from_buffer_copy(public_key)
     mlen = ctypes.c_size_t()
 
-    # As len(sm) > len(m) and because crypto_sign_open allows it, we can reuse sm.
+    # We can pass the same buffer for both m and sm.
     return verify(sm, mlen, sm, sm._length_, pk) == 0
 
 
@@ -346,7 +353,12 @@ def test_sign(sign: Sign, parameter_set: Paramset) -> Results:
     vectors = DilithiumVectors.load(parameter_set)
     for test in track(vectors.tests):
         info = DebugInfo(test.count, TestType.VALID, ["Compliance"])
-        sm = sign(test.sk, test.msg)
+        try:
+            sm = sign(test.sk, test.msg)
+        except Exception as error:
+            info.error_msg = f"Signing failed, caught exception: {error}"
+            results.add(SignData(info, test.sk, test.msg, test.sm, None))
+            continue
         if sm == test.sm:
             info.result = True
         else:
@@ -377,11 +389,18 @@ def test_verify(verify: Verify, parameter_set: Paramset) -> Results:
         info = DebugInfo(test.count, TestType.VALID, ["Compliance"])
         sig = test.sm[: parameter_set.sig_size]
         msg = test.sm[parameter_set.sig_size :]
-        if verify(test.pk, sig, msg):
+        try:
+            res = verify(test.pk, sig, msg)
+        except Exception as error:
+            info.error_msg = f"Verification failed, caught exception: {error}"
+            logger.debug(info.error_msg)
+            results.add(VerifyData(info, test.pk, sig, msg))
+            continue
+        if res:
             info.result = True
         else:
             info.error_msg = "Valid signature rejected"
-        results.add(VerifyData(info, test.pk, msg, sig))
+        results.add(VerifyData(info, test.pk, sig, msg))
     return results
 
 
@@ -408,7 +427,7 @@ def _run_python(
             "Can't find dilithium_wrapper.py in the current directory."
         )
 
-    print("Running Python Dilithium wrapper")
+    logger.info("Running Python Dilithium wrapper")
 
     # Add CWD to the path, at the beginning in case this is called more than
     # once, since the previous CWD would have priority.
@@ -469,6 +488,90 @@ def run_wrapper(
             raise ValueError(f"Unsupported language {language}")
 
 
+# --------------------------- Lib hook functions --------------------------------------
+def _test_lib_sign(ffi: cffi.FFI, lib, function: str, paramset: Paramset) -> Results:
+    logger.info("Testing lib function %s", function)
+
+    ffi.cdef(
+        f"""void {function}(uint8_t *sig, size_t siglen,
+                         const uint8_t *msg, size_t msglen,
+                         const uint8_t *sk, size_t sklen);"""
+    )
+    sign = getattr(lib, function)
+
+    # Object sizes are fixed in Dilithium.
+    sig = ffi.new(f"uint8_t[{paramset.sig_size}]")
+
+    def _hooked_sign(secret_key: bytes, message: bytes) -> bytes:
+        sk = ffi.new(f"uint8_t[{paramset.sk_size}]", secret_key)
+        msg = ffi.new(f"uint8_t[{len(message)}]", message)
+        sign(sig, paramset.sig_size, msg, len(message), sk, paramset.sk_size)
+        return bytes(sig) + bytes(msg)
+
+    return test_sign(_hooked_sign, paramset)
+
+
+def _test_lib_verify(ffi: cffi.FFI, lib, function: str, paramset: Paramset) -> Results:
+    logger.info("Testing lib function %s", function)
+
+    ffi.cdef(
+        f"""int {function}(const uint8_t *sig, size_t siglen,
+                          const uint8_t *msg, size_t msglen,
+                          const uint8_t *pk, size_t pklen);"""
+    )
+    verify = getattr(lib, function)
+
+    def _hooked_verify(public_key: bytes, signature: bytes, message: bytes) -> bool:
+        pk = ffi.new(f"uint8_t[{paramset.pk_size}]", public_key)
+        sig = ffi.new(f"uint8_t[{paramset.sig_size}]", signature)
+        msg = ffi.new(f"uint8_t[{len(message)}]", message)
+
+        r = verify(sig, paramset.sig_size, msg, len(message), pk, paramset.pk_size)
+        if r == 0:
+            return True
+        elif r == -1:
+            return False
+        else:
+            raise ValueError(f"Error: verify returned {r} (expected 0 or -1)")
+
+    return test_verify(_hooked_verify, paramset)
+
+
+def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
+    """Tests functions from a shared library.
+
+    Args:
+        ffi: The FFI instance.
+        lib: The dlopen'd library.
+        functions: A list of CC_Dilithium functions to test.
+    """
+    logger.info("Found harness functions %s", ", ".join(functions))
+
+    results = ResultsDict()
+
+    for function in functions:
+        match function.split("_"):
+            case ["CC", "Dilithium", pset, ("sign" | "verify") as op]:
+                try:
+                    paramset = Paramset(f"Dilithium{pset}")
+                except ValueError:
+                    logger.error("Unknown param set %s", pset)
+                    logger.warning("Skipped function %s", function)
+                    continue
+                if op == "sign":
+                    results[f"Dilithium/test_lib_sign/{str(paramset)}"] = (
+                        _test_lib_sign(ffi, lib, function, paramset)
+                    )
+                else:
+                    results[f"Dilithium/test_lib_verify/{str(paramset)}"] = (
+                        _test_lib_verify(ffi, lib, function, paramset)
+                    )
+            case _:
+                logger.warning("Ignored unknown CC_Dilithium function %s", function)
+    return results
+
+
+# -------------------------------------------------------------------------------------
 if __name__ == "__main__":
     # Install Dilithium when called as a script.
     _get_lib_dir()

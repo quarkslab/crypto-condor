@@ -27,10 +27,7 @@ def test_verify(parameter_set: Dilithium.Paramset):
 
 @pytest.mark.parametrize("parameter_set", Dilithium.Paramset)
 def test_test_sign(parameter_set: Dilithium.Paramset):
-    """Tests :func:`crypto_condor.primitives.Dilithium.test`.
-
-    Only tests signature generation.
-    """
+    """Tests :func:`crypto_condor.primitives.Dilithium.test_sign`."""
 
     def _sign(sk, msg):
         return Dilithium._sign(parameter_set, sk, msg)
@@ -42,10 +39,7 @@ def test_test_sign(parameter_set: Dilithium.Paramset):
 
 @pytest.mark.parametrize("parameter_set", Dilithium.Paramset)
 def test_test_verify(parameter_set: Dilithium.Paramset):
-    """Tests :func:`crypto_condor.primitives.Dilithium.test`.
-
-    Only tests signature verification.
-    """
+    """Tests :func:`crypto_condor.primitives.Dilithium.test_verify`."""
 
     def _verify(pk, sig, msg):
         return Dilithium._verify(parameter_set, pk, sig, msg)

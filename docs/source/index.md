@@ -11,6 +11,7 @@
 cli/quickstart
 method/index
 python-api/index
+harness-api/index
 :::
 
 :::{toctree}

@@ -15,8 +15,9 @@ import zipfile
 import zlib
 from importlib import resources
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Protocol, overload
+from typing import Any, Literal, Protocol, overload
 
+import _cffi_backend
 import attrs
 import cffi
 import strenum
@@ -34,9 +35,6 @@ from crypto_condor.primitives.common import (
     get_appdata_dir,
 )
 from crypto_condor.vectors.AES import AesVectors, KeyLength, Mode
-
-if TYPE_CHECKING:
-    import _cffi_backend
 
 logger = logging.getLogger(__name__)
 
@@ -763,7 +761,6 @@ def _run_c(
         plaintext: bytes,
         *,
         iv: bytes | None = None,
-        segment_size: int = 0,
         aad: bytes | None = None,
         mac_len: int = 0,
     ) -> bytes | CiphertextAndTag:
@@ -780,8 +777,10 @@ def _run_c(
             args += ["--aad", aad.hex() if aad else ""]
         if mac_len > 0:
             args += ["--tag-length", str(mac_len)]
-        if segment_size > 0:
-            args += ["--segment-size", str(segment_size)]
+        if mode == Mode.CFB or mode == Mode.CFB128:
+            args += ["--segment-size", "128"]
+        elif mode == Mode.CFB8:
+            args += ["--segment-size", "8"]
         if mode not in Mode.classic_modes():
             args += ["--mode", "1"]
         result = subprocess.run(args, capture_output=True, text=True)
@@ -813,7 +812,6 @@ def _run_c(
         aad: bytes | None = None,
         mac: bytes | None = None,
         mac_len: int = 0,
-        segment_size: int = 0,
     ) -> bytes | PlaintextAndBool:
         """Function for decryption.
 
@@ -829,8 +827,10 @@ def _run_c(
             args += ["--aad", aad.hex() if aad else ""]
         if mac is not None:
             args += ["--tag", mac.hex() if mac else ""]
-        if segment_size > 0:
-            args += ["--segment-size", str(segment_size)]
+        if mode == Mode.CFB or mode == Mode.CFB128:
+            args += ["--segment-size", "128"]
+        elif mode == Mode.CFB8:
+            args += ["--segment-size", "8"]
         if mode not in Mode.classic_modes():
             args += ["--mode", "1"]
         result = subprocess.run(args, capture_output=True, text=True)
@@ -1053,9 +1053,6 @@ def _test_nist_decrypt(
                         case Mode.CBC_PKCS7:
                             ct = _encrypt(mode, key, pt, iv=iv)
                             p = decrypt(key, ct, iv=iv)
-                        case Mode.CFB | Mode.CFB8 | Mode.CFB128:
-                            segment_size = 8 if mode == Mode.CFB8 else 128
-                            p = decrypt(key, ct, iv=iv, segment_size=segment_size)
                 except Exception as error:
                     info.error_msg = f"Decryption error: {str(error)}"
                     logger.debug("Decryption error", exc_info=True)
@@ -1912,6 +1909,259 @@ def verify_file(filename: str, mode: Mode, operation: Operation) -> Results:
         return _verify_file_encrypt(filename, mode)
     else:
         return _verify_file_decrypt(filename, mode)
+
+
+# --------------------------- Lib hook functions --------------------------------------
+def _test_lib_enc(
+    ffi: cffi.FFI, lib, function: str, mode: Mode, key_length: KeyLength
+) -> list[Results]:
+    """Tests CC_AES_encrypt.
+
+    Returns:
+        A list of results, from the ResultsDict returned by :func:`test`.
+    """
+    logger.info("Testing harness function %s", function)
+
+    ffi.cdef(
+        f"""void {function}(uint8_t *buffer, size_t buffer_size,
+                       const uint8_t *key, size_t key,
+                       const uint8_t *iv, size_t iv_size);"""
+    )
+    enc = getattr(lib, function)
+
+    def _enc(key: bytes, plaintext: bytes, iv: bytes = b"") -> bytes:
+        _key = ffi.new(f"uint8_t[{len(key)}]", key)
+        buf = ffi.new(f"uint8_t[{len(plaintext)}]", plaintext)
+        _iv = ffi.new(f"uint8_t[{len(iv)}]", iv)
+        enc(buf, len(plaintext), _key, len(key), _iv, len(iv))
+        return bytes(buf)
+
+    rd = test(_enc, None, mode, key_length)  # type: ignore
+    return list(rd.values())
+
+
+def _test_lib_dec(
+    ffi: cffi.FFI, lib, function: str, mode: Mode, key_length: KeyLength
+) -> list[Results]:
+    """Tests CC_AES_decrypt.
+
+    Returns:
+        A list of results, from the ResultsDict returned by :func:`test`.
+    """
+    logger.info("Testing harness function %s", function)
+
+    ffi.cdef(
+        f"""void {function}(uint8_t *buffer, size_t buffer,
+                       const uint8_t *key, size_t key,
+                       const uint8_t *iv, size_t iv_size);"""
+    )
+    dec = getattr(lib, function)
+
+    def _dec(key: bytes, ciphertext: bytes, iv: bytes = b"") -> bytes:
+        _key = ffi.new(f"uint8_t[{len(key)}]", key)
+        buf = ffi.new(f"uint8_t[{len(ciphertext)}]", ciphertext)
+        _iv = ffi.new(f"uint8_t[{len(iv)}]", iv)
+        dec(buf, len(ciphertext), _key, len(key), _iv, len(iv))
+        return bytes(buf)
+
+    rd = test(None, _dec, mode, key_length)  # type: ignore
+    return list(rd.values())
+
+
+def _test_lib_enc_aead(
+    ffi: cffi.FFI, lib, function: str, mode: Mode, key_length: KeyLength
+) -> list[Results]:
+    """Tests CC_AES_AEAD_encrypt.
+
+    Returns:
+        A list of results, from the ResultsDict returned by :func:`test`.
+    """
+    logger.info("Testing harness function %s", function)
+
+    ffi.cdef(
+        f"""void {function}(uint8_t *buffer, size_t buffer_size,
+                       uint8_t *mac, size_t mac_size,
+                       const uint8_t *key, size_t key,
+                       const uint8_t *nonce, size_t nonce,
+                       const uint8_t *aad, size_t aad);"""
+    )
+    enc = getattr(lib, function)
+
+    def _enc(
+        key: bytes, plaintext: bytes, iv: bytes, aad: bytes, mac_len: int
+    ) -> CiphertextAndTag:
+        _key = ffi.new(f"uint8_t[{len(key)}]", key)
+        buf = ffi.new(f"uint8_t[{len(plaintext)}]", plaintext)
+        _nonce = ffi.new(f"uint8_t[{len(iv)}]", iv)
+        mac_buf = ffi.new(f"uint8_t[{mac_len}]")
+
+        _aad: Any
+        if aad:
+            _aad_len = len(aad)
+            _aad = ffi.new(f"uint8_t[{_aad_len}]", aad)
+        else:
+            _aad_len = 0
+            _aad = ffi.NULL
+
+        enc(
+            buf,
+            len(plaintext),
+            mac_buf,
+            mac_len,
+            _key,
+            len(key),
+            _nonce,
+            len(iv),
+            _aad,
+            _aad_len,
+        )
+        return (bytes(buf), bytes(mac_buf))
+
+    rd = test(_enc, None, mode, key_length)  # type: ignore[arg-type]
+    return list(rd.values())
+
+
+def _test_lib_dec_aead(
+    ffi: cffi.FFI, lib, function: str, mode: Mode, key_length: KeyLength
+) -> list[Results]:
+    """Tests CC_AES_AEAD_decrypt.
+
+    Returns:
+        A list of results, from the ResultsDict returned by :func:`test`.
+    """
+    logger.info("Testing harness function %s", function)
+
+    ffi.cdef(
+        f"""int {function}(uint8_t *buffer, size_t buffer_size,
+                           const uint8_t *key, size_t key,
+                           const uint8_t *nonce, size_t nonce,
+                           const uint8_t *aad, size_t aad,
+                           const uint8_t *mac, size_t mac);"""
+    )
+    dec = getattr(lib, function)
+
+    def _dec(
+        key: bytes, ciphertext: bytes, iv: bytes, aad: bytes, mac: bytes
+    ) -> PlaintextAndBool:
+        _key = ffi.new(f"uint8_t[{len(key)}]", key)
+        buf = ffi.new(f"uint8_t[{len(ciphertext)}]", ciphertext)
+        _nonce = ffi.new(f"uint8_t[{len(iv)}]", iv)
+        _mac = ffi.new(f"uint8_t[{len(mac)}]", mac)
+
+        _aad: Any
+        if aad:
+            _aad_len = len(aad)
+            _aad = ffi.new(f"uint8_t[{_aad_len}]", aad)
+        else:
+            _aad_len = 0
+            _aad = ffi.NULL
+
+        rc = dec(
+            buf,
+            len(ciphertext),
+            _key,
+            len(key),
+            _nonce,
+            len(iv),
+            _aad,
+            _aad_len,
+            _mac,
+            len(mac),
+        )
+        if rc == 0:
+            return (bytes(buf), True)
+        elif rc == -1:
+            return (None, False)
+        else:
+            raise ValueError(f"Invalid returned value {rc} (expected 0 or -1)")
+
+    rd = test(None, _dec, mode, key_length)  # type: ignore[arg-type]
+    return list(rd.values())
+
+
+def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
+    """Tests functions from a shared library.
+
+    Args:
+        ffi: The FFI instance.
+        lib: The dlopen'd library.
+        functions: A list of CC_AES functions to test.
+    """
+    logger.info("Found harness functions %s", ", ".join(functions))
+
+    results = ResultsDict()
+
+    # First pattern matching to parse both possible conventions (with or without key
+    # size), interpreting the parameters if possible, skipping if not.
+    # Second pattern matching to call the correct function depending on mode (classic
+    # vs. AEAD) and operation.
+    # CBC-PKCS7 is a special case as we would replace the hyphen in its name by an
+    # underscore, which would add more cases. So instead we use CBCPKCS7 and take this
+    # into account before passing the string to Mode.
+    for function in functions:
+        match function.split("_"):
+            case ["CC", "AES", md, op]:
+                try:
+                    mode = Mode.CBC_PKCS7 if md == "CBCPKCS7" else Mode(md)
+                except ValueError:
+                    logger.error("Unknown AES mode %s", md)
+                    logger.warning("Skipped function %s", function)
+                    continue
+                key_size = KeyLength.ALL
+                if op == "encrypt":
+                    operation = Operation.ENCRYPT
+                elif op == "decrypt":
+                    operation = Operation.DECRYPT
+                else:
+                    logger.error("Unknown AES operation %s", op)
+                    logger.warning("Skipped function %s", function)
+                    continue
+            case ["CC", "AES", md, ks, op]:
+                try:
+                    mode = Mode.CBC_PKCS7 if md == "CBCPKCS7" else Mode(md)
+                except ValueError:
+                    logger.error("Unknown AES mode %s", md)
+                    logger.warning("Skipped function %s", function)
+                    continue
+                try:
+                    key_size = KeyLength(int(ks))
+                except ValueError:
+                    logger.error("Unsupported AES key size %s", ks)
+                    logger.warning("Skipped function %s", function)
+                    continue
+                if op == "encrypt":
+                    operation = Operation.ENCRYPT
+                elif op == "decrypt":
+                    operation = Operation.DECRYPT
+                else:
+                    logger.error("Unknown AES operation %s", op)
+                    logger.warning("Skipped function %s", function)
+                    continue
+            case _:
+                logger.warning(
+                    "Skipped function %s as it does not match the convention", function
+                )
+                continue
+        # If the condition is false, it continues searching for a pattern.
+        match (mode, operation):
+            case (mode, Operation.ENCRYPT) if mode in Mode.classic_modes():
+                results[f"AES/test_lib_enc/{str(mode)}"] = _test_lib_enc(
+                    ffi, lib, function, mode, key_size
+                )
+            case (mode, Operation.ENCRYPT):
+                results[f"AES/test_lib_enc_aead/{str(mode)}"] = _test_lib_enc_aead(
+                    ffi, lib, function, mode, key_size
+                )
+            case (mode, Operation.DECRYPT) if mode in Mode.classic_modes():
+                results[f"AES/test_lib_dec/{str(mode)}"] = _test_lib_dec(
+                    ffi, lib, function, mode, key_size
+                )
+            case (mode, Operation.DECRYPT):
+                results[f"AES/test_lib_dec_aead/{str(mode)}"] = _test_lib_dec_aead(
+                    ffi, lib, function, mode, key_size
+                )
+
+    return results
 
 
 if __name__ == "__main__":

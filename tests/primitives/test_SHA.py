@@ -8,7 +8,7 @@ from crypto_condor.primitives import SHA
 
 @pytest.mark.parametrize("hash_algo", SHA.Algorithm)
 def test_sha(hash_algo: SHA.Algorithm):
-    """Tests :func:`crypto_condor.primitives.SHA.test`.
+    """Tests :func:`crypto_condor.primitives.SHA.test_sha`.
 
     Uses :mod:`cryptography.hazmat.primitives.hashes`.
     """

@@ -3,6 +3,8 @@
 Dilithium
 =========
 
+.. include:: ../../_static/dilithium-vectors-warning.rst.txt
+
 .. currentmodule:: crypto_condor.primitives.Dilithium
 
 Supported parameters

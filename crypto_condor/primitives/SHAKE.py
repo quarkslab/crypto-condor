@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import cffi
 import strenum
 from rich.progress import track
 
@@ -327,3 +328,71 @@ def run_wrapper(
             return _run_shake_python_wrapper(xof_algorithm, orientation)
         case _:  # pragma: no cover (mypy)
             raise ValueError
+
+
+# --------------------------- Lib hook functions --------------------------------------
+def _test_lib_digest(
+    ffi: cffi.FFI, lib, function: str, algorithm: Algorithm, orientation: Orientation
+) -> list[Results]:
+    """Tests a hooked digest.
+
+    Returns:
+        A list of the results returned by :func:`test`.
+    """
+    logger.info("Testing harness function %s", function)
+
+    ffi.cdef(
+        f"""void {function}(uint8_t *digest, size_t digest_size,
+                        const uint8_t *input, size_t input_size);"""
+    )
+    shake = getattr(lib, function)
+
+    def _shake(data: bytes, output_length: int) -> bytes:
+        _data = ffi.new(f"uint8_t[{len(data)}]", data)
+        buf = ffi.new(f"uint8_t[{output_length}]")
+        shake(buf, output_length, _data, len(data))
+        return bytes(buf)
+
+    rd = test(_shake, algorithm, orientation)
+    return list(rd.values())
+
+
+def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> list[Results]:
+    """Tests functions from a shared library.
+
+    Args:
+        ffi: The FFI instance.
+        lib: The dlopen'd library.
+        functions: A list of CC_SHAKE functions to test.
+    """
+    logger.info("Found harness functions %s", ", ".join(functions))
+
+    results = list()
+
+    for function in functions:
+        match function.split("_"):
+            case ["CC", "SHAKE", bits, "digest"]:
+                if bits == "128":
+                    algorithm = Algorithm.SHAKE128
+                elif bits == "256":
+                    algorithm = Algorithm.SHAKE256
+                else:
+                    logger.error("Invalid value for SHAKE security level: %s", bits)
+                    logger.warning("Ignoring function %s", function)
+                    continue
+                orientation = Orientation.BYTE
+            case ["CC", "SHAKE", bits, "digest", "bit"]:
+                if bits == "128":
+                    algorithm = Algorithm.SHAKE128
+                elif bits == "256":
+                    algorithm = Algorithm.SHAKE256
+                else:
+                    logger.error("Invalid value for SHAKE security level: %s", bits)
+                    logger.warning("Ignoring function %s", function)
+                    continue
+                orientation = Orientation.BIT
+            case _:
+                logger.debug("Ignoring unknown CC_SHAKE function %s", function)
+        results += _test_lib_digest(ffi, lib, function, algorithm, orientation)
+
+    return results

@@ -21,15 +21,15 @@ logger = logging.getLogger(__name__)
 class Algorithm(strenum.StrEnum):
     """Supported hash algorithms."""
 
-    def __init__(self, value: str):
+    def __init__(self, value):
         """Override __init__ to add custom properties."""
         self._value_ = value
         match value:
             case "SHA-1":
                 self._digest_size_ = 160
-            case "SHA-224" | "SHA3-224" | "SHA-512/224":
+            case "SHA-224" | "SHA-512/224" | "SHA3-224":
                 self._digest_size_ = 224
-            case "SHA-256" | "SHA3-256" | "SHA-512/256":
+            case "SHA-256" | "SHA-512/256" | "SHA3-256":
                 self._digest_size_ = 256
             case "SHA-384" | "SHA3-384":
                 self._digest_size_ = 384
@@ -38,7 +38,7 @@ class Algorithm(strenum.StrEnum):
 
     @property
     def digest_size(self) -> int:
-        """Returns the size of the digest in bits."""
+        """The size in bits of the algorithm's digest."""
         return self._digest_size_
 
     SHA_1 = "SHA-1"

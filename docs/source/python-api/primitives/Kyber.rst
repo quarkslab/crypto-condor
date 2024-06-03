@@ -3,6 +3,10 @@
 Kyber
 =====
 
+.. automodule:: crypto_condor.primitives.Kyber
+
+.. include:: ../../_static/kyber-version-warning.rst.txt
+
 .. currentmodule:: crypto_condor.primitives.Kyber
 
 Supported parameters

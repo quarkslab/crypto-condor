@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import cffi
 import strenum
 from Crypto.Hash import (
     SHA1,
@@ -88,13 +89,13 @@ class ShaData:
         info: Common debug info, see :class:`crypto_condor.primitives.common.DebugInfo`.
         message: The message to hash.
         expected: The expected digest.
-        digest: The resulting digest.
+        digest: The resulting digest, None if an error occurred.
     """
 
     info: DebugInfo
     message: bytes
     expected: bytes
-    digest: bytes | None | None
+    digest: bytes | None = None
 
     def __str__(self) -> str:
         """Printable representation of the test."""
@@ -317,12 +318,18 @@ def test(
         mc_vectors = vectors.montecarlo
         md = mc_vectors.seed
         for j in track(range(0, 100), "[NIST] Monte-Carlo vectors"):
+            if not res:
+                break
             for _ in range(1, 1001):
                 msg = md
-                md = hash_function(msg)
+                try:
+                    md = hash_function(msg)
+                except Exception as error:
+                    logger.debug("Error running user-defined function: %s", str(error))
+                    res = False
+                    break
             if md != mc_vectors.checkpoints[j]:
                 res = False
-                break
         if res:
             info.result = True
         else:
@@ -337,6 +344,8 @@ def test(
         mc_vectors = vectors.montecarlo
         seed = mc_vectors.seed
         for j in track(range(0, 100), "[NIST] Monte-Carlo vectors"):
+            if not res:
+                break
             md0 = md1 = md2 = seed
             for _ in range(3, 1003):
                 mi = md0 + md1 + md2
@@ -361,7 +370,6 @@ def test(
             mdj = seed = mdi
             if mdj != mc_vectors.checkpoints[j]:
                 res = False
-                break
         if res:
             info.result = True
         elif not info.error_msg:
@@ -398,7 +406,12 @@ def _run_sha_python_wrapper(
     if already_imported:
         logger.debug("Reloading SHA wrapper module %s", wrapper.stem)
         sha_wrapper = importlib.reload(sha_wrapper)
+
     results_dict = test(sha_wrapper.sha, algorithm, orientation)
+
+    # To de-clutter the path, remove the CWD.
+    sys.path.remove(str(Path.cwd()))
+
     return results_dict
 
 
@@ -549,5 +562,78 @@ def verify_file(filename: str, hash_algorithm: Algorithm) -> Results:
             info.error_msg = "Wrong digest"
         data = ShaVerifyData(info, message, expected, digest)
         results.add(data)
+
+    return results
+
+
+# --------------------------- Lib hook functions --------------------------------------
+SHA_DIGEST_ALGORITHMS = {
+    "SHA_1": Algorithm.SHA_1,
+    "SHA_224": Algorithm.SHA_224,
+    "SHA_256": Algorithm.SHA_256,
+    "SHA_384": Algorithm.SHA_384,
+    "SHA_512": Algorithm.SHA_512,
+    "SHA_512_224": Algorithm.SHA_512_224,
+    "SHA_512_256": Algorithm.SHA_512_256,
+    "SHA_3_224": Algorithm.SHA3_224,
+    "SHA_3_256": Algorithm.SHA3_256,
+    "SHA_3_384": Algorithm.SHA3_384,
+    "SHA_3_512": Algorithm.SHA3_512,
+}
+
+
+def _test_lib_digest(
+    ffi: cffi.FFI,
+    lib,
+    function: str,
+    algorithm: Algorithm,
+    orientation: Orientation,
+) -> ResultsDict:
+    logger.info("Testing harness function %s", function)
+
+    ffi.cdef(
+        f"void {function}(uint8_t *digest, const uint8_t *input, size_t input_size);"
+    )
+    sha = getattr(lib, function)
+
+    # The output size is fixed for a given algorithm so create the buffer in advance.
+    buffer = ffi.new(f"uint8_t[{algorithm.digest_size // 8}]")
+
+    def _sha(data: bytes) -> bytes:
+        _data = ffi.new(f"uint8_t[{len(data)}]", data)
+        sha(buffer, _data, len(data))
+        return bytes(buffer)
+
+    return test(_sha, algorithm, orientation)
+
+
+def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
+    """Tests functions from a shared library.
+
+    Args:
+        ffi: The FFI instance.
+        lib: The dlopen'd library.
+        functions: A list of CC_SHA functions to test.
+    """
+    logger.info("Found harness functions %s", ", ".join(functions))
+
+    results = ResultsDict()
+
+    for function in functions:
+        match function.split("_"):
+            case ["CC", "SHA", *parts, "digest"]:
+                bits = "_".join(parts)
+                algorithm = SHA_DIGEST_ALGORITHMS[f"SHA_{bits}"]
+                results |= _test_lib_digest(
+                    ffi, lib, function, algorithm, Orientation.BYTE
+                )
+            case ["CC", "SHA", *parts, "digest", "bit"]:
+                bits = "_".join(parts)
+                algorithm = SHA_DIGEST_ALGORITHMS[f"SHA_{bits}"]
+                results |= _test_lib_digest(
+                    ffi, lib, function, algorithm, Orientation.BIT
+                )
+            case _:
+                logger.debug("Ignoring unknown CC_SHA function %s", function)
 
     return results

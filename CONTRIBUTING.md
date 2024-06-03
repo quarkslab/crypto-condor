@@ -230,6 +230,33 @@ A few aspects to consider:
   `utils/copy_guides.py` script.  The name matches the one for the
   documentation, namely the primitive name in upper-case.
 
+### Adding a new harness
+
+crypto-condor can tests functions exposed by a shared library, similar to a
+fuzzing hook. To do so, the functions must follow the conventions described by
+the harness API. Internally, this means adding a `test_lib` function to the
+corresponding primitive. This function has a particular signature:
+
+```python
+def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
+    ...
+```
+
+Where:
+
+- `ffi` is the `cffi.FFI` instance.
+- `lib` is the library dlopen'd with `ffi`.
+- `functions` is a list of function names to test, which should correspond to
+  the primitive called.
+
+Each primitive is in charge of calling `ffi.cdef()` to define the signature of
+the exposed function, and to wrap it and test it. The
+`crypto_condor.harness.test_harness` function is in charge of determining the
+available functions, importing the corresponding primitives, and passing the
+list of function that each primitive should test.
+
+The documentation for this mode can be found in `docs/source/harness-api`.
+
 ### Documenting a new primitive
 
 The documentation can be found under `docs/source`. There, it is divided in

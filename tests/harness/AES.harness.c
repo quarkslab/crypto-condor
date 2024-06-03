@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "aes.h"
-
 void *get_lib_handle(const char lib_name[]) {
   void *handle;
   char libdir[PATH_MAX];

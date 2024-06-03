@@ -3,6 +3,8 @@
 Dilithium test vectors
 ======================
 
+.. include:: ../../_static/dilithium-vectors-warning.rst.txt
+
 .. automodule:: crypto_condor.vectors.Dilithium
     :members:
     :show-inheritance:

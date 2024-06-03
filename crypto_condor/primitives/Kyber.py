@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import cffi
 import strenum
-from cffi import FFI
 from rich.progress import track
 
 from crypto_condor.primitives.common import (
@@ -225,7 +225,7 @@ def _encapsulate(paramset: Paramset, public_key: bytes) -> tuple[bytes, bytes]:
         A tuple (ct, ss) containing the generated secret ss and the ciphertext ct.
     """
     fname = f"pqcrystals_{str(paramset).lower().replace('-', '_')}_ref_enc"
-    ffi = FFI()
+    ffi = cffi.FFI()
     ffi.cdef(
         f"""
         int {fname}(uint8_t *ct, uint8_t *ss, const uint8_t *pk);
@@ -240,10 +240,7 @@ def _encapsulate(paramset: Paramset, public_key: bytes) -> tuple[bytes, bytes]:
     ct = ffi.new(f"uint8_t[{paramset.ct_size}]")
     ss = ffi.new("uint8_t[32]")
 
-    # Hacky way of getting the function: cffi does not seem to allow calling functions
-    # dynamically like ctypes with lib[function]. lib should only contain the function
-    # cdef'd above so we use dir to get the attributes of lib.
-    func = getattr(lib, dir(lib)[0])
+    func = getattr(lib, fname)
     func(ct, ss, pk)
 
     return bytes(ct), bytes(ss)
@@ -263,7 +260,7 @@ def _decapsulate(paramset: Paramset, secret_key: bytes, ciphertext: bytes) -> by
         The generated secret.
     """
     fname = f"pqcrystals_{str(paramset).lower().replace('-', '_')}_ref_dec"
-    ffi = FFI()
+    ffi = cffi.FFI()
     ffi.cdef(
         f"""
         int {fname}(uint8_t *ss, const uint8_t *ct, const uint8_t *sk);
@@ -278,10 +275,7 @@ def _decapsulate(paramset: Paramset, secret_key: bytes, ciphertext: bytes) -> by
     ct = ffi.new("uint8_t[]", ciphertext)
     ss = ffi.new("uint8_t[32]")
 
-    # Hacky way of getting the function: cffi does not seem to allow calling functions
-    # dynamically like ctypes with lib[function]. lib should only contain the function
-    # cdef'd above so we use dir to get the attributes of lib.
-    func = getattr(lib, dir(lib)[0])
+    func = getattr(lib, fname)
     func(ss, ct, sk)
 
     return bytes(ss)
@@ -475,6 +469,112 @@ def run_wrapper(
             return ResultsDict()
 
 
+# --------------------------- Lib hook functions --------------------------------------
+def _test_lib_encap(
+    ffi: cffi.FFI, lib, function: str, paramset: Paramset
+) -> Results | None:
+    """Tests a hooked encapsulate.
+
+    Args:
+        ffi: The FFI instance.
+        lib: The dlopen'd library.
+        function: The name of the function to test.
+        paramset: The function's parameter set.
+
+    Returns:
+        The results returned by :func:`test_encapsulate`.
+    """
+    logger.info("Testing harness function %s", function)
+
+    ffi.cdef(
+        f"""void {function}(uint8_t *ct, size_t ct_sz,
+                            uint8_t *ss, size_t ss_sz,
+                            const uint8_t *pk, size_t pk_sz);"""
+    )
+    encap = getattr(lib, function)
+
+    # Object sizes are known in advance so we can create the type.
+    ct = ffi.new(f"uint8_t[{paramset.ct_size}]")
+    ss = ffi.new("uint8_t[32]")
+
+    def _encap(public_key: bytes):
+        pk = ffi.new(f"uint8_t[{paramset.pk_size}]", public_key)
+        encap(ct, paramset.ct_size, ss, 32, pk, paramset.pk_size)
+        return (bytes(ct), bytes(ss))
+
+    return test_encapsulate(_encap, paramset)
+
+
+def _test_lib_decap(ffi: cffi.FFI, lib, function: str, paramset: Paramset) -> Results:
+    """Tests a hooked decapsulate.
+
+    Args:
+        ffi: The FFI instance.
+        lib: The dlopen'd library.
+        function: The name of the function to test.
+        paramset: The function's parameter set.
+
+    Returns:
+        The :class:`Results` returned by :func:`test_decapsulate`.
+    """
+    logger.info("Testing harness function %s", function)
+
+    ffi.cdef(
+        f"""void {function}(uint8_t *ss, size_t ss_sz,
+                          const uint8_t *ct, size_t ct_sz,
+                          const uint8_t *sk, size_t sk_sz);"""
+    )
+    decap = getattr(lib, function)
+
+    # Object sizes are known in advance so we can create the type.
+    ss = ffi.new("uint8_t[32]")
+
+    def _decap(secret_key: bytes, ciphertext: bytes):
+        sk = ffi.new(f"uint8_t[{paramset.sk_size}]", secret_key)
+        ct = ffi.new(f"uint8_t[{paramset.ct_size}]", ciphertext)
+        decap(ss, 32, ct, paramset.ct_size, sk, paramset.sk_size)
+        return bytes(ss)
+
+    return test_decapsulate(_decap, paramset)
+
+
+def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
+    """Tests functions from a shared library.
+
+    Args:
+        ffi: The FFI instance.
+        lib: The dlopen'd library.
+        functions: A list of CC_Kyber functions to test.
+    """
+    logger.info("Found harness functions %s", ", ".join(functions))
+
+    results = ResultsDict()
+
+    for function in functions:
+        match function.split("_"):
+            case ["CC", "Kyber", *parts, ("encapsulate" | "decapsulate") as op]:
+                # Deals with e.g. 512 and 512-90s
+                pset = "-".join(parts)
+                try:
+                    paramset = Paramset(f"Kyber{pset}")
+                except ValueError:
+                    logger.error("Unknown param set %s", pset)
+                    logger.warning("Skipped function %s", function)
+                    continue
+                if op == "encapsulate":
+                    enc_res = _test_lib_encap(ffi, lib, function, paramset)
+                    if enc_res is not None:
+                        results[f"Kyber/test_encapsulate/{str(paramset)}"] = enc_res
+                else:
+                    dec_res = _test_lib_decap(ffi, lib, function, paramset)
+                    results[f"Kyber/test_decapsulate/{str(paramset)}"] = dec_res
+            case _:
+                logger.warning("Ignoring unknown CC_Kyber function %s", function)
+
+    return results
+
+
+# -------------------------------------------------------------------------------------
 if __name__ == "__main__":
     # Install Kyber when called as a script.
     _get_lib_dir()

@@ -1,8 +1,9 @@
 # Kyber
 
-crypto-condor uses the [reference implementation](https://github.com/pq-crystals/kyber)
-of [Kyber](https://pq-crystals.org/kyber/index.shtml), specifically based on
-commit [b628ba78711bc28327dc7d2d5c074a00f061884e](https://github.com/pq-crystals/kyber/commit/b628ba78711bc28327dc7d2d5c074a00f061884e).
+crypto-condor uses the [reference
+implementation](https://github.com/pq-crystals/kyber) of
+[Kyber](https://pq-crystals.org/kyber/index.shtml), specifically based on commit
+[b628ba78711bc28327dc7d2d5c074a00f061884e](https://github.com/pq-crystals/kyber/commit/b628ba78711bc28327dc7d2d5c074a00f061884e).
 
 The changes done to integrate it into crypto-condor are described in the
 `cc-kyber.patch` file.

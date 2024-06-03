@@ -1,0 +1,7 @@
+.. caution::
+
+    Currently, |cc| uses test vectors for version `3.0
+    <https://github.com/pq-crystals/kyber/releases/tag/v3.0>`_ of Kyber, which is the
+    latest release of the reference implementation. This version differs from the FIPS
+    draft for `ML-KEM <https://csrc.nist.gov/pubs/fips/203/ipd>`_. When the final is
+    published, its test vectors will be integrated into |cc|.

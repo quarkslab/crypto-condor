@@ -42,7 +42,6 @@ extensions = [
 
 templates_path = ["_templates"]
 exclude_patterns: list[str] = []
-
 rst_prolog = """
 .. raw:: html
 
@@ -60,6 +59,8 @@ rst_prolog = """
 .. |N| replace:: :red:`N`
 """
 
+maximum_signature_line_length = 80
+# pygments_style = "monokai"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
@@ -68,7 +69,7 @@ rst_prolog = """
 html_theme = "furo"
 html_favicon = "_static/favicon.ico"
 
-# -- Other options --------- -------------------------------------------------
+# -- Autodoc options ---------------------------------------------------------
 
 autodoc_typehints = "description"
 autodoc_typehints_description_target = "documented"
@@ -82,7 +83,6 @@ autodoc_type_aliases = {
     "PlaintextAndBool": "crypto_condor.primitives.common.PlaintextAndBool",
     "EcdsaKey": "crypto_condor.primitives.ECDSA.KeyPair",
 }
-autosectionlabel_prefix_document = True
 
 # -- MyST options ------------------------------------------------------------
 
@@ -119,8 +119,14 @@ bibtex_bibfiles = [
 ]
 # suppress_warnings = ["bibtex.duplicate_label"]
 
+# -- Doctest options ---------------------------------------------------------
+
 doctest_global_setup = """
 from pathlib import Path
 
 Path("/tmp/crypto-condor-test/").mkdir(0o700, parents=False, exist_ok=True)
 """
+
+# -- Other options -----------------------------------------------------------
+
+# autosectionlabel_prefix_document = True

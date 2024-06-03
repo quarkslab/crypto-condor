@@ -1,5 +1,6 @@
 """The ChaCha20 module."""
 
+import ctypes
 import importlib
 import logging
 import sys
@@ -541,27 +542,6 @@ def _test_wycheproof_decrypt(decrypt: Decrypt, mode: Mode) -> Results:
     return results
 
 
-def _test_wycheproof(
-    encrypt: Encrypt | None, decrypt: Decrypt | None, mode: Mode
-) -> ResultsDict:
-    """Tests an implementation using Wycheproof test vectors.
-
-    Args:
-        encrypt: The encryption function to test, use None to skip this test.
-        decrypt: The decryption function to test, use None to skip this test.
-        mode: The mode of operation to test.
-
-    Returns:
-        Dictionary of results, indexed by "Wycheproof/encrypt" and "Wycheproof/decrypt".
-    """
-    results_dict = ResultsDict()
-    if encrypt is not None:
-        results_dict["Wycheproof/encrypt"] = _test_wycheproof_encrypt(encrypt, mode)
-    if decrypt is not None:
-        results_dict["Wycheproof/decrypt"] = _test_wycheproof_decrypt(decrypt, mode)
-    return results_dict
-
-
 def test(
     encrypt: Encrypt | None,
     decrypt: Decrypt | None,
@@ -586,7 +566,7 @@ def test(
         A dictionary of results.
 
         If resilience is True, Wycheproof vectors are used. The results are indexed by
-        ``Wycheproof/encrypt`` and ``Wycheproof/decrypt`` respectively.
+        ``ChaCha20/test_wycheproof_[encrypt/decrypt]/[mode]``.
 
     Example:
         Let's test PyCryptodome's implementation of ChaCha20.
@@ -630,9 +610,19 @@ def test(
         [Wycheproof] ...
         >>> assert results_dict.check()
     """
+    rd = ResultsDict()
     if not resilience:  # pragma: no cover (not interesting)
-        return ResultsDict()
-    return _test_wycheproof(encrypt, decrypt, mode)
+        return rd
+
+    if encrypt is not None:
+        rd[f"ChaCha20/test_wycheproof_encrypt/{str(mode)}"] = _test_wycheproof_encrypt(
+            encrypt, mode
+        )
+    if decrypt is not None:
+        rd[f"ChaCha20/test_wycheproof_decrypt/{str(mode)}"] = _test_wycheproof_decrypt(
+            decrypt, mode
+        )
+    return rd
 
 
 def _verify_file_chacha20(filename: str, operation: Operation) -> Results:
@@ -1037,3 +1027,220 @@ def run_wrapper(
             return _run_python(mode, resilience, encrypt, decrypt)
         case _:  # pragma: no cover (mypy)
             raise ValueError(f"Unsupported language {language}")
+
+
+# --------------------------- Lib hook functions --------------------------------------
+def _hook_enc(lib: ctypes.CDLL, function: str):
+    """Tests a hook for ChaCha20 encryption."""
+    logger.info("Testing %s", function)
+
+    func = lib[function]
+    func.argtypes = [
+        ctypes.POINTER(ctypes.c_uint8),  # buffer
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_uint8),  # key
+        ctypes.POINTER(ctypes.c_uint8),  # buffer
+        ctypes.c_size_t,
+        ctypes.c_uint64,
+    ]
+    func.restype = None
+
+    # Key size is fixed so we can create the type in advance.
+    key_t = ctypes.c_uint8 * 32
+
+    def _enc(key: bytes, plaintext: bytes, nonce: bytes, init_counter: int = 0):
+        buf_t = ctypes.c_uint8 * len(plaintext)
+        nonce_t = ctypes.c_uint8 * len(nonce)
+
+        key_arr = key_t.from_buffer_copy(key)
+        buffer = buf_t.from_buffer_copy(plaintext)
+        nonce_arr = nonce_t.from_buffer_copy(nonce)
+
+        func(
+            buffer,
+            buffer._length_,
+            key_arr,
+            nonce_arr,
+            nonce_arr._length_,
+            init_counter,
+        )
+        return bytes(buffer)
+
+    return test(_enc, None, Mode.CHACHA20)  # type: ignore[arg-type]
+
+
+def _hook_dec(lib: ctypes.CDLL, function: str):
+    """Tests a hook for ChaCha20 decryption."""
+    logger.info("Testing %s", function)
+
+    func = lib[function]
+    func.argtypes = [
+        ctypes.POINTER(ctypes.c_uint8),  # buffer
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_uint8),  # key
+        ctypes.POINTER(ctypes.c_uint8),  # buffer
+        ctypes.c_size_t,
+        ctypes.c_uint64,
+    ]
+    func.restype = None
+
+    # Key size is fixed so we can create the type in advance.
+    key_t = ctypes.c_uint8 * 32
+
+    def _dec(key: bytes, ciphertext: bytes, nonce: bytes, init_counter: int = 0):
+        buf_t = ctypes.c_uint8 * len(ciphertext)
+        nonce_t = ctypes.c_uint8 * len(nonce)
+
+        key_arr = key_t.from_buffer_copy(key)
+        buffer = buf_t.from_buffer_copy(ciphertext)
+        nonce_arr = nonce_t.from_buffer_copy(nonce)
+
+        func(
+            buffer,
+            buffer._length_,
+            key_arr,
+            nonce_arr,
+            nonce_arr._length_,
+            init_counter,
+        )
+        return bytes(buffer)
+
+    return test(None, _dec, Mode.CHACHA20)  # type: ignore[arg-type]
+
+
+def _hook_enc_poly1305(lib: ctypes.CDLL, function: str):
+    """Tests a hook for ChaCha20-Poly1305 encryption."""
+    logger.info("Testing %s", function)
+
+    func = lib[function]
+    func.argtypes = [
+        ctypes.POINTER(ctypes.c_uint8),  # buffer
+        ctypes.c_size_t,
+        ctypes.c_uint8 * 16,  # mac
+        ctypes.c_uint8 * 32,  # key
+        ctypes.POINTER(ctypes.c_uint8),  # nonce
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_uint8),  # aad
+        ctypes.c_size_t,
+    ]
+    func.restype = None
+
+    key_t = ctypes.c_uint8 * 32
+    mac_t = ctypes.c_uint8 * 16
+
+    def _enc(key: bytes, plaintext: bytes, nonce: bytes, aad: bytes | None):
+        buf_t = ctypes.c_uint8 * len(plaintext)
+        nonce_t = ctypes.c_uint8 * len(nonce)
+
+        if aad:
+            aad_t = ctypes.c_uint8 * len(aad)
+            aad_arr = aad_t.from_buffer_copy(aad)
+        else:
+            aad_arr = None
+
+        key_arr = key_t.from_buffer_copy(key)
+        buffer = buf_t.from_buffer_copy(plaintext)
+        nonce_arr = nonce_t.from_buffer_copy(nonce)
+        mac_arr = mac_t()
+
+        func(
+            buffer,
+            buffer._length_,
+            mac_arr,
+            key_arr,
+            nonce_arr,
+            len(nonce),
+            aad_arr,
+            len(aad) if aad else 0,
+        )
+        return (bytes(buffer), bytes(mac_arr))
+
+    return test(_enc, None, Mode.CHACHA20_POLY1305)  # type: ignore
+
+
+def _hook_dec_poly1305(lib: ctypes.CDLL, function: str):
+    """Tests a hook for ChaCha20-Poly1305 decryption."""
+    logger.info("Testing %s", function)
+
+    func = lib[function]
+    func.argtypes = [
+        ctypes.POINTER(ctypes.c_uint8),  # buffer
+        ctypes.c_size_t,
+        ctypes.c_uint8 * 32,  # key
+        ctypes.POINTER(ctypes.c_uint8),  # nonce
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_uint8),  # aad
+        ctypes.c_size_t,
+        ctypes.c_uint8 * 16,  # mac
+    ]
+    func.restype = ctypes.c_int
+
+    key_t = ctypes.c_uint8 * 32
+    mac_t = ctypes.c_uint8 * 16
+
+    def _dec(
+        key: bytes, ciphertext: bytes, nonce: bytes, mac: bytes, aad: bytes | None
+    ):
+        buf_t = ctypes.c_uint8 * len(ciphertext)
+        nonce_t = ctypes.c_uint8 * len(nonce)
+        if aad:
+            aad_t = ctypes.c_uint8 * len(aad)
+            aad_arr = aad_t.from_buffer_copy(aad)
+        else:
+            aad_arr = None
+
+        key_arr = key_t.from_buffer_copy(key)
+        buffer = buf_t.from_buffer_copy(ciphertext)
+        nonce_arr = nonce_t.from_buffer_copy(nonce)
+        mac_arr = mac_t.from_buffer_copy(mac)
+
+        rc = func(
+            buffer,
+            buffer._length_,
+            key_arr,
+            nonce_arr,
+            len(nonce),
+            aad_arr,
+            len(aad) if aad else 0,
+            mac_arr,
+        )
+
+        if rc == 0:
+            return (bytes(buffer), True)
+        elif rc == -1:
+            return (None, False)
+        else:
+            raise ValueError(f"Invalid return value {rc} (expected 0 or -1)")
+
+    return test(None, _dec, Mode.CHACHA20_POLY1305)  # type: ignore
+
+
+def test_hook(lib: ctypes.CDLL, functions: list[str]) -> ResultsDict:
+    """Tests function from a shared library.
+
+    Args:
+        lib: The loaded library.
+        functions: A list of CC_ChaCha20 functions to test.
+    """
+    logger.info("Found functions %s", ", ".join(functions))
+
+    rd = ResultsDict()
+
+    for function in functions:
+        match function.split("_"):
+            case ["CC", "ChaCha20", ("encrypt" | "decrypt") as operation]:
+                if operation == "encrypt":
+                    rd |= _hook_enc(lib, function)
+                else:
+                    rd |= _hook_dec(lib, function)
+            case ["CC", "ChaCha20", "Poly1305", ("encrypt" | "decrypt") as operation]:
+                if operation == "encrypt":
+                    rd |= _hook_enc_poly1305(lib, function)
+                else:
+                    rd |= _hook_dec_poly1305(lib, function)
+            case _:
+                logger.warning(
+                    "Ignored function %s as it does not match the convention", function
+                )
+
+    return rd

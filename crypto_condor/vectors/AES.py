@@ -49,7 +49,10 @@ class Mode(strenum.StrEnum):
 
     @classmethod
     def classic_modes(cls):
-        """Returns a list of all classic modes."""
+        """Returns a list of all supported classic modes.
+
+        crypto-condor supports ECB, CBC, CBC with PKCS#7 padding, CFB8, CFB128, and CTR.
+        """
         return [e for e in cls if str(e) not in {"GCM", "CCM"}]
 
 
