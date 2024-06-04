@@ -88,6 +88,7 @@ autosectionlabel_prefix_document = True
 myst_enable_extensions = [
     "colon_fence",
     "dollarmath",
+    "html_image",
     "substitution",
 ]
 myst_substitutions = {

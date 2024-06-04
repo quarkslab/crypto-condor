@@ -68,8 +68,8 @@ file.
 Once installed, the CLI is available as `crypto-condor-cli`. It is structured in
 commands, similar to Git. Run it without arguments or with `--help` to display
 the help message detailing the available subcommands. You can check [the
-documentation](https://quarkslab.github.io/crypto-condor) for a quick rundown of
-all the commands.
+documentation](https://quarkslab.github.io/crypto-condor/latest/index.html) for
+a quick rundown of all the commands.
 
 As for the Python library, it is available as `crypto_condor` (note the
 underscore). Each primitive has its own module under `primitives`, e.g.

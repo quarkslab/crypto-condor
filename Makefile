@@ -112,7 +112,7 @@ coverage: init
 coverage-ci: # Run coverage, generate JUnit test report and XML coverage report.
 coverage-ci: init-ci compile-primitives-ci
 	@echo "[+] Testing and checking coverage (CI)"
-	poetry run pytest --verbose --junitxml=junit/test-results.xml --cov="crypto_condor" --cov-report=xml --numprocesses=auto tests/
+	poetry run pytest --verbose --junitxml=junit/test-results.xml --cov="crypto_condor" --cov-report=xml --numprocesses=auto --dist worksteal tests/
 # Print coverage report so that CI picks up stats
 	poetry run coverage report
 
@@ -157,7 +157,7 @@ pages-ci: init-ci
 # Rename docs from main to devel.
 	mv docs/build/public/main docs/build/public/devel
 # Move latest tag to latest.
-	-LATEST_TAG="$(shell git describe --tags --abbrev=0 --exclude='*rc[0-9]')" && cp -R docs/build/public/$$LATEST_TAG docs/build/public/latest
+	-LATEST_TAG="$(shell git describe --tags --abbrev=0 --exclude='*rc[0-9]')"; [ -z "$$LATEST_TAG" ] && cp -R docs/build/public/$$LATEST_TAG docs/build/public/latest
 
 .PHONY: docs
 docs: # Build the documentation
