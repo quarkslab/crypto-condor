@@ -165,7 +165,12 @@ def _wrap_autocomplete_primitive():  # pragma: no cover (auto-completion)
     return [p for p in SUPPORTED_MODES if SUPPORTED_MODES[p]["wrapper"]]
 
 
-@app.command(name="get-wrapper", help=_wrap_help, no_args_is_help=True, rich_help_panel="Test implementations")
+@app.command(
+    name="get-wrapper",
+    help=_wrap_help,
+    no_args_is_help=True,
+    rich_help_panel="Test implementations",
+)
 def wrap(
     primitive: Annotated[
         str,
