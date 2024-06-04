@@ -157,7 +157,7 @@ pages-ci: init-ci
 # Rename docs from main to devel.
 	mv docs/build/public/main docs/build/public/devel
 # Move latest tag to latest.
-	-LATEST_TAG="$(shell git describe --tags --abbrev=0 --exclude='*rc[0-9]')"; [ -z "$$LATEST_TAG" ] && cp -R docs/build/public/$$LATEST_TAG docs/build/public/latest
+	-LATEST_TAG="$(shell git describe --tags --abbrev=0 --exclude='*rc[0-9]')"; cp -R docs/build/public/$$LATEST_TAG docs/build/public/latest
 
 .PHONY: docs
 docs: # Build the documentation
