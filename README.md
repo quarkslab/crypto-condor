@@ -63,7 +63,8 @@ file.
 
 ## Usage
 
-> The documentation is available at <https://quarkslab.github.io/crypto-condor>.
+> The documentation is available at
+> <https://quarkslab.github.io/crypto-condor/latest/index.html>.
 
 Once installed, the CLI is available as `crypto-condor-cli`. It is structured in
 commands, similar to Git. Run it without arguments or with `--help` to display
