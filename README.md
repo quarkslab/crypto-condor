@@ -1,6 +1,6 @@
 # crypto-condor
 
-<img align="right" src="crypto-condor.png" width="250">
+<img align="right" src="crypto-condor.png" width="250" alt="The logo of crypto-condor, depicting a condor holding a key.">
 
 crypto-condor is a tool for compliance testing of cryptographic primitives, in
 the form of a Python library and CLI. It is complemented by an extensive
