@@ -743,10 +743,21 @@ class Console(RichConsole):
         content = f"Primitives tested: {', '.join(primitives)}\n"
         content += str(res)
         version = importlib.metadata.version("crypto-condor")
+        # Zero-pad the version, taking into account a special case for rc versions.
+        if "rc" in version:
+            ver, rc = version.split("rc")
+            padded_version = datetime.datetime.strptime(ver, "%Y.%m.%d").strftime(
+                "%Y.%m.%d"
+            )
+            padded_version += f"-rc{rc}"
+        else:
+            padded_version = datetime.datetime.strptime(version, "%Y.%m.%d").strftime(
+                "%Y.%m.%d"
+            )
         summary = Panel(
             content,
             title="Results summary",
-            subtitle=f"crypto-condor {version} by Quarkslab",
+            subtitle=f"crypto-condor {padded_version} by Quarkslab",
         )
         self.print(summary)
         if no_save:
@@ -769,7 +780,7 @@ class Console(RichConsole):
                 printer.print()
                 printer.print(f"Primitives tested: {', '.join(primitives)}")
                 printer.print(f"Generated on     : {fmt_date.replace('_', ' ')}")
-                printer.print(f"By crypto-condor : version {version}")
+                printer.print(f"By crypto-condor : version {padded_version}")
                 printer.print()
                 printer.print(str(res))
                 if isinstance(res, ResultsDict):
