@@ -394,7 +394,7 @@ class AesData:
         s = str(self.info)
 
         s += f"Operation: {self.operation}\n"
-        s = f"key = {self.key.hex()}\n"
+        s += f"key = {self.key.hex()}\n"
         s += f"message = {self.message.hex() if self.message else '<empty>'}\n"
         s += f"expected = {self.expected.hex() if self.expected else '<empty>'}\n"
 
@@ -1717,12 +1717,14 @@ def _verify_file_encrypt(filename: str, mode: Mode) -> Results:
         {"filename": filename, "mode": mode, "operation": Operation.ENCRYPT},
     )
 
-    for tid, line in track(enumerate(lines, start=1), "Testing file"):
+    tid = 0
+    for line_number, line in track(enumerate(lines, start=1), "Testing file"):
         if line.startswith("#"):
             continue
+        tid += 1
         args = line.rstrip().split("/")
         info = DebugInfo(
-            tid, TestType.VALID, ["UserInput"], comment=f"Line number {tid}"
+            tid, TestType.VALID, ["UserInput"], comment=f"Line number {line_number}"
         )
         # Default values for non-AEAD modes.
         aad, mac, mt = None, None, None

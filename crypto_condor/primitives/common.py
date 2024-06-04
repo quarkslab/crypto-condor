@@ -183,7 +183,7 @@ class DebugInfo:
         # TODO: add test type?
         # s += f"Test type: {self.test_type}\n"
         s += f"Flags: {self.flags}\n"
-        s += f"Comment = {self.comment if self.comment else '<none>'}"
+        s += f"Comment = {self.comment if self.comment else '<none>'}\n"
         if self.error_msg:
             s += f"Error = {self.error_msg}\n"
         return s
