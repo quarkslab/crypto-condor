@@ -686,7 +686,11 @@ class Console(RichConsole):
         self.print(str(res), highlight=False)
 
     def process_results(
-        self, res: ResultsDict | Results, filename: str = "", no_save: bool = False
+        self,
+        res: ResultsDict | Results,
+        filename: str = "",
+        no_save: bool = False,
+        debug_data: bool | None = None,
     ) -> bool:
         """Displays and saves results.
 
@@ -708,6 +712,9 @@ class Console(RichConsole):
                 the results are not saved and the user is not prompted.
             no_save: If True, no results are saved and the user is not prompted.
                 Overrides ``filename``.
+            debug_data: Controls whether to save debug data when saving the results to a
+                file. If True, debug data is appended. If False, it is skipped. If None,
+                when saving the results the user is prompted.
 
         Returns:
             True if all tests passed, False otherwise (i.e. the boolean returned by the
@@ -765,6 +772,10 @@ class Console(RichConsole):
             return res.check()
         # Save results.
         if bool(filename) or Confirm.ask("Save the results to a file?", default=False):
+            if debug_data is None:
+                debug_data = Confirm.ask(
+                    "Save debug data? (Increases file size considerably)", default=False
+                )
             date = datetime.datetime.today()
             fmt_date = date.strftime("%Y-%m-%d_%H:%M:%S")
             filename = filename or Prompt.ask(
@@ -789,6 +800,32 @@ class Console(RichConsole):
                     printer.print("----------------")
                     printer.print()
                     printer.print("\n\n".join([str(r) for r in res.values()]))
+                if debug_data:
+                    printer.print()
+                    if isinstance(res, ResultsDict):
+                        for name, r in res.values():
+                            header = f"Debug data: {name}"
+                            line = "^" * len(header)
+                            printer.print(header)
+                            printer.print(line)
+                            printer.print()
+                            for data in r.data.values():
+                                printer.print(str(data))
+                                # For TestInfo we have to print the debug data
+                                # separately.
+                                if isinstance(data, TestInfo):
+                                    printer.print(str(data.data))
+                    else:
+                        header = "Debug data"
+                        line = "^" * len(header)
+                        printer.print(header)
+                        printer.print(line)
+                        printer.print()
+                        for data in res.data.values():
+                            printer.print("data", str(data))
+                            # For TestInfo we have to print the debug data separately.
+                            if isinstance(data, TestInfo):
+                                printer.print(str(data.data))
         return res.check()
 
 
