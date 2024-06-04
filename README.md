@@ -1,5 +1,7 @@
 # crypto-condor
 
+<img align="right" src="crypto-condor.png" width="250">
+
 crypto-condor is a tool for compliance testing of cryptographic primitives, in
 the form of a Python library and CLI. It is complemented by an extensive
 documentation, featuring guides on the primitives supported.
@@ -81,9 +83,9 @@ See
 
 ## Changelog and versioning
 
-A [changelog] is available. This projects adheres to
-[CalVer](https://calver.org/). The format used is
-YYYY.MM.DD\[.MICRO\]\[-MODIFIER\]:
+A [changelog](https://github.com/quarkslab/crypto-condor/blob/main/CHANGELOG.md)
+is available. This projects adheres to [CalVer](https://calver.org/). The format
+used is YYYY.MM.DD\[.MICRO\]\[-MODIFIER\]:
 
 - YYYY: full year (2023).
 - 0M: zero-padded month (01, 02, ..., 12).
@@ -96,4 +98,6 @@ YYYY.MM.DD\[.MICRO\]\[-MODIFIER\]:
 - Julio Loayza Meneses, Quarkslab.
 - Angèle Bossuat, Quarkslab.
 - Dahmun Goudarzi, Quarkslab.
+
+Logo idea by Robin David, drawing by Irene Loayza.
 
