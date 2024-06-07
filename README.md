@@ -50,7 +50,7 @@ primitives.
 
 ## Installation
 
-crypto-condor is available on PyPI:
+crypto-condor requires **Python 3.11+**. It is available on PyPI:
 
 ```bash
 python -m pip install crypto-condor
