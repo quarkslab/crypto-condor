@@ -427,7 +427,9 @@ def sha(
     language: Annotated[SHA.Wrapper, _language],
     algorithm: Annotated[
         SHA.Algorithm,
-        typer.Argument(help="The SHA algorithm to test.", case_sensitive=False),
+        typer.Argument(
+            help="The SHA algorithm to test.", case_sensitive=False, show_default=False
+        ),
     ],
     orientation: Annotated[
         SHA.Orientation,
