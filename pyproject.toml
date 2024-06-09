@@ -27,8 +27,6 @@ include = [
   "crypto_condor/primitives/_testu01/examples/excel.dat",
 ]
 exclude = [
-  "crypto_condor/primitives/_kyber",
-  "crypto_condor/primitives/_dilithium",
   "crypto_condor/vectors/_aes/rsp",
   "crypto_condor/vectors/_dilithium/rsp",
   "crypto_condor/vectors/_ECDH/src",
