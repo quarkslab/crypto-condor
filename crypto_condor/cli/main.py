@@ -250,6 +250,8 @@ def wrap(
                 f"Only the {str(lang)} wrapper is available, use it?", default=True
             ):
                 language = lang
+            else:
+                raise typer.Exit(1)
         else:
             language = Prompt.ask(
                 "Choose a language", choices=languages, default=languages[0]
