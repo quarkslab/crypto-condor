@@ -803,7 +803,7 @@ class Console(RichConsole):
                 if debug_data:
                     printer.print()
                     if isinstance(res, ResultsDict):
-                        for name, r in res.values():
+                        for name, r in res.items():
                             header = f"Debug data: {name}"
                             line = "^" * len(header)
                             printer.print(header)
