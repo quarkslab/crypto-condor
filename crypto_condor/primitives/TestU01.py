@@ -63,22 +63,24 @@ def get_testu01_dir() -> Path:
     return get_appdata_dir() / "testu01"
 
 
-def install_testu01():
+def install_testu01(*, debug: bool = False):
     """Installs TestU01.
 
     Checks if the path returned by :func:`get_testu01_dir` exists. If not, copies the
     necessary files to that path. It then checks whether TestU01 is compiled, and
     compiles it if not.
 
-    In case of a compilation error, it tries to dump the log to "testu01.log".
+    Keyword Args:
+        debug: If True, the compilation output is not captured by subprocess, displaying
+            the full output on stdout.
     """
     t_dir = get_testu01_dir()
 
     if not t_dir.is_dir():
-        print(f"TestU01 directory not found, copying it to {t_dir}")
+        logger.warning("TestU01 directory not found, copying it to %s", str(t_dir))
         t01 = resources.files("crypto_condor") / "primitives/_testu01"
         try:
-            shutil.copytree(t01, t_dir)
+            shutil.copytree(str(t01), t_dir)
         except Exception:
             logger.exception("Could not copy TestU01 source")
             raise
@@ -91,9 +93,12 @@ def install_testu01():
 
     with Progress() as progress:
         task = progress.add_task("Compiling TestU01, please wait", total=None)
-        # Only capture output if it's not running in the CI, otherwise we want to see
-        # what's going on in case of an error.
-        capture_output = not os.environ.get("GITHUB_ACTIONS", False)
+        # Show subprocess output (i.e. do not capture output) if in debug or in CI.
+        capture_output = not (
+            debug
+            or bool(os.environ.get("GITHUB_ACTIONS", False))
+            or logger.getEffectiveLevel() <= logging.DEBUG
+        )
         try:
             _ = subprocess.run(
                 [str(make)],
@@ -105,7 +110,7 @@ def install_testu01():
             )
             progress.update(task, completed=True)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            logger.exception("Could not compile TestU01")
+            logger.error("Could not compile TestU01")
             raise
 
 
@@ -228,4 +233,4 @@ def test_file(filename: str, *, bit_count: int = 0) -> Results | None:
 
 # Block to install TestU01 by running the module as a script.
 if __name__ == "__main__":
-    install_testu01()
+    install_testu01(debug=True)
