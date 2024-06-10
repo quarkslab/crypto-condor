@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "crypto-condor"
-version = "2024.06.10-rc1"
+version = "2024.06.10-rc2"
 description = "Compliance testing for implementations of cryptographic primitives"
 license = "Apache-2.0"
 authors = [
@@ -121,3 +121,8 @@ exclude = [
   '_import\.py$',
   "^utils/templates/",
 ]
+
+[[tool.mypy.overrides]]
+module = ["google"]
+ignore_missing_imports = true
+
