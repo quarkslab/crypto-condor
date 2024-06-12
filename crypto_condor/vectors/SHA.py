@@ -27,9 +27,9 @@ class Algorithm(enum.StrEnum):
         match value:
             case "SHA-1":
                 self._digest_size_ = 160
-            case "SHA-224" | "SHA3-224":
+            case "SHA-224" | "SHA3-224" | "SHA-512/224":
                 self._digest_size_ = 224
-            case "SHA-256" | "SHA3-256":
+            case "SHA-256" | "SHA3-256" | "SHA-512/256":
                 self._digest_size_ = 256
             case "SHA-384" | "SHA3-384":
                 self._digest_size_ = 384
