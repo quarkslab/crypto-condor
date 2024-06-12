@@ -16,6 +16,7 @@ import datetime
 import enum
 import importlib
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any, TypeAlias
@@ -844,9 +845,15 @@ def get_appdata_dir() -> Path:
 
     match sys.platform:
         case "linux":
-            appdata = home / ".local/share" / "crypto-condor"
+            appdata = (
+                Path(os.getenv("XDG_DATA_HOME", home / ".local/share"))
+                / "crypto-condor"
+            )
         case "win32" | "cygwin":
-            appdata = home / "AppData/Local" / "crypto-condor"
+            appdata = (
+                Path(os.getenv("LOCALAPPDATA", home / "AppData/Local"))
+                / "crypto_condor"
+            )
         case "darwin":
             appdata = home / "Library/Application Support" / "crypto-condor"
         case _:
