@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CC="{CC:-cc}"
+CC="{CC:-/usr/bin/cc}"
 set -e
 (
   cd testu01

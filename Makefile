@@ -34,7 +34,7 @@ compile-primitives: # Compile primitives written in C.
 
 compile-primitives-ci: # Compile primitives written in C.
 	@echo "[+] Compiling primitives (CI)"
-	sudo apt-get install -y --no-install-recommends pandoc texlive texlive-latex-extra
+	sudo apt-get install -y --no-install-recommends pandoc gcc
 	cd crypto_condor/primitives && $(MAKE) all -j4
 	@echo
 
