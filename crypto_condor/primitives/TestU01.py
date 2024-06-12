@@ -111,6 +111,13 @@ def install_testu01(*, debug: bool = False):
             progress.update(task, completed=True)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             logger.error("Could not compile TestU01")
+            if logger.getEffectiveLevel() > logging.DEBUG:
+                logger.warning(
+                    (
+                        "To see the compilation output,"
+                        " increase the verbosity with crypto-condor-cli -vv ..."
+                    )
+                )
             raise
 
 

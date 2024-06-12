@@ -11,7 +11,7 @@ authors = [
 readme = "README.md"
 homepage = "https://github.com/quarkslab/crypto-condor"
 repository = "https://github.com/quarkslab/crypto-condor"
-documentation = "https://github.com/quarkslab/crypto-condor"
+documentation = "https://quarkslab.github.io/crypto-condor/latest/index.html"
 keywords = ["cryptography", "compliance"]
 include = [
   "crypto_condor/primitives/_aes/main",

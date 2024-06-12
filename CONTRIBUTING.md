@@ -7,8 +7,6 @@ Be it issues, pull requests, or suggestions, contributions are welcome!
 The external dependencies are (not including Python packages):
 
 - [poetry](https://python-poetry.org/).
-- A TeX Live installation (on Debian the required packages should be `pandoc
-texlive texlive-latex-extra`).
 - GNU Make and gcc.
 - [protoc](https://grpc.io/docs/protoc-installation/), the protobuf compiler.
 
