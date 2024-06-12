@@ -2,6 +2,10 @@ name: main
 
 on: [push]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   setup:
     runs-on: ubuntu-22.04
