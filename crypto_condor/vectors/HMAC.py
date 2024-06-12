@@ -40,7 +40,7 @@ class Hash(enum.StrEnum):
     """A hash function that can be used with HMAC."""
 
     def __init__(self, value):
-        """Override __new__ to add custom properties."""
+        """Override __init__ to add custom properties."""
         self._value_ = value
         match value:
             case "SHA-1" | "SHA-224" | "SHA-256" | "SHA-384" | "SHA-512":
