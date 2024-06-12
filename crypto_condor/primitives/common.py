@@ -24,6 +24,7 @@ from typing import Any, TypeAlias
 import attrs
 from rich.console import Console as RichConsole
 from rich.panel import Panel
+from rich.progress import track
 from rich.prompt import Confirm, Prompt
 
 # --------------------------- Module --------------------------------------------------
@@ -804,13 +805,18 @@ class Console(RichConsole):
                 if debug_data:
                     printer.print()
                     if isinstance(res, ResultsDict):
+                        count = 0
+                        num_res = len(res)
                         for name, r in res.items():
+                            count += 1
                             header = f"Debug data: {name}"
                             line = "^" * len(header)
                             printer.print(header)
                             printer.print(line)
                             printer.print()
-                            for data in r.data.values():
+                            for data in track(
+                                r.data.values(), f"Writing debug data {count}/{num_res}"
+                            ):
                                 printer.print(str(data))
                                 # For TestInfo we have to print the debug data
                                 # separately.
@@ -822,7 +828,7 @@ class Console(RichConsole):
                         printer.print(header)
                         printer.print(line)
                         printer.print()
-                        for data in res.data.values():
+                        for data in track(res.data.values(), "Writing debug data"):
                             printer.print("data", str(data))
                             # For TestInfo we have to print the debug data separately.
                             if isinstance(data, TestInfo):
