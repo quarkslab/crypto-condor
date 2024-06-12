@@ -274,6 +274,11 @@ def test(
         info = DebugInfo(tid, TestType.VALID, ["Compliance"])
         try:
             digest = hash_function(test.msg)
+            if len(digest) * 8 != hash_algorithm.digest_size:
+                raise ValueError(
+                    "Wrong digest size, expected %d, got %d"
+                    % (hash_algorithm.digest_size, len(digest) * 8)
+                )
         except Exception as error:
             info.error_msg = f"Error running hash function: {str(error)}"
             logger.debug("Error running hash function", exc_info=True)
@@ -294,11 +299,16 @@ def test(
         info = DebugInfo(tid, TestType.VALID, ["Compliance"])
         try:
             digest = hash_function(test.msg)
+            if len(digest) * 8 != hash_algorithm.digest_size:
+                raise ValueError(
+                    "Wrong digest size, expected %d, got %d"
+                    % (hash_algorithm.digest_size, len(digest) * 8)
+                )
         except Exception as error:
             info.error_msg = f"Error running hash function: {str(error)}"
             logger.debug("Error running hash function", exc_info=True)
             data = ShaData(info, test.msg, test.md, None)
-            short_results.add(data)
+            long_results.add(data)
             continue
         if digest == test.md:
             info.result = True
@@ -339,15 +349,31 @@ def test(
             md0 = md1 = md2 = seed
             for _ in range(3, 1003):
                 mi = md0 + md1 + md2
-                mdi = hash_function(mi)
+                try:
+                    mdi = hash_function(mi)
+                    if len(digest) * 8 != hash_algorithm.digest_size:
+                        raise ValueError(
+                            "Wrong digest size, expected %d, got %d"
+                            % (hash_algorithm.digest_size, len(digest) * 8)
+                        )
+                except Exception as error:
+                    info.error_msg = (
+                        f"Error running hash function before checkpoint {j}:"
+                        f" {str(error)}"
+                    )
+                    logger.debug("Error running hash function", exc_info=True)
+                    res = False
+                    break
                 md0, md1, md2 = md1, md2, mdi
+            if not res:
+                break
             mdj = seed = mdi
             if mdj != mc_vectors.checkpoints[j]:
                 res = False
                 break
         if res:
             info.result = True
-        else:
+        elif not info.error_msg:
             info.error_msg = f"Failed at checkpoint {j}"
         mc_data = ShaMcData(info, seed)
         mc_results.add(mc_data)
