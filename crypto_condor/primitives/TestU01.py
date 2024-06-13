@@ -92,12 +92,14 @@ def install_testu01(*, debug: bool = False):
     make = t_dir / "qbmake.sh"
 
     with Progress() as progress:
-        task = progress.add_task("Compiling TestU01, please wait", total=None)
         # Show subprocess output (i.e. do not capture output) if in debug or in CI.
         capture_output = not (
             debug
             or bool(os.environ.get("GITHUB_ACTIONS", False))
             or logger.getEffectiveLevel() <= logging.DEBUG
+        )
+        task = progress.add_task(
+            "Compiling TestU01, please wait", total=None, visible=capture_output
         )
         try:
             _ = subprocess.run(
