@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [CalVer](https://calver.org/).
 
+## 2024.06.12
+
+- Changed the requirements for TestU01: no longer depends on a TeX Live
+  installation, just a C compiler that defaults to `/usr/bin/cc`.
+- Fixed a bug with SHA wrappers that caused swapping until the program crashes.
+- Add support for XDG_DATA_HOME and %LOCALAPPDATA% to choose where to store
+  application data.
+
 ## 2024.06.10
 
 Small update to fix some issues.
