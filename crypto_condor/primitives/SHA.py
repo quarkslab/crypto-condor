@@ -384,72 +384,45 @@ def test(
 
 
 def _run_sha_python_wrapper(
-    algorithm: Algorithm, orientation: Orientation
+    wrapper: Path, algorithm: Algorithm, orientation: Orientation
 ) -> ResultsDict:
     """Runs the Python SHA wrapper.
 
     Args:
+        wrapper: The wrapper to test.
         algorithm: The SHA algorithm to test.
         orientation: The orientation of the implementation, either bit- or
             byte-oriented.
     """
-    wrapper = Path.cwd() / "sha_wrapper.py"
-    if not wrapper.is_file():
-        raise FileNotFoundError("Can't find sha_wrapper.py in the current directory.")
-
-    logger.info("Running Python SHA wrapper")
-
-    # Add CWD to the path, at the beginning in case this is called more than
-    # once, since the previous CWD would have priority.
-    sys.path.insert(0, str(Path.cwd()))
-
-    # Before importing the wrapper we check if it's already in the loaded
-    # modules, in which case we want to reload it or we would be testing the
-    # wrapper loaded previously.
-    imported = "sha_wrapper" in sys.modules.keys()
-
-    # Import it normally.
+    logger.info("Python SHA wrapper: %s", str(wrapper.name))
+    sys.path.insert(0, str(wrapper.parent.absolute()))
+    already_imported = wrapper.stem in sys.modules.keys()
     try:
-        sha_wrapper = importlib.import_module("sha_wrapper")
+        sha_wrapper = importlib.import_module(wrapper.stem)
     except ModuleNotFoundError as error:
-        logger.debug(error)
-        raise FileNotFoundError("Can't load the wrapper!") from error
-
-    # Then reload it if necessary.
-    if imported:
-        logger.debug("Reloading the SHA Python wrapper")
+        logger.error("Can't import wrapper: %s", str(error))
+        raise
+    if already_imported:
+        logger.debug("Reloading SHA wrapper module %s", wrapper.stem)
         sha_wrapper = importlib.reload(sha_wrapper)
-
     results_dict = test(sha_wrapper.sha, algorithm, orientation)
-
-    # To de-clutter the path, remove the CWD.
-    sys.path.remove(str(Path.cwd()))
-
     return results_dict
 
 
-def _run_sha_c_wrapper(algorithm: Algorithm, orientation: Orientation) -> ResultsDict:
+def _run_sha_c_wrapper(
+    wrapper: Path, algorithm: Algorithm, orientation: Orientation
+) -> ResultsDict:
     """Runs the C SHA wrapper.
 
     Args:
+        wrapper: The executable wrapper to test.
         algorithm: The SHA algorithm to test.
         orientation: The orientation of the implementation, either bit- or
             byte-oriented.
     """
-    logger.info("Compiling SHA wrapper")
-    try:
-        _ = subprocess.run(
-            ["make", "clean", "all"], capture_output=True, check=True, text=True
-        )
-    except subprocess.CalledProcessError as error:
-        logger.error(error)
-        raise
-    logger.info("Compiled SHA wrapper")
-
-    main = Path.cwd() / "main"
 
     def sha(data: bytes) -> bytes:
-        args = [str(main), "--input", data.hex()]
+        args = [str(wrapper.absolute()), "--input", data.hex()]
         match algorithm:
             case "SHA-1":
                 args += ["--digest-length", "20"]
@@ -475,11 +448,15 @@ def _run_sha_c_wrapper(algorithm: Algorithm, orientation: Orientation) -> Result
 
 
 def run_wrapper(
-    language: Wrapper, hash_algorithm: Algorithm, orientation: Orientation
+    wrapper: Path,
+    # language: Wrapper,
+    hash_algorithm: Algorithm,
+    orientation: Orientation,
 ) -> ResultsDict:
     """Runs the corresponding wrapper.
 
     Args:
+        wrapper: The wrapper to test.
         language: The language of the wrapper to run.
         hash_algorithm: The hash algorithm to test.
         orientation: The orientation of the implementation, either bit- or
@@ -489,11 +466,13 @@ def run_wrapper(
         A :class:`ResultsDict` containing the results of short message (``short``), long
         message (``long``), and Monte-Carlo (``monte-carlo``) tests.
     """
-    match language:
-        case Wrapper.PYTHON:
-            return _run_sha_python_wrapper(hash_algorithm, orientation)
-        case Wrapper.C:
-            return _run_sha_c_wrapper(hash_algorithm, orientation)
+    if not wrapper.is_file():
+        raise FileNotFoundError(f"SHA wrapper not found: {str(wrapper)}")
+
+    if wrapper.suffix == ".py":
+        return _run_sha_python_wrapper(wrapper, hash_algorithm, orientation)
+    else:
+        return _run_sha_c_wrapper(wrapper, hash_algorithm, orientation)
 
 
 def verify_file(filename: str, hash_algorithm: Algorithm) -> Results:

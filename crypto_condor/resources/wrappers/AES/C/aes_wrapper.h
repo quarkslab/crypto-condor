@@ -32,10 +32,10 @@ static void print_hex(const unsigned char *src, size_t len) {
 }
 
 static void parse(int argc, char **argv, int *mode, uint8_t **key,
-                  size_t *key_len, uint8_t **input, uint8_t **output,
-                  size_t *input_len, uint8_t **iv, size_t *iv_len,
-                  size_t *segment_size, int *encrypt, uint8_t **aad,
-                  size_t *aad_len, uint8_t **tag, size_t *tag_len) {
+                  size_t *key_len, uint8_t **input, size_t *input_len,
+                  uint8_t **iv, size_t *iv_len, size_t *segment_size,
+                  int *encrypt, uint8_t **aad, size_t *aad_len, uint8_t **tag,
+                  size_t *tag_len) {
   int c;
 
   while (1) {
@@ -88,7 +88,6 @@ static void parse(int argc, char **argv, int *mode, uint8_t **key,
     case 't':
       (*input_len) = strlen(optarg) / 2;
       (*input) = (uint8_t *)malloc((*input_len) * sizeof(uint8_t));
-      (*output) = (uint8_t *)malloc((*input_len) * sizeof(uint8_t));
       hex_to_int(optarg, (*input), (*input_len));
       break;
 

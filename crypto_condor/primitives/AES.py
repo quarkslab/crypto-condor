@@ -682,6 +682,7 @@ def _decrypt(
 
 
 def _run_python(
+    wrapper: Path,
     mode: Mode,
     key_length: KeyLength,
     compliance: bool,
@@ -693,6 +694,7 @@ def _run_python(
     """Runs the Python AES wrapper.
 
     Args:
+        wrapper: The Python wrapper to test.
         mode: The mode of operation to test.
         key_length: The length of the keys to use, in bits. Use 0 to test all lengths.
         compliance: Whether to run compliance test vectors.
@@ -704,33 +706,17 @@ def _run_python(
     Raises:
         FileNotFoundError: If the wrapper couldn't be found or imported.
     """
-    wrapper = Path().cwd() / "aes_wrapper.py"
-    if not wrapper.exists():
-        raise FileNotFoundError("Can't find aes_wrapper.py in the current directory.")
-
     logger.info("Running Python AES wrapper")
-
-    # Add CWD to the path, at the beginning in case this is called more than once, since
-    # the previous CWD would have priority.
-    sys.path.insert(0, str(Path.cwd()))
-
-    # Before importing the wrapper we check if it's already in the loaded modules, in
-    # which case we want to reload it or we would be testing the wrapper loaded
-    # previously.
-    imported = "aes_wrapper" in sys.modules.keys()
-
-    # Import it normally.
+    sys.path.insert(0, str(wrapper.parent.absolute()))
+    already_imported = wrapper.stem in sys.modules.keys()
     try:
-        aes_wrapper = importlib.import_module("aes_wrapper")
+        aes_wrapper = importlib.import_module(wrapper.stem)
     except ModuleNotFoundError as error:
-        logger.debug(error)
-        raise FileNotFoundError("Can't load the wrapper!") from error
-
-    # Then reload it if necessary.
-    if imported:
-        logger.debug("Reloading the AES Python wrapper")
+        logger.error("Can't import wrapper: %s", str(error))
+        raise
+    if already_imported:
+        logger.debug("Reloading AES wrapper module %s", wrapper.stem)
         aes_wrapper = importlib.reload(aes_wrapper)
-
     encrypt_function = aes_wrapper.encrypt if encrypt else None
     decrypt_function = aes_wrapper.decrypt if decrypt else None
     result_dict = test(
@@ -742,14 +728,11 @@ def _run_python(
         compliance=compliance,
         resilience=resilience,
     )
-
-    # To de-clutter the path, remove the CWD.
-    sys.path.remove(str(Path.cwd()))
-
     return result_dict
 
 
 def _run_c(
+    wrapper: Path,
     mode: Mode,
     key_length: KeyLength,
     compliance: bool,
@@ -761,40 +744,19 @@ def _run_c(
     """Runs the C AES wrapper.
 
     Args:
-        mode:
-            The mode of operation to test.
-        key_length:
-            The length of the keys to use, in bits. Use 0 to test all lengths.
-        compliance:
-            Whether to run compliance test vectors.
-        resilience:
-            Whether to run resilience test vectors.
-        encrypt:
-            Whether to test the encryption.
-        decrypt:
-            Whether to test the decryption.
-        iv_length:
-            The length of the IV to test. If 0, use any test vector available.
+        wrapper: The executable C wrapper to test.
+        mode: The mode of operation to test.
+        key_length: The length of the keys to use, in bits. Use 0 to test all lengths.
+        compliance: Whether to run compliance test vectors.
+        resilience: Whether to run resilience test vectors.
+        encrypt: Whether to test the encryption.
+        decrypt: Whether to test the decryption.
+        iv_length: The length of the IV to test. If 0, use any test vector available.
 
     Raises:
-        FileNotFoundError:
-            If the wrapper couldn't be found or imported.
+        FileNotFoundError: If the wrapper couldn't be found or imported.
     """
-    # TODO: check for missing wrapper files.
-
-    logger.info("Compiling wrapper...", extra={"highlighter": None})
-    try:
-        _ = subprocess.run(
-            ["make", "clean", "all"], capture_output=True, check=True, text=True
-        )
-        logger.info("Wrapper compiled.")
-    except subprocess.CalledProcessError as error:
-        if error.stdout:
-            logger.error(error.stdout)
-        logger.error(error.stderr)
-        raise subprocess.SubprocessError("Could not compile the C wrapper") from error
-
-    exe = Path.cwd() / "main"
+    exe = wrapper.absolute()
 
     def enc(
         key: bytes,
@@ -908,7 +870,7 @@ def _run_c(
 
 
 def run_wrapper(
-    language: Wrapper,
+    wrapper: Path,
     mode: Mode,
     key_length: KeyLength = KeyLength.ALL,
     *,
@@ -921,7 +883,7 @@ def run_wrapper(
     """Runs a wrapper.
 
     Args:
-        language: The language of the wrapper.
+        wrapper: The wrapper to test.
         mode: The mode of operation to test.
         key_length: The length of the keys to use, in bits.
 
@@ -935,15 +897,30 @@ def run_wrapper(
     Returns:
         Returns the results from :func:`test`.
     """
-    match language:
-        case Wrapper.C:
-            return _run_c(
-                mode, key_length, compliance, resilience, encrypt, decrypt, iv_length
-            )
-        case Wrapper.PYTHON:
-            return _run_python(
-                mode, key_length, compliance, resilience, encrypt, decrypt, iv_length
-            )
+    if not wrapper.is_file():
+        raise FileNotFoundError(f"AES wrapper not found: {str(wrapper)}")
+    if wrapper.suffix == ".py":
+        return _run_python(
+            wrapper,
+            mode,
+            key_length,
+            compliance,
+            resilience,
+            encrypt,
+            decrypt,
+            iv_length,
+        )
+    else:
+        return _run_c(
+            wrapper,
+            mode,
+            key_length,
+            compliance,
+            resilience,
+            encrypt,
+            decrypt,
+            iv_length,
+        )
 
 
 def _test_nist_encrypt(

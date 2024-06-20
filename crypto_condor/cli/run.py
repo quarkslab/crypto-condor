@@ -95,7 +95,8 @@ _aes_help = """Run an AES wrapper."""
 @app.command(name="AES", no_args_is_help=True, help=_aes_help)
 @app.command(name="aes", no_args_is_help=True, help=_aes_help, hidden=True)
 def aes(
-    language: Annotated[AES.Wrapper, _language],
+    # language: Annotated[AES.Wrapper, _language],
+    wrapper: Annotated[str, typer.Argument(metavar="FILE")],
     mode: Annotated[AES.Mode, _mode],
     key_length: Annotated[
         AesStrKeyLength,
@@ -120,7 +121,7 @@ def aes(
     """Runs an AES wrapper.
 
     Args:
-        language: The language of the wrapper.
+        wrapper: The wrapper to test.
         mode: The mode of operation.
         key_length: The length of the keys to use in bits.
         iv_length: The length of the IV that can be tested.
@@ -146,7 +147,7 @@ def aes(
 
     try:
         results = AES.run_wrapper(
-            language,
+            Path(wrapper),
             mode,
             AES.KeyLength(int(key_length)),
             compliance=compliance,
@@ -424,7 +425,7 @@ _sha_help = "Run a SHA wrapper."
 @app.command(name="SHA", no_args_is_help=True, help=_sha_help)
 @app.command(name="sha", no_args_is_help=True, help=_sha_help, hidden=True)
 def sha(
-    language: Annotated[SHA.Wrapper, _language],
+    wrapper: Annotated[str, typer.Argument(metavar="FILE")],
     algorithm: Annotated[
         SHA.Algorithm,
         typer.Argument(
@@ -444,7 +445,7 @@ def sha(
     """Runs a SHA wrapper.
 
     Args:
-        language: The language of the wrapper to run.
+        wrapper: The wrapper to test.
         algorithm: The SHA algorithm to test.
         orientation: The orientation of the implementation, either bit- or
             byte-oriented.
@@ -452,7 +453,7 @@ def sha(
         no_save: Do not save results or prompt the user.
     """
     try:
-        results = SHA.run_wrapper(language, algorithm, orientation)
+        results = SHA.run_wrapper(Path(wrapper), algorithm, orientation)
     except ValueError as error:
         logger.error(error)
         raise typer.Exit(1) from error

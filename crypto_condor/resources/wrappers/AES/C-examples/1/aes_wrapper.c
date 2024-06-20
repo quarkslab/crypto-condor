@@ -1,6 +1,6 @@
 #include "aes_wrapper.h"
 /**
- * TO FILL: Add your headers here.
+ * TODO: Add your headers here.
  */
 #include "aes.h"
 
@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
   // Input and output should have the same length (input_len) except for modes
   // that involve padding such as CBC-PKCS7.
   uint8_t *input = NULL, *output = NULL;
-  size_t input_len = 0;
+  size_t input_len = 0, output_len = 0;
   // The IV or nonce depending on the mode of operation.
   uint8_t *iv = NULL;
   size_t iv_len = 0;
@@ -21,8 +21,8 @@ int main(int argc, char **argv) {
   uint8_t *aad = NULL, *tag = NULL;
   size_t aad_len = 0, tag_len = 0;
 
-  parse(argc, argv, &mode, &key, &key_len, &input, &output, &input_len, &iv,
-        &iv_len, &segment_size, &encrypt, &aad, &aad_len, &tag, &tag_len);
+  parse(argc, argv, &mode, &key, &key_len, &input, &input_len, &iv, &iv_len,
+        &segment_size, &encrypt, &aad, &aad_len, &tag, &tag_len);
 
   /**
    * TO FILL: Call your implementation here. Refer to the documentation for
@@ -48,6 +48,8 @@ int main(int argc, char **argv) {
    * argument when encrypting.
    */
 
+  // This implementation uses a custom struct to hold the (expanded) key and IV,
+  // that we have to initialise.
   struct AES_ctx ctx;
   AES_init_ctx_iv(&ctx, key, iv);
 
@@ -60,26 +62,45 @@ int main(int argc, char **argv) {
    */
   if (encrypt) {
     /**
-     * TO FILL: Wrap the encryption function here.
+     * TODO: Call the encryption function here. Don't forget to verify
+     * output_len is the correct size; you may need to increase it if there is
+     * padding.
      */
+    output_len = input_len;
+    output = malloc(output_len * sizeof(uint8_t));
+
+    // We call the function using the input message as an input and output
+    // buffer: there is no padding
+    // involved so we don't modify the size of the array.
     AES_CBC_encrypt_buffer(&ctx, input, input_len);
+    // We can either copy the result to the output or change the print_hex call
+    // below.
+    memcpy(output, input, input_len);
 
     /**
      * Then print the results of the operation.
      */
     if (mode == AEAD_MODE) {
       printf("msg = ");
-      print_hex(input, input_len);
+      print_hex(output, output_len);
       printf("tag = ");
       print_hex(tag, tag_len);
     } else {
-      print_hex(input, input_len);
+      print_hex(output, output_len);
     }
   } else {
     /**
-     * TO FILL: Wrap the decryption function here.
+     * TODO: Call the decryption function here. Don't forget to verify
+     * output_len is the correct size; you may need to increase it if there is
+     * padding.
      */
+    output_len = input_len;
+    output = malloc(output_len * sizeof(uint8_t));
+
+    // Same as above, we use the same buffer for both and then we copy the
+    // result.
     AES_CBC_decrypt_buffer(&ctx, input, input_len);
+    memcpy(output, input, input_len);
 
     /**
      * Then print the results of the operation. Set tag_ok to 1 if the mode
@@ -90,13 +111,13 @@ int main(int argc, char **argv) {
       if (tag_ok) {
         printf("tag = OK\n");
         printf("msg = ");
-        print_hex(output, input_len);
+        print_hex(output, output_len);
       } else {
         printf("tag = FAIL\n");
         printf("msg = \n");
       }
     } else {
-      print_hex(input, input_len);
+      print_hex(output, output_len);
     }
   }
 

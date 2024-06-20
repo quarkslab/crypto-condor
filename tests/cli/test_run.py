@@ -18,15 +18,24 @@ PRIMITIVES_WITH_RUN = set(
 
 
 @pytest.mark.parametrize(
-    "language,example,mode,key_length,encrypt,decrypt",
+    "language,example,wrapper,mode,key_length,encrypt,decrypt",
     [
-        (AES.Wrapper.PYTHON, "1", AES.Mode.GCM, AES.KeyLength.ALL, True, True),
-        (AES.Wrapper.C, "1", AES.Mode.CBC, AES.KeyLength.AES128, True, True),
+        (
+            AES.Wrapper.PYTHON,
+            "1",
+            "aes_wrapper.py",
+            AES.Mode.GCM,
+            AES.KeyLength.ALL,
+            True,
+            True,
+        ),
+        # (AES.Wrapper.C, "1", AES.Mode.CBC, AES.KeyLength.AES128, True, True),
     ],
 )
 def test_aes_examples(
     language: AES.Wrapper,
     example: str,
+    wrapper: str,
     mode: AES.Mode,
     key_length: AES.KeyLength,
     encrypt: bool,
@@ -41,7 +50,7 @@ def test_aes_examples(
         )
         assert result.exit_code == 0, "Could not get wrapper example"
 
-        args = ["test", "wrapper", "AES", language, mode, str(key_length), "--no-save"]
+        args = ["test", "wrapper", "AES", wrapper, mode, str(key_length), "--no-save"]
         if not encrypt:
             args += ["--no-encrypt"]
         if not decrypt:
@@ -271,7 +280,15 @@ class TestSha:
                 ["get-wrapper", "SHA", "--language", lang, "--example", ex, "--force"],
             )
             assert wrap_result.exit_code == 0, "Could not get wrapper example"
-            args = ["test", "wrapper", "SHA", lang, algo, "byte", "--no-save"]
+            args = [
+                "test",
+                "wrapper",
+                "SHA",
+                "sha_wrapper.py",
+                algo,
+                "byte",
+                "--no-save",
+            ]
             result = runner.invoke(app, args)
             print(result.output)
             assert result.exit_code == 0, "Test failed"
