@@ -1,7 +1,6 @@
 """The CRYSTALS-Dilithium primitive."""
 
 import ctypes
-import enum
 import importlib
 import logging
 import shutil
@@ -14,6 +13,7 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import strenum
 from rich.progress import track
 
 from crypto_condor.primitives.common import (
@@ -120,7 +120,7 @@ def _get_lib_dir() -> Path:
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Wrapper(enum.StrEnum):
+class Wrapper(strenum.StrEnum):
     """Available wrappers."""
 
     PYTHON = "Python"

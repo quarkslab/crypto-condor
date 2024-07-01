@@ -4,7 +4,6 @@ The :mod:`crypto_condor.primitives.ECDH` module can test implementations of the
 :doc:`ECDH key exchange </method/ECDH>` with the :func:`test_exchange` function.
 """
 
-import enum
 import importlib
 import logging
 import sys
@@ -12,6 +11,7 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import strenum
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from rich.progress import track
@@ -46,7 +46,7 @@ def __dir__():  # pragma: no cover
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Curve(enum.StrEnum):
+class Curve(strenum.StrEnum):
     """Elliptic curves supported for ECDH.
 
     As shown below, not all curves have NIST and Wycheproof vectors. To determine
@@ -169,7 +169,7 @@ class Curve(enum.StrEnum):
         return self._ec_curve_()
 
 
-class Wrapper(enum.StrEnum):
+class Wrapper(strenum.StrEnum):
     """Supported languages for wrappers."""
 
     PYTHON = "Python"
@@ -366,9 +366,9 @@ def test_exchange_nist(ecdh: ECDH, curve: Curve) -> Results | None:
     results = Results.new("Tests ECDH exchange with NIST vectors", ["curve"])
     for test in track(vectors.nist.tests, "[NIST] Exchanging keys"):
         info = TestInfo.new(test.count, TestType.VALID, ["Compliance"])
-        d = int.from_bytes(test.own_d)
-        x = int.from_bytes(test.peer_x)
-        y = int.from_bytes(test.peer_y)
+        d = int.from_bytes(test.own_d, "big")
+        x = int.from_bytes(test.peer_x, "big")
+        y = int.from_bytes(test.peer_y, "big")
         data = EcdhNistData(d, x, y, test.z)
         point = ec.EllipticCurvePublicNumbers(x, y, ec_curve)
         pk = point.public_key().public_bytes(
@@ -417,7 +417,7 @@ def test_exchange_wycheproof(ecdh: ECDH, curve: Curve) -> Results | None:
         for test in group.tests:
             test_type = TestType(test.result)
             info = TestInfo.new(test.id, test_type, test.flags, test.comment)
-            secret = int.from_bytes(test.secret)
+            secret = int.from_bytes(test.secret, "big")
             data = EcdhWycheproofData(secret, test.public, test.shared)
             try:
                 shared = ecdh.exchange_wycheproof(secret, test.public)

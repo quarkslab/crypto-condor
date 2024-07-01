@@ -1,6 +1,5 @@
 """Module to test SHAKE implementations."""
 
-import enum
 import importlib
 import logging
 import sys
@@ -8,6 +7,7 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import strenum
 from rich.progress import track
 
 from crypto_condor.primitives.common import Results, ResultsDict, TestInfo, TestType
@@ -34,7 +34,7 @@ def __dir__():  # pragma: no cover
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Wrapper(enum.StrEnum):
+class Wrapper(strenum.StrEnum):
     """Defines the available wrappers."""
 
     PYTHON = "Python"
@@ -221,7 +221,7 @@ def test(xof: Xof, xof_algorithm: Algorithm, orientation: Orientation) -> Result
             msg = _left_most_bits(output, 128)
             output = xof(msg, output_len)
             # Get the 16 rightmost bits as int.
-            rb = int.from_bytes(output[-2:])
+            rb = int.from_bytes(output[-2:], "big")
             rg = max_len - min_len + 1
             output_len = min_len + (rb % rg)
         if output != mv.checkpoints[j]:

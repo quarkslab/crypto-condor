@@ -1,12 +1,12 @@
 """Module for PLACEHOLDER."""
 
-import enum
 import importlib
 import logging
 from pathlib import Path
 from typing import Protocol
 
 import attrs
+import strenum
 from rich.progress import track
 
 from crypto_condor.primitives.common import Results, ResultsDict, TestInfo, TestType
@@ -33,7 +33,7 @@ def __dir__():  # pragma: no cover
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Wrapper(enum.StrEnum):
+class Wrapper(strenum.StrEnum):
     """Supported languages for wrappers."""
 
     pass

@@ -1,12 +1,12 @@
 """Test vectors for ChaCha20."""
 
-import enum
 import json
 import logging
 from importlib import resources
 from typing import TypedDict
 
 import attrs
+import strenum
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Mode(enum.StrEnum):
+class Mode(strenum.StrEnum):
     """Supported ChaCha20 modes of operation."""
 
     CHACHA20_POLY1305 = "CHACHA20-POLY1305"

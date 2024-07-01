@@ -22,21 +22,24 @@ hash functions are covered by both sources:
     "SHA3-512", :red:`N`, :green:`Y`
 """
 
-import enum
 import logging
 from importlib import resources
 
 import attrs
+import strenum
 from google.protobuf.message import DecodeError
 
 from crypto_condor.vectors._HMAC.HMAC_pb2 import HmacNistVectors, HmacWycheproofVectors
 
 # --------------------------- Module --------------------------------------------------
+
 logger = logging.getLogger(__name__)
 
 
 # --------------------------- Enums ---------------------------------------------------
-class Hash(enum.StrEnum):
+
+
+class Hash(strenum.StrEnum):
     """A hash function that can be used with HMAC."""
 
     def __init__(self, value):
@@ -88,6 +91,8 @@ class Hash(enum.StrEnum):
 
 
 # --------------------------- Exceptions ----------------------------------------------
+
+
 class HmacVectorsError(Exception):
     """Exception for HMAC vectors."""
 
@@ -95,6 +100,8 @@ class HmacVectorsError(Exception):
 
 
 # --------------------------- Vectors -------------------------------------------------
+
+
 @attrs.define(frozen=True)
 class HmacVectors:
     """A class to load HMAC test vectors.

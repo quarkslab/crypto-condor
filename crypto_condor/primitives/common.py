@@ -13,7 +13,6 @@ function returns the path to use.
 
 import collections
 import datetime
-import enum
 import importlib
 import logging
 import os
@@ -22,6 +21,7 @@ from pathlib import Path
 from typing import Any, TypeAlias
 
 import attrs
+import strenum
 from rich.console import Console as RichConsole
 from rich.panel import Panel
 from rich.progress import track
@@ -79,7 +79,7 @@ return (None, False).
 # --------------------------- Enums ---------------------------------------------------
 
 
-class TestType(enum.StrEnum):
+class TestType(strenum.StrEnum):
     """The different types of test vectors.
 
     Test vectors can be separated into three types:

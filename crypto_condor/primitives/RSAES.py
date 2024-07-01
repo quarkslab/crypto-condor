@@ -1,6 +1,5 @@
 """Module for RSAES."""
 
-import enum
 import importlib
 import logging
 import sys
@@ -8,6 +7,7 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import strenum
 from rich.progress import track
 
 from crypto_condor.primitives.common import DebugInfo, Results, ResultsDict, TestType
@@ -36,13 +36,17 @@ def __dir__():  # pragma: no cover
 
 
 # --------------------------- Enums ---------------------------------------------------
-class Wrapper(enum.StrEnum):
+
+
+class Wrapper(strenum.StrEnum):
     """Available wrappers."""
 
     PYTHON = "Python"
 
 
 # --------------------------- Protocols -----------------------------------------------
+
+
 class DecryptPkcs(Protocol):
     """Represents a function that decrypts messages encrypted with RSASSA-PKCS1-v1_5."""
 

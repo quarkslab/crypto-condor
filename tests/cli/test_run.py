@@ -50,13 +50,22 @@ def test_aes_examples(
         )
         assert result.exit_code == 0, "Could not get wrapper example"
 
-        args = ["test", "wrapper", "AES", wrapper, mode, str(key_length), "--no-save"]
+        args = [
+            "test",
+            "wrapper",
+            "AES",
+            wrapper,
+            mode,
+            str(int(key_length)),
+            "--no-save",
+        ]
         if not encrypt:
             args += ["--no-encrypt"]
         if not decrypt:
             args += ["--no-decrypt"]
 
         result = runner.invoke(app, args)
+        print(result.output)
         assert result.exit_code == 0
 
 

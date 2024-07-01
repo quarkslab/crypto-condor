@@ -1,7 +1,8 @@
 """Global constants."""
 
-import enum
 from typing import TypedDict
+
+import strenum
 
 
 class Modes(TypedDict):
@@ -14,7 +15,7 @@ class Modes(TypedDict):
     harness: bool | None
 
 
-class Primitive(enum.StrEnum):
+class Primitive(strenum.StrEnum):
     """Supported primitives."""
 
     AES = "AES"

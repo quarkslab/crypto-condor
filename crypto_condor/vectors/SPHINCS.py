@@ -5,6 +5,7 @@ import logging
 from importlib import resources
 
 import attrs
+import strenum
 from google.protobuf import message
 
 from crypto_condor.vectors._sphincs.sphincs_pb2 import (
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
 # ]
 
 
-class Paramset(enum.StrEnum):
+class Paramset(strenum.StrEnum):
     """Available parameter sets."""
 
     haraka_128f_robust = enum.auto()

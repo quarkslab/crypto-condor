@@ -1,12 +1,12 @@
 """Test vectors for ECDSA."""
 
-import enum
 import json
 import logging
 from importlib import resources
 from typing import Literal, TypedDict, overload
 
 import attrs
+import strenum
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from google.protobuf import message
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Curve(enum.StrEnum):
+class Curve(strenum.StrEnum):
     """Defines all supported curves."""
 
     SECP192R1 = "secp192r1"
@@ -181,7 +181,7 @@ class Curve(enum.StrEnum):
                 return None
 
 
-class Hash(enum.StrEnum):
+class Hash(strenum.StrEnum):
     """Defines all supported hash functions."""
 
     SHA_256 = "SHA-256"
@@ -264,7 +264,7 @@ class Hash(enum.StrEnum):
                 return hashes.SHA3_512()
 
 
-class EcdsaVectorType(enum.StrEnum):
+class EcdsaVectorType(strenum.StrEnum):
     """Defines the different types of test vectors available."""
 
     # Names are in lowercase since the vectors filenames are lowercase.

@@ -1,10 +1,10 @@
 """Test vectors for SHAKE."""
 
-import enum
 import logging
 from importlib import resources
 
 import attrs
+import strenum
 from google.protobuf import message
 
 from crypto_condor.vectors._sha.sha_pb2 import (
@@ -18,14 +18,14 @@ logger = logging.getLogger(__name__)
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Algorithm(enum.StrEnum):
+class Algorithm(strenum.StrEnum):
     """Supported extensible output functions."""
 
     SHAKE128 = "SHAKE128"
     SHAKE256 = "SHAKE256"
 
 
-class Orientation(enum.StrEnum):
+class Orientation(strenum.StrEnum):
     """Orientation of the implementation."""
 
     BIT = "bit"

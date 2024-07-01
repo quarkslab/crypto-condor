@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import enum
 import importlib
 import logging
 import random
@@ -12,6 +11,7 @@ from pathlib import Path
 from typing import Protocol, TypeAlias
 
 import attrs
+import strenum
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -129,7 +129,7 @@ class KeyGen(Protocol):
 # --------------------------- Enums ---------------------------------------------------
 
 
-class KeyEncoding(enum.StrEnum):
+class KeyEncoding(strenum.StrEnum):
     """Supported key encodings."""
 
     PEM = "PEM"
@@ -140,7 +140,7 @@ class KeyEncoding(enum.StrEnum):
     """The secret value, serialized to bytes."""
 
 
-class PubKeyEncoding(enum.StrEnum):
+class PubKeyEncoding(strenum.StrEnum):
     """Supported public key encodings."""
 
     PEM = "PEM"
@@ -151,7 +151,7 @@ class PubKeyEncoding(enum.StrEnum):
     """The uncompressed coordinates, serialized to bytes."""
 
 
-class Wrapper(enum.StrEnum):
+class Wrapper(strenum.StrEnum):
     """Supported languages for wrappers."""
 
     PYTHON = "Python"

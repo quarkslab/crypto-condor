@@ -4,9 +4,10 @@ import enum
 import json
 import logging
 from importlib import resources
-from typing import Self, TypedDict
+from typing import TypedDict
 
 import attrs
+import strenum
 
 from crypto_condor.vectors._aes.aes_pb2 import AesNistVectors
 
@@ -29,7 +30,7 @@ class KeyLength(enum.IntEnum):
     AES256 = 256
 
 
-class Mode(enum.StrEnum):
+class Mode(strenum.StrEnum):
     """Supported AES modes of operation.
 
     The AES primitive is used with a variety of modes of operation. This enum defines
@@ -53,6 +54,8 @@ class Mode(enum.StrEnum):
 
 
 # --------------------------- Exceptions ----------------------------------------------
+
+
 class AesVectorsError(Exception):
     """Exception for errors importing AES vectors."""
 
@@ -235,7 +238,7 @@ class AesVectors:
         length.
 
         >>> for key_length in vectors.nist:
-        ...     print(key_length)
+        ...     print(int(key_length))
         128
 
         Some modes do not have resilience test vectors.
@@ -256,7 +259,7 @@ class AesVectors:
     wycheproof: AesWycheproofVectors | None
 
     @classmethod
-    def load(cls, mode: Mode, key_length: KeyLength = KeyLength.ALL) -> Self:
+    def load(cls, mode: Mode, key_length: KeyLength = KeyLength.ALL):
         """Loads AES test vectors.
 
         Args:

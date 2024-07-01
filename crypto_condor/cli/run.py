@@ -1,11 +1,11 @@
 """Module for the "test wrapper" command."""
 
-import enum
 import logging
 from pathlib import Path
 from subprocess import SubprocessError
 from typing import Annotated, Optional
 
+import strenum
 import typer
 from rich.prompt import Prompt
 
@@ -45,7 +45,7 @@ app = typer.Typer(
 # --------------------------- Enums ---------------------------------------------------
 
 
-class AesStrKeyLength(enum.StrEnum):
+class AesStrKeyLength(strenum.StrEnum):
     """Workaround for using IntEnum with Typer.
 
     Typer/Click don't handle ints as choices from an enum, so mimic the real enum with

@@ -1,6 +1,5 @@
 """Module for the SHA-1, SHA-2, and SHA-3 primitives."""
 
-import enum
 import importlib
 import logging
 import subprocess
@@ -9,6 +8,7 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import strenum
 from Crypto.Hash import (
     SHA1,
     SHA3_224,
@@ -49,7 +49,7 @@ def __dir__():  # pragma: no cover
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Wrapper(enum.StrEnum):
+class Wrapper(strenum.StrEnum):
     """Defines the available wrappers."""
 
     PYTHON = "Python"

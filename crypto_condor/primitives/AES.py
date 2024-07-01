@@ -7,7 +7,6 @@ The :mod:`crypto_condor.primitives.AES` module can test implementations of `AES
 
 from __future__ import annotations
 
-import enum
 import importlib
 import logging
 import subprocess
@@ -20,6 +19,7 @@ from typing import TYPE_CHECKING, Literal, Protocol, overload
 
 import attrs
 import cffi
+import strenum
 from Crypto.Cipher import AES as pycryptoAES
 from Crypto.Util import Padding
 from rich.progress import track
@@ -201,14 +201,14 @@ def _get_aes_lib() -> tuple[cffi.FFI | None, _cffi_backend.Lib | None]:
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Wrapper(enum.StrEnum):
+class Wrapper(strenum.StrEnum):
     """Supported languages for wrappers."""
 
     PYTHON = "Python"
     C = "C"
 
 
-class Operation(enum.StrEnum):
+class Operation(strenum.StrEnum):
     """Operations supported for AES.
 
     As a symmetric cipher, AES can encrypt and decrypt messages. This enum is used to

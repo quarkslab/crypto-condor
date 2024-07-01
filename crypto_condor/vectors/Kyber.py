@@ -1,10 +1,10 @@
 """Test vectors for CRYSTALS-Kyber."""
 
-import enum
 import logging
 from importlib import resources
 
 import attrs
+import strenum
 from google.protobuf import message
 
 from crypto_condor.vectors._kyber.kyber_pb2 import KyberNistTest, KyberNistVectors
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Paramset(enum.StrEnum):
+class Paramset(strenum.StrEnum):
     """Available parameter sets."""
 
     def __new__(cls, value):

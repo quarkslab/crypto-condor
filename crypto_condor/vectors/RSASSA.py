@@ -1,12 +1,12 @@
 """Test vectors for RSASSA."""
 
-import enum
 import json
 import logging
 from importlib import resources
 from typing import TypedDict
 
 import attrs
+import strenum
 
 from crypto_condor.vectors._rsa.rsa_pb2 import (
     RsaNistSigGenVectors,
@@ -14,18 +14,21 @@ from crypto_condor.vectors._rsa.rsa_pb2 import (
 )
 
 # --------------------------- Module --------------------------------------------------
+
 logger = logging.getLogger(__name__)
 
 
 # --------------------------- Enums ---------------------------------------------------
-class Scheme(enum.StrEnum):
+
+
+class Scheme(strenum.StrEnum):
     """RSA signature schemes."""
 
     PKCS = "RSASSA-PKCS1-v1_5"
     PSS = "RSASSA-PSS"
 
 
-class Hash(enum.StrEnum):
+class Hash(strenum.StrEnum):
     """A list of available hash functions."""
 
     SHA_1 = "SHA-1"

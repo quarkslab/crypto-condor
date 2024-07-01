@@ -1,6 +1,5 @@
 """The CRYSTALS-Kyber primitive."""
 
-import enum
 import importlib
 import logging
 import shutil
@@ -13,6 +12,7 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import strenum
 from cffi import FFI
 from rich.progress import track
 
@@ -108,7 +108,7 @@ def _get_lib_dir() -> Path:
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Wrapper(enum.StrEnum):
+class Wrapper(strenum.StrEnum):
     """Available wrappers."""
 
     PYTHON = "Python"

@@ -1,26 +1,26 @@
 """Test vectors for RSAES."""
 
-import enum
 import json
 import logging
 from importlib import resources
 from typing import TypedDict
 
 import attrs
+import strenum
 
 # --------------------------- Module --------------------------------------------------
 logger = logging.getLogger(__name__)
 
 
 # --------------------------- Enums ---------------------------------------------------
-class Scheme(enum.StrEnum):
+class Scheme(strenum.StrEnum):
     """RSA encryption schemes."""
 
     OAEP = "RSAES-OAEP"
     PKCS = "RSAES-PKCS1-v1_5"
 
 
-class Hash(enum.StrEnum):
+class Hash(strenum.StrEnum):
     """Available hash functions."""
 
     SHA_1 = "SHA-1"

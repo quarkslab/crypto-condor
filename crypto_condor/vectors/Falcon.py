@@ -1,10 +1,10 @@
 """Test vectors for Falcon."""
 
-import enum
 import logging
 from importlib import resources
 
 import attrs
+import strenum
 from google.protobuf import message
 
 from crypto_condor.vectors._falcon.falcon_pb2 import (
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Paramset(enum.StrEnum):
+class Paramset(strenum.StrEnum):
     """Available parameter sets."""
 
     FALCON512 = "falcon512"

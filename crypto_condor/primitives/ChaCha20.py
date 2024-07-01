@@ -1,6 +1,5 @@
 """The ChaCha20 module."""
 
-import enum
 import importlib
 import logging
 import sys
@@ -8,6 +7,7 @@ from pathlib import Path
 from typing import Literal, Protocol, overload
 
 import attrs
+import strenum
 from Crypto.Cipher import ChaCha20, ChaCha20_Poly1305
 from rich.progress import track
 
@@ -45,14 +45,14 @@ def __dir__():  # pragma: no cover
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Operation(enum.StrEnum):
+class Operation(strenum.StrEnum):
     """Supported operations."""
 
     ENCRYPT = "encrypt"
     DECRYPT = "decrypt"
 
 
-class Wrapper(enum.StrEnum):
+class Wrapper(strenum.StrEnum):
     """Supported wrapper languages."""
 
     PYTHON = "Python"

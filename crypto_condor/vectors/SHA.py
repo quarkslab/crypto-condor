@@ -1,10 +1,10 @@
 """Test vectors for SHA and SHAKE."""
 
-import enum
 import logging
 from importlib import resources
 
 import attrs
+import strenum
 from google.protobuf import message
 
 from crypto_condor.vectors._sha.sha_pb2 import (
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # --------------------------- Enums ---------------------------------------------------
 
 
-class Algorithm(enum.StrEnum):
+class Algorithm(strenum.StrEnum):
     """Supported hash algorithms."""
 
     def __init__(self, value: str):
@@ -54,7 +54,7 @@ class Algorithm(enum.StrEnum):
     SHA3_512 = "SHA3-512"
 
 
-class Orientation(enum.StrEnum):
+class Orientation(strenum.StrEnum):
     """Orientation of the implementation."""
 
     BIT = "bit"

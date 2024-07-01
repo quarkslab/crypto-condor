@@ -1,6 +1,5 @@
 """Module for RSASSA."""
 
-import enum
 import importlib
 import logging
 import sys
@@ -8,6 +7,7 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import strenum
 from Crypto.Hash import (
     SHA1,
     SHA3_224,
@@ -56,13 +56,17 @@ def __dir__():  # pragma: no cover
 
 
 # --------------------------- Enums ---------------------------------------------------
-class Wrapper(enum.StrEnum):
+
+
+class Wrapper(strenum.StrEnum):
     """Available wrappers."""
 
     PYTHON = "Python"
 
 
 # --------------------------- Protocols -----------------------------------------------
+
+
 class Sign(Protocol):
     """Represents a function that signs with RSASSA-PKCS1-v1_5 or RSASSA-PSS."""
 

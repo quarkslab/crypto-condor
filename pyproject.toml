@@ -41,13 +41,14 @@ exclude = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.10"
 pycryptodome = "^3.17"
 protobuf = "^4.22.3"
 typer = { version = "^0.9.0", extras = ["all"] }
 cryptography = "^41.0.1"
 attrs = "^23.1.0"
 cffi = "^1.16.0"
+strenum = "^0.4.15"
 
 [tool.poetry.group.dev.dependencies]
 black = { extras = ["jupyter"], version = "^24.1.1" }
