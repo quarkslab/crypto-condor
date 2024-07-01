@@ -23,6 +23,7 @@ app = typer.Typer(
     rich_markup_mode="rich",
     no_args_is_help=True,
     context_settings={"max_content_width": console.width},
+    pretty_exceptions_show_locals=False,
 )
 app.add_typer(test.app, name="test", rich_help_panel="Test implementations")
 
@@ -412,3 +413,5 @@ def main(
             :func:`~crypto_condor.cli.callbacks.print_version` callback.
     """
     set_logging(verbose)
+    if verbose >= 2:
+        app.pretty_exceptions_show_locals = True
