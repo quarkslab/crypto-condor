@@ -851,11 +851,13 @@ def _test_sign_nist(
             logger.debug("Test vector error", exc_info=True)
             continue
 
-        message = bytes.fromhex(test.message)
+        raw_message = bytes.fromhex(test.message)
         if pre_hashed:
             digest = hashes.Hash(hash_function.get_hash_instance())
-            digest.update(message)
+            digest.update(raw_message)
             message = digest.finalize()
+        else:
+            message = raw_message
 
         try:
             signature = sign_function(key, message)
@@ -884,7 +886,7 @@ def _test_sign_nist(
         )
 
         data = SigData(info, key, message, signature)
-        if _verify(serialized_pub_key, hash_function, message, signature):
+        if _verify(serialized_pub_key, hash_function, raw_message, signature):
             info.result = True
         else:
             info.error_msg = "Signature is not valid"
