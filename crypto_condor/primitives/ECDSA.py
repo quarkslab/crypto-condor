@@ -108,6 +108,10 @@ class Sign(Protocol):
             private_key: The private elliptic curve key. Either PEM-encoded,
                 DER-encoded, or as serialized int.
             message: The message to sign.
+
+            
+        Returns:
+            The signed message.
         """
         ...  # pragma: no cover (protocol)
 
