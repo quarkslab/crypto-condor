@@ -109,7 +109,7 @@ class Sign(Protocol):
                 DER-encoded, or as serialized int.
             message: The message to sign.
 
-            
+
         Returns:
             The signed message.
         """
