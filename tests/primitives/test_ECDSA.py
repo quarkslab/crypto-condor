@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, utils
 
 from crypto_condor.primitives import ECDSA
 from crypto_condor.primitives.common import Console
@@ -160,6 +160,40 @@ def test_sign(curve_name: str, hash_name: str):
         return signature
 
     results = ECDSA.test_sign(_sign, curve, hash_function, ECDSA.KeyEncoding.DER)
+    assert results is not None, "No results"
+    console.print_results(results)
+    assert results.check()
+
+
+@pytest.mark.parametrize(
+    "curve_name, hash_name",
+    [
+        ("secp224r1", "sha256"),
+        ("secp256r1", "sha256"),
+        ("secp384r1", "sha256"),
+        ("secp521r1", "sha256"),
+    ],
+)
+def test_sign_prehashed(curve_name: str, hash_name: str):
+    """Tests :meth:`crypto_condor.primitives.ECDSA.test_sign.
+
+    Uses pre-hashed messages and DER encoding.
+    """
+    curve = ECDSA.Curve.from_name(curve_name)
+    hash_function = ECDSA.Hash.from_name(hash_name)
+
+    def _sign(private_key: bytes, message: bytes) -> bytes:
+        loaded_key = serialization.load_der_private_key(private_key, None)
+        if not isinstance(loaded_key, ec.EllipticCurvePrivateKey):
+            raise ValueError("Loaded key is not an elliptic curve private key.")
+        signature = loaded_key.sign(
+            message, ec.ECDSA(utils.Prehashed(hash_function.get_hash_instance()))
+        )
+        return signature
+
+    results = ECDSA.test_sign(
+        _sign, curve, hash_function, ECDSA.KeyEncoding.DER, pre_hashed=True
+    )
     assert results is not None, "No results"
     console.print_results(results)
     assert results.check()
