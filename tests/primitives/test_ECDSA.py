@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, utils
 
@@ -77,17 +78,24 @@ def test_verify_file(curve: ECDSA.Curve, hash_function: ECDSA.Hash, tmp_path: Pa
 
 
 @pytest.mark.parametrize(
-    "curve_name, hash_name",
+    "curve_name, hash_name, nist, wycheproof",
     [
-        ("secp192r1", "sha256"),
-        ("secp224r1", "sha256"),
-        ("secp256r1", "sha256"),
-        ("secp256k1", "sha256"),
-        ("brainpoolP256r1", "sha256"),
+        ("secp192r1", "sha256", True, True),
+        ("secp224r1", "sha256", True, True),
+        ("secp256r1", "sha256", True, True),
+        ("secp256k1", "sha256", False, True),
+        ("brainpoolP256r1", "sha256", False, True),
     ],
 )
-def test_verify(curve_name: str, hash_name: str):
-    """Tests :meth:`crypto_condor.primitives.ECDSA.test_verify`."""
+def test_verify(curve_name: str, hash_name: str, nist: bool, wycheproof: bool):
+    """Tests :meth:`crypto_condor.primitives.ECDSA.test_verify`.
+
+    Args:
+        curve_name: Name of the curve to test.
+        hash_name: Name of the hash function to test.
+        nist: Whether results from NIST test vectors are expected.
+        wycheproof: Whether results from Wycheproof test vectors are expected.
+    """
     curve = ECDSA.Curve.from_name(curve_name)
     hash_function = ECDSA.Hash.from_name(hash_name)
 
@@ -95,13 +103,39 @@ def test_verify(curve_name: str, hash_name: str):
         """Lower-order function to wrap :class:`ECDSA`'s `verify`."""
         return ECDSA._verify(public_key, hash_function, message, signature)
 
-    group = ECDSA.test_verify(verify, curve, hash_function, ECDSA.PubKeyEncoding.DER)
-    if group.get("nist", None) is not None:
-        console.print_results(group["nist"])
-        assert group["nist"].check()
-    if group.get("wycheproof", None) is not None:
-        console.print_results(group["wycheproof"])
-        assert group["wycheproof"].check()
+    def _verify_uncompressed(
+        public_key: bytes, message: bytes, signature: bytes
+    ) -> bool:
+        pk = ec.EllipticCurvePublicKey.from_encoded_point(
+            curve.get_curve_instance(), public_key
+        )
+        try:
+            pk.verify(signature, message, ec.ECDSA(hash_function.get_hash_instance()))
+            return True
+        except InvalidSignature:
+            return False
+
+    results = ECDSA.test_verify(verify, curve, hash_function, ECDSA.PubKeyEncoding.DER)
+    if nist:
+        assert results.get("nist", None) is not None
+        console.print_results(results["nist"])
+        assert results["nist"].check()
+    if wycheproof:
+        assert results.get("wycheproof", None) is not None
+        console.print_results(results["wycheproof"])
+        assert results["wycheproof"].check()
+
+    results = ECDSA.test_verify(
+        _verify_uncompressed, curve, hash_function, ECDSA.PubKeyEncoding.UNCOMPRESSED
+    )
+    if nist:
+        assert results.get("nist", None) is not None
+        console.print_results(results["nist"])
+        assert results["nist"].check()
+    if wycheproof:
+        assert results.get("wycheproof", None) is not None
+        console.print_results(results["wycheproof"])
+        assert results["wycheproof"].check()
 
 
 @pytest.mark.parametrize(

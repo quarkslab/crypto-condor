@@ -650,7 +650,7 @@ def _test_verify_wycheproof(
             case PubKeyEncoding.PEM:
                 key = group["keyPem"].encode()
             case PubKeyEncoding.UNCOMPRESSED:
-                key = group["key"]["uncompressed"]
+                key = bytes.fromhex(group["key"]["uncompressed"])
         for test in group["tests"]:
             tid = test["tcId"]
             test_type = TestType(test["result"])
