@@ -690,7 +690,7 @@ class Console(RichConsole):
     def process_results(
         self,
         res: ResultsDict | Results,
-        filename: str = "",
+        filename: str | None = "",
         no_save: bool = False,
         debug_data: bool | None = None,
     ) -> bool:
@@ -769,7 +769,7 @@ class Console(RichConsole):
             subtitle=f"crypto-condor {padded_version} by Quarkslab",
         )
         self.print(summary)
-        if no_save:
+        if no_save or filename is None:
             # Nothing more to do.
             return res.check()
         # Save results.
