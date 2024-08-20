@@ -14,6 +14,7 @@ function returns the path to use.
 import collections
 import datetime
 import importlib
+import importlib.metadata
 import logging
 import os
 import sys
