@@ -1,14 +1,7 @@
 """Module for common objects.
 
-This module provides the :class:`Results` class to record test results in an uniform
-manner. These can be grouped with the :class:`ResultsDict` class.
-
-To have a common set of attributes each individual test should have, the
-:class:`DebugInfo` and the new :class:`TestInfo` classes should be used. One of such
-attributes is the type of test vector, which is defined by the :enum:`TestType` enum.
-
-For functions that have to persist application data, the :func:`get_appdata_dir`
-function returns the path to use.
+This module provides classes to store the results of tests, common functions, and a
+custom Rich console to display content.
 """
 
 import collections
