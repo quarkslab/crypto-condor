@@ -417,7 +417,7 @@ def test_exchange_wycheproof(ecdh: ECDH, curve: Curve) -> Results | None:
         for test in group.tests:
             test_type = TestType(test.result)
             info = TestInfo.new(test.id, test_type, test.flags, test.comment)
-            secret = int.from_bytes(test.secret, "big")
+            secret = int.from_bytes(test.private, "big")
             data = EcdhWycheproofData(secret, test.public, test.shared)
             try:
                 shared = ecdh.exchange_wycheproof(secret, test.public)
@@ -425,7 +425,10 @@ def test_exchange_wycheproof(ecdh: ECDH, curve: Curve) -> Results | None:
                 logger.info("Method not implemented, test skipped")
                 return None
             except Exception as error:
-                info.fail(f"Exchange failed: {str(error)}", data)
+                if test_type == TestType.VALID:
+                    info.fail(f"Exchange failed: {str(error)}", data)
+                else:
+                    info.ok(data)
                 logger.debug("Exception raised by exchange_wycheproof", exc_info=True)
                 results.add(info)
                 continue
@@ -433,7 +436,7 @@ def test_exchange_wycheproof(ecdh: ECDH, curve: Curve) -> Results | None:
             res = shared == test.shared
             data.result = shared
             match (test_type, res):
-                case (TestType.VALID, True, TestType.INVALID, False):
+                case (TestType.VALID, True) | (TestType.INVALID, False):
                     info.ok(data)
                 case (TestType.VALID, False):
                     info.fail("Implementation returned wrong shared secret", data)
@@ -569,7 +572,7 @@ def run_wrapper_python(
         logger.debug("Reloading ECDH wrapper module %s", wrapper.stem)
         ecdh_wrapper = importlib.reload(ecdh_wrapper)
     ecdh = ecdh_wrapper.CC_ECDH()
-    return test_exchange(ecdh, curve)
+    return test_exchange(ecdh, curve, compliance=compliance, resilience=resilience)
 
 
 def run_wrapper(

@@ -492,7 +492,7 @@ class TestECDH:
 
     @pytest.mark.parametrize(
         ("lang", "example", "curve"),
-        [("Python", "1", "P-192"), ("Python", "2", "P-192")],
+        [("Python", "1", "P-256"), ("Python", "2", "P-192")],
     )
     def test_examples(self, lang: str, example: str, curve: str, tmp_path: Path):
         """Tests ECDH examples."""
