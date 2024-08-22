@@ -176,9 +176,8 @@ class DebugInfo:
         """Returns a string representation."""
         s = f"ID = {self.tid}\n"
         s += f"Result = {'PASS' if self.result else 'FAIL'}\n"
-        # TODO: add test type?
-        # s += f"Test type: {self.test_type}\n"
-        s += f"Flags: {self.flags}\n"
+        s += f"Type = {self.test_type}\n"
+        s += f"Flags = {self.flags}\n"
         s += f"Comment = {self.comment if self.comment else '<none>'}\n"
         if self.error_msg:
             s += f"Error = {self.error_msg}\n"
@@ -227,7 +226,7 @@ class TestInfo:
         elif self.result is not None:
             s += "Result = [red1]FAIL[/]\n"
             if self.err_msg:
-                s += "Error = {self.err_msg}\n"
+                s += f"Error = {self.err_msg}\n"
         else:
             s += "Result = [yellow1]None[/]\n"
         return s
@@ -509,7 +508,7 @@ class Results:
                 raise ValueError("The result of test %d is None" % data.id)
             self._tids.add(data.id)
             self._flags |= set(data.flags)
-            self.data[data.id] = data.data
+            self.data[data.id] = data
             match data.type:
                 case TestType.VALID:
                     self.valid.add(data.id, data.result, data.flags)
@@ -609,8 +608,14 @@ class ResultsDict(dict):
                     s += f"  Failed: {inv_f}\n"
             if acc_p + acc_f > 0:
                 s += "Acceptable tests:\n"
-                s += f"  Passed: [yellow1]{acc_p}[/]\n"
-                s += f"  Failed: [yellow1]{acc_f}[/]\n"
+                if acc_p > 0:
+                    s += f"  Passed: [yellow1]{acc_p}[/]\n"
+                else:
+                    s += f"  Passed: {acc_p}\n"
+                if acc_f > 0:
+                    s += f"  Failed: [yellow1]{acc_f}[/]\n"
+                else:
+                    s += f"  Failed: {acc_f}\n"
         # Remove the leading newline, avoids the extra space inside the panel.
         return s.rstrip("\n")
 
@@ -811,11 +816,12 @@ class Console(RichConsole):
                             for data in track(
                                 r.data.values(), f"Writing debug data {count}/{num_res}"
                             ):
-                                printer.print(str(data))
                                 # For TestInfo we have to print the debug data
                                 # separately.
                                 if isinstance(data, TestInfo):
-                                    printer.print(str(data.data))
+                                    printer.print(str(data), str(data.data))
+                                else:
+                                    printer.print(str(data))
                     else:
                         header = "Debug data"
                         line = "^" * len(header)
