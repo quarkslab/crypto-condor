@@ -85,6 +85,9 @@ _filename = typer.Option(
     metavar="FILE",
 )
 _no_save = typer.Option("--no-save", help="Do not prompt to save results.")
+_debug = typer.Option(
+    "--debug/--no-debug", help="When saving results, whether to include debug data"
+)
 
 # --------------------------- Subcommands ---------------------------------------------
 
@@ -117,6 +120,7 @@ def aes(
     decrypt: Annotated[bool, _decrypt] = True,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs an AES wrapper.
 
@@ -131,6 +135,7 @@ def aes(
         decrypt: Whether to test decryption.
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
+        debug: When saving the results to a file, whether to add the debug data.
 
     Notes:
         - no_encrypt and no_decrypt should not be True at the same time.
@@ -159,7 +164,7 @@ def aes(
     except (SubprocessError, ValueError, FileNotFoundError) as error:
         logger.error(error)
         raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save):
+    if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
@@ -237,6 +242,7 @@ def ecdsa(
     ] = False,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs an ECDSA wrapper.
 
@@ -255,6 +261,7 @@ def ecdsa(
         test_sign_then_verify: Whether to test both functions by signing then verifying.
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
+        debug: When saving the results to a file, whether to add the debug data.
 
     Notes:
         - :attr:`compliance` and :attr:`resilience` should not be False at the same time
@@ -319,7 +326,7 @@ def ecdsa(
     except FileNotFoundError as error:
         logger.error(error)
         raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save):
+    if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
@@ -353,6 +360,7 @@ def kyber(
     ] = True,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs a Kyber wrapper.
 
@@ -363,6 +371,7 @@ def kyber(
         decapsulate: Whether to test the decapsulation function.
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
+        debug: When saving the results to a file, whether to add the debug data.
     """
     if not encapsulate and not decapsulate:  # pragma: no cover (not needed)
         console.print(
@@ -374,7 +383,7 @@ def kyber(
     except Exception as error:
         console.print(error)
         raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save):
+    if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
@@ -396,6 +405,7 @@ def dilithium(
     verify: Annotated[bool, _verify] = True,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs a Dilithium wrapper.
 
@@ -406,13 +416,14 @@ def dilithium(
         verify: Whether to test the verifying function.
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
+        debug: When saving the results to a file, whether to add the debug data.
     """
     try:
         results = Dilithium.run_wrapper(language, parameter_set, sign, verify)
     except Exception as error:
         console.print(error)
         raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save):
+    if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
@@ -441,6 +452,7 @@ def sha(
     ] = SHA.Orientation.BYTE,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs a SHA wrapper.
 
@@ -451,13 +463,14 @@ def sha(
             byte-oriented.
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
+        debug: When saving the results to a file, whether to add the debug data.
     """
     try:
         results = SHA.run_wrapper(Path(wrapper), algorithm, orientation)
     except ValueError as error:
         logger.error(error)
         raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save):
+    if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
@@ -484,8 +497,9 @@ def shake(
     ],
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
 ):
-    """Runs a SHA wrapper.
+    """Runs a SHAKE wrapper.
 
     Args:
         language: The language of the wrapper to run.
@@ -494,13 +508,14 @@ def shake(
             byte-oriented.
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
+        debug: When saving the results to a file, whether to add the debug data.
     """
     try:
         results = SHAKE.run_wrapper(language, algorithm, orientation)
     except ValueError as error:
         logger.error(error)
         raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save):
+    if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
@@ -546,6 +561,7 @@ def rsassa(
     verify: Annotated[bool, _verify] = True,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs an RSA wrapper.
 
@@ -558,13 +574,14 @@ def rsassa(
         verify: Whether to test the verifying function.
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
+        debug: When saving the results to a file, whether to add the debug data.
     """
     try:
         results = RSASSA.run_wrapper(language, scheme, sha, mgf_sha, sign, verify)
     except Exception as error:
         logger.error(error)
         raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save):
+    if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
@@ -608,6 +625,7 @@ def rsaes(
     ] = None,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs a RSAES wrapper.
 
@@ -618,13 +636,14 @@ def rsaes(
         mgf_sha: The SHA to use with MGF1 in RSAES-OAEP.
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
+        debug: When saving the results to a file, whether to add the debug data.
     """
     try:
         results = RSAES.run_rsaes_wrapper(language, scheme, sha, mgf_sha)
     except Exception as error:
         logger.error(error)
         raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save):
+    if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
@@ -644,6 +663,7 @@ def chacha20(
     decrypt: Annotated[bool, _decrypt] = True,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs an ChaCha20 wrapper.
 
@@ -655,6 +675,7 @@ def chacha20(
         decrypt: Whether to test decryption.
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
+        debug: When saving the results to a file, whether to add the debug data.
 
     Notes:
         - encrypt and decrypt should not be False at the same time.
@@ -674,7 +695,7 @@ def chacha20(
     except (SubprocessError, ValueError, FileNotFoundError) as error:
         console.print(error)
         raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save):
+    if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
@@ -700,6 +721,7 @@ def hmac(
     resilience: Annotated[bool, _resilience] = False,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs an HMAC wrapper."""
     try:
@@ -709,7 +731,7 @@ def hmac(
     except Exception as error:
         console.print(error)
         raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save):
+    if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
@@ -750,6 +772,7 @@ def ecdh(
     resilience: Annotated[bool, _resilience] = False,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs an ECDH wrapper.
 
@@ -761,12 +784,13 @@ def ecdh(
         resilience: Whether to use resilience test vectors.
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
+        debug: When saving the results to a file, whether to add the debug data.
     """
     try:
         results = ECDH.run_wrapper(Path(wrapper), lang, curve, compliance, resilience)
     except (FileNotFoundError, ModuleNotFoundError) as error:
         raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save):
+    if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
