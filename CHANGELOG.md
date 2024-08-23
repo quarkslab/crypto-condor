@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [CalVer](https://calver.org/).
 
+## 2024.08.23
+
+### Fixed
+
+- ECDH: Wrong test attribute in Wycheproof test (#11, 83204324).
+- common: Missing `importlib.metadata` import (a1b55d6f).
+- common: Small improvements to result display (d4cf7ea8).
+
+### Added
+
+- cli: --debug option to save debug data (#10, 8e4b295f).
+- docs: Documentation for `common.Console` (#9, 0d907ca1).
+
+## 2024.08.19
+
+### Fixed
+
+- common: Passing `None` to `Console.process_results` does not work as
+  documented (#7, 3b6fef74).
+
+## 2024.08.03
+
+### Fixed
+
+- ECDSA: `test_sign` fails to verify signature when using the `pre_hashed`
+  option (#4, 6871c6e5, b1c1ddc5).
+- ECDSA: Verify test crashes when saving the results (#5, 1d7019df).
+
 ## 2024.07.03
 
 - **Breaking**: changed the usage of the AES and SHA wrappers.
