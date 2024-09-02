@@ -307,7 +307,12 @@ crypto-condor bundles this library with Quarkslab's modifications to run the NIS
 """  # noqa: E501
 
 
-@app.command(name="testu01", help=_testu01_help, rich_help_panel="Test PRNG")
+@app.command(
+    name="testu01",
+    help=_testu01_help,
+    rich_help_panel="Test PRNG",
+    no_args_is_help=True,
+)
 def testu01(
     file: Annotated[
         Path,
