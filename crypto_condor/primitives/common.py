@@ -619,7 +619,12 @@ class ResultsDict(dict):
         # Remove the leading newline, avoids the extra space inside the panel.
         return s.rstrip("\n")
 
-    def add(self, res: Results | None, arg_names: list[str] | None = None) -> None:
+    def add(
+        self,
+        res: Results | None,
+        arg_names: list[str] | None = None,
+        extra_values: list[str] | None = None,
+    ) -> None:
         """Adds Results with a deterministic key.
 
         It generates the dictionary key from the attributes of the given Results as
@@ -636,26 +641,34 @@ class ResultsDict(dict):
             res: The results to add. If None, this method does nothing.
             arg_names: An optional list of argument names to filter which ones should be
                 used to create the key.
+            extra_values: An optional list of arbitrary values to add after those
+                defined by arg_names.
 
         Notes:
-            This method accepts None as the first argument to simplify its usage when a
-            test function returns Results | None.
+            - This method accepts None as the first argument to simplify its usage when
+              a test function returns Results | None.
+            - The values are stringified with ``str()``.
 
-            The values are stringified with ``str()``.
         """
         if res is None:
             return
         key = f"{res.module}/{res.function}/"
+
         if arg_names is not None:
             values = [
                 str(val) for arg, val in res.arguments.items() if arg in arg_names
             ]
         else:
             values = [str(val) for val in res.arguments.values()]
+
+        if extra_values is not None:
+            values.extend(extra_values)
+
         if values:
             key += "+".join(values)
         else:
             key += "None"
+
         self[key] = res
 
     def check(self) -> bool:
