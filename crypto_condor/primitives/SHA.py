@@ -249,23 +249,14 @@ def test(
     vectors = ShaVectors.load(hash_algorithm, orientation)
     is_sha3 = str(hash_algorithm).startswith("SHA3-")
 
-    short_results = Results(
-        "SHA",
-        f"test_sha ({'SHA-3' if is_sha3 else str(hash_algorithm)})",
-        "NIST short message vectors",
-        {"hash_algorithm": hash_algorithm, "orientation": orientation},
+    short_results = Results.new(
+        "NIST short message vectors", ["hash_algorithm", "orientation"]
     )
-    long_results = Results(
-        "SHA",
-        f"test_sha ({'SHA-3' if is_sha3 else str(hash_algorithm)})",
-        "NIST long message vectors",
-        {"hash_algorithm": hash_algorithm, "orientation": orientation},
+    long_results = Results.new(
+        "NIST short message vectors", ["hash_algorithm", "orientation"]
     )
-    mc_results = Results(
-        "SHA",
-        f"test_sha ({'SHA-3' if is_sha3 else str(hash_algorithm)})",
-        "NIST Monte-Carlo vectors",
-        {"hash_algorithm": hash_algorithm, "orientation": orientation},
+    mc_results = Results.new(
+        "NIST short message vectors", ["hash_algorithm", "orientation"]
     )
 
     for tid, test in track(
@@ -378,9 +369,11 @@ def test(
         mc_data = ShaMcData(info, seed)
         mc_results.add(mc_data)
 
-    return ResultsDict(
-        {"short": short_results, "long": long_results, "monte-carlo": mc_results}
-    )
+    rd = ResultsDict()
+    rd.add(short_results, extra_values=["short"])
+    rd.add(long_results, extra_values=["long"])
+    rd.add(mc_results, extra_values=["monte-carlo"])
+    return rd
 
 
 def _run_sha_python_wrapper(
