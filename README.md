@@ -50,8 +50,8 @@ primitives.
 
 ## Requirements
 
-crypto-condor requires **Python 3.11+**. For information, it is developed using
-Python 3.12.2 on Fedora 39.
+crypto-condor requires **Python 3.10+**. For information, it is developed using
+Python 3.12 on Fedora 39.
 
 The implementations of **AES, Kyber, Dilithium, and TestU01** are written in C
 and are compiled directly on the user's machine. As such, they require a C
