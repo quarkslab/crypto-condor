@@ -66,6 +66,7 @@ rst_prolog = """
 
 # html_static_path = ["_static"]
 html_theme = "furo"
+html_favicon = "_static/favicon.ico"
 
 # -- Other options --------- -------------------------------------------------
 
