@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [CalVer](https://calver.org/).
 
+## Unreleased
+
+### Fixed
+
+- CLI: display help when running `testu01` command without arguments (6920307f).
+- README: bump minimum Python version to 3.10 (abf1f822).
+  - The minimum supported version was already 3.10, this only updates the
+    README.
+- SHA: ensure key uniqueness for test results (e5bce86d).
+  - Test results of different algorithms (but not two implementations of the
+    same algorithm) can be safely combined.
+
+### Changed
+
+- Updated `cryptography` to 43.0.0 (c75811db).
+  - This is **potentially breaking** as 43.0.0 drops supports for OpenSSL less
+    than 1.1.1e and LibreSSL less than 3.8.
+
 ## 2024.08.23
 
 ### Fixed
