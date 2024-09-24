@@ -7,6 +7,10 @@ and this project adheres to [CalVer](https://calver.org/).
 
 ## Unreleased
 
+Nothing yet. :)
+
+## 2024.09.24
+
 ### Fixed
 
 - CLI: display help when running `testu01` command without arguments (6920307f).
@@ -16,12 +20,29 @@ and this project adheres to [CalVer](https://calver.org/).
 - SHA: ensure key uniqueness for test results (e5bce86d).
   - Test results of different algorithms (but not two implementations of the
     same algorithm) can be safely combined.
+- docs: links to ANSSI documents (1d9b0a73).
+
+### Added
+
+- Test harness mode (eb8b73e4).
+  - New feature to test primitives from a shared library. Currently supports
+    AES, SHA, SHAKE, Kyber, and Dilithium. For more information,
+    [read the docs](https://quarkslab.github.io/crypto-condor/latest/harness-api/index.html)
 
 ### Changed
 
 - Updated `cryptography` to 43.0.0 (c75811db).
   - This is **potentially breaking** as 43.0.0 drops supports for OpenSSL less
     than 1.1.1e and LibreSSL less than 3.8.
+- Packaging of the C implementations of AES, Kyber, and Dilithium (dbe30575).
+  - Instead of compiling an executable, these implementations are compiled as
+    shared libraries, used with CFFI. It should improve the performance without
+    changing the user experience.
+
+### Removed
+
+- AES: support for the `segment_size` option is removed (dbe30575).
+  - Instead, it is directly inferred from the mode of operation used.
 
 ## 2024.08.23
 
