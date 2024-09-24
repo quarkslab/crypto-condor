@@ -78,7 +78,7 @@ SHAKE256, Variable {math}`d`, "{math}`\min(d/2, 256)`", "{math}`\ge \min(d/2, 25
 
 ## ANSSI rules and recommendations
 
-> Source: [ANSSI - Guide des mécanismes cryptographiques](https://www.ssi.gouv.fr/uploads/2021/03/anssi-guide-mecanismes_crypto-2.04.pdf)
+> Source: [Guide des mécanismes cryptographiques](https://cyber.gouv.fr/sites/default/files/2021/03/anssi-guide-mecanismes_crypto-2.04.pdf)
 
 :::{admonition} RegleHash
 :class: attention

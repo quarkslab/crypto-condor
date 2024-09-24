@@ -121,7 +121,7 @@ bit generator shall be used when generating signatures.
 
 ## ANSSI rules and recommendations
 
-> Source: [ANSSI - Guide des mécanismes cryptographiques][ANSSI-PG-083]
+> Source: [Guide des mécanismes cryptographiques](https://cyber.gouv.fr/sites/default/files/2021/03/anssi-guide-mecanismes_crypto-2.04.pdf)
 
 ### Discrete logarithm for elliptic curves defined over GF({math}`p`)
 
@@ -229,7 +229,6 @@ system" ([FIPS 186-5][FIPS186]).
 
 <!-- References -->
 [ANSSI-PA-079]: https://www.ssi.gouv.fr/uploads/2021/03/anssi-guide-selection_crypto-1.0.pdf
-[ANSSI-PG-083]: https://www.ssi.gouv.fr/uploads/2021/03/anssi-guide-mecanismes_crypto-2.04.pdf
 [FIPS180]: https://csrc.nist.gov/publications/detail/fips/180/4/final
 [FIPS186]: https://csrc.nist.gov/publications/detail/fips/186/5/final
 [FIPS202]: https://csrc.nist.gov/publications/detail/fips/202/final

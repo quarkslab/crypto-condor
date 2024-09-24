@@ -56,7 +56,7 @@ introducing the cofactor $h$ to the mix in the steps 5 and 6:
 
 ## ANSSI rules and recommendations
 
-> Source: [Guide des méchanismes cryptographiques](https://www.ssi.gouv.fr/uploads/2021/03/anssi-guide-mecanismes_crypto-2.04.pdf)
+> Source: [Guide des mécanismes cryptographiques](https://cyber.gouv.fr/sites/default/files/2021/03/anssi-guide-mecanismes_crypto-2.04.pdf)
 
 ### Discrete logarithm for elliptic curves defined over $GF(p)$
 

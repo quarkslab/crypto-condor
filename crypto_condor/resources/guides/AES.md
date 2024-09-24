@@ -146,7 +146,7 @@ authenticity of the message.
 
 ## ANSSI rules and recommendations
 
-> Source: [ANSSI - Guide des mécanismes cryptographiques](https://www.ssi.gouv.fr/uploads/2021/03/anssi-guide-mecanismes_crypto-2.04.pdf)
+> Source: [Guide des mécanismes cryptographiques](https://cyber.gouv.fr/sites/default/files/2021/03/anssi-guide-mecanismes_crypto-2.04.pdf)
 
 ### Symmetric keys
 

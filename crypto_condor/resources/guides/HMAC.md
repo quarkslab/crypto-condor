@@ -70,7 +70,7 @@ constructions based on SHA-1 and SHA-2, such as $H(k || m)$, are vulnerable to.
 
 ## ANSSI rules and recommendations
 
-> Source: [ANSSI - Guide des mécanismes cryptographiques](https://www.ssi.gouv.fr/uploads/2021/03/anssi-guide-mecanismes_crypto-2.04.pdf)
+> Source: [Guide des mécanismes cryptographiques](https://cyber.gouv.fr/sites/default/files/2021/03/anssi-guide-mecanismes_crypto-2.04.pdf)
 
 :::{admonition} RègleIntegSym
 :class: attention
@@ -91,7 +91,7 @@ constructions based on SHA-1 and SHA-2, such as $H(k || m)$, are vulnerable to.
 
 ## ANSSI notes and recommendations
 
-> Source [ANSSI - Guide de sélection d'algorithmes cryptographiques](https://cyber.gouv.fr/sites/default/files/2021/03/anssi-guide-selection_crypto-1.0.pdf).
+> Source: [Guide de sélection d'algorithmes cryptographiques](https://cyber.gouv.fr/sites/default/files/2021/03/anssi-guide-selection_crypto-1.0.pdf)
 
 For bandwidth reasons, MACs can be truncated. The size of the output must be
 sufficiently large to prevent an adversary from randomly generating a valid MAC.
