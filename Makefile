@@ -10,6 +10,7 @@ PB2_FILES := $(PROTO_FILES:%.proto=%_pb2.py)
 # PROTO_FILES := $(PROTO_NAMES:%.proto=$(VECTORS_DIR)/_%/%.proto)
 # PB2_FILES := $(PROTO_NAMES:%.proto=$(VECTORS_DIR)/_%/%_pb2.py)
 
+DATE := $(shell date '+%Y.%m.%d')
 
 default: help
 
@@ -18,6 +19,16 @@ help: # Show help for each of the Makefile recipes.
 	@grep -E '^[a-zA-Z0-9 -]+:.*#'  Makefile | sort | while read -r l; do printf "\033[1;32m$$(echo $$l | cut -f 1 -d':')\033[00m:$$(echo $$l | cut -f 2- -d'#')\n"; done
 
 all: lint type-check coverage docs doctest
+
+bump: # Bump the version to today.
+	@echo "[+] Bump package version"
+	@poetry version $(DATE)
+	@echo "[+] Add new version to documentation tags"
+	@grep -q $(DATE) docs/Makefile || sed -i "s/VERSIONS = main/VERSIONS = main $(DATE)/" docs/Makefile
+	@echo "[+] Commit pyproject and docs/Makefile"
+	@git add pyproject.toml docs/Makefile && git commit -m "Version $(DATE)"
+	@echo "[+] Create git tag"
+	@git tag -a $(DATE) -m "Version $(DATE)"
 
 .PHONY: import-nist-vectors
 import-nist-vectors: # Serialize NIST test vectors with protobuf.
