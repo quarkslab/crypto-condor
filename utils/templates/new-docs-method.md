@@ -9,7 +9,7 @@ signature scheme, hashing algorithm? Symmetric or asymmetric keys?
 :::{csv-table} Summary of ANSSI rules and recommendations
 :header: Rules, Comments
 
-"{ref}`RegleExample <regle-example>`", "{green}`Compliant` or {red}`Obsolescent`".
+"{ref}`RegleExample <regle-example>`", "{green}`Compliant` or {red}`Obsolescent`"
 :::
 
 ## Overview
