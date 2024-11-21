@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single PLACEHOLDER test vector.
+message PLACEHOLDERTest{
+	// The test ID, unique in its set of vectors.
+	int32 id = 1;
+	// The type of test. One of: valid, invalid, acceptable.
+	string type = 2;
+	// A comment on the test.
+	string comment = 3;
+	// Flags that categorize this test.
+	repeated string flags = 4;
+}
+
+// A set of PLACEHOLDER test vectors.
+message PLACEHOLDERVectors{
+	// The source of the test vectors.
+	string source = 1;
+	// Description of the source.
+	string source_desc = 2;
+	// The URL of the source.
+	string source_url = 3;
+	// Whether these are compliance test vectors or not.
+	bool compliance = 4;
+	// A dictionary of test flags and their description.
+    map<string, string> notes = 5;
+
+	// FIXME: some parameter that categorizes the vectors.
+    string parameter = 6;
+	// The test vectors.
+	repeated PLACEHOLDERTest tests = 7;
+}

@@ -39,6 +39,15 @@ if __name__ == "__main__":
     Path(root / "vectors" / f"_{primitive}").mkdir(0o755, parents=False, exist_ok=True)
     print("[OK ] Create vectors directory")
 
+    print("[...] Create .proto file", end="\r")
+    template = (
+        Path("utils/templates/new-vectors.proto")
+        .read_text()
+        .replace("PLACEHOLDER", primitive)
+    )
+    Path(root / f"vectors/{primitive}.proto").write_text(template)
+    print("[OK ] Create .proto file")
+
     # Wrappers
     print("[...] Create wrappers directory", end="\r")
     Path(root / f"resources/wrappers/{primitive}").mkdir(
