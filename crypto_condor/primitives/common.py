@@ -269,6 +269,28 @@ class TestInfo:
         else:
             return cls(id, type, flags, None, comment, None, None)
 
+    @classmethod
+    def new_from_test(cls, test: Any, compliance: bool):
+        """Creates a new instance of TestInfo from a test vector.
+
+        Args:
+            test: The test vector. It must contain the fields defined in
+                utils/templates/new-vectors.proto.
+            compliance: Whether the test vector is for compliance or not.
+
+        Returns:
+            A new instance of TestInfo with the ``result``, ``err_msg``, and ``data``
+            fields set to None.
+        """
+        # If there are no flags, add one for Compliance or Resilience.
+        if not test.flags:
+            flags = ["Compliance"] if compliance else ["Resilience"]
+        # Otherwise add the correct prefix.
+        else:
+            prefix = "Compliance" if compliance else "Resilience"
+            flags = [f"{prefix}/{flag}" for flag in test.flags]
+        return cls(test.id, TestType(test.type), flags, None, test.comment, None, None)
+
     def ok(self, data: Any | None = None) -> None:
         """Marks a test as passed.
 
