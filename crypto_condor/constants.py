@@ -160,16 +160,16 @@ SUPPORTED_MODES: dict[Primitive, Modes] = {
     Primitive.MLDSA: {
         "audit": False,
         "method": True,
-        "output": False,
+        "output": True,
         "wrapper": True,
-        "harness": False,
+        "harness": True,
     },
     Primitive.MLKEM: {
         "audit": False,
         "method": True,
-        "output": False,
+        "output": True,
         "wrapper": True,
-        "harness": False,
+        "harness": True,
     },
 }
 """Primitives and their supported CLI modes."""
