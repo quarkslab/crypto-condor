@@ -1,0 +1,13 @@
+diff --git a/ref/Makefile b/ref/Makefile
+index 2c94d35..6034acb 100644
+--- a/ref/Makefile
++++ b/ref/Makefile
+@@ -8,6 +8,8 @@ HEADERS = config.h params.h api.h sign.h packing.h polyvec.h poly.h ntt.h \
+ KECCAK_SOURCES = $(SOURCES) fips202.c symmetric-shake.c
+ KECCAK_HEADERS = $(HEADERS) fips202.h
+ 
++SOURCES += fips202.c randombytes.c
++
+ .PHONY: all speed shared clean
+ 
+ all: \

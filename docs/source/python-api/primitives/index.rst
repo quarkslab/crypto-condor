@@ -6,11 +6,11 @@ Primitives
 
    AES
    ChaCha20
-   Dilithium
    ECDH
    ECDSA
    HMAC
-   Kyber
+   MLDSA
+   MLKEM
    RSAES
    RSASSA
    SHA

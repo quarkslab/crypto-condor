@@ -16,11 +16,6 @@ will expose some functions, whose name starts with ``CC``, that wrap a given ope
 of the implementation. Their function signature is established by |cc| so that it can
 run the functions with the corresponding test vectors.
 
-An example
-^^^^^^^^^^
-
-
-
 How it works
 ------------
 
@@ -38,7 +33,7 @@ Supported primitives
 
     AES
     ChaCha20
-    Dilithium
-    Kyber
+    MLDSA
+    MLKEM
     SHA
     SHAKE
