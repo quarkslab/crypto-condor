@@ -1,4 +1,8 @@
-# CRYSTALS-Kyber
+# ML-KEM
+
+:::{attention} Work in progress
+We are currently updating the CRYSTALS-Kyber guide to ML-KEM.
+:::
 
 [Kyber](https://pq-crystals.org/kyber/index.shtml) is "an IND-CCA2-secure key
 encapsulation mechanism (KEM), whose security is based on the hardness of
@@ -143,5 +147,5 @@ Leakage of Barrett Reduction, {cite}`sim_chosen-ciphertext_2022`.
 
 ## Bibliography
 
-:::{bibliography} kyber.bib
+:::{bibliography} mlkem.bib
 :::
