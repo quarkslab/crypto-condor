@@ -20,12 +20,12 @@ class Primitive(strenum.StrEnum):
 
     AES = "AES"
     CHACHA20 = "ChaCha20"
-    DILITHIUM = "Dilithium"
     ECDH = "ECDH"
     ECDSA = "ECDSA"
     FALCON = "Falcon"
     HMAC = "HMAC"
-    KYBER = "Kyber"
+    MLDSA = "MLDSA"
+    MLKEM = "MLKEM"
     RSASSA = "RSASSA"
     RSAES = "RSAES"
     SHA = "SHA"
@@ -43,13 +43,13 @@ class Primitive(strenum.StrEnum):
             ECDH,
             ECDSA,
             HMAC,
+            MLDSA,
+            MLKEM,
             RSAES,
             RSASSA,
             SHA,
             SHAKE,
             ChaCha20,
-            Dilithium,
-            Kyber,
         )
 
         match self:
@@ -57,16 +57,16 @@ class Primitive(strenum.StrEnum):
                 return AES.Wrapper
             case Primitive.CHACHA20:
                 return ChaCha20.Wrapper
-            case Primitive.DILITHIUM:
-                return Dilithium.Wrapper
+            case Primitive.ECDH:
+                return ECDH.Wrapper
             case Primitive.ECDSA:
                 return ECDSA.Wrapper
             case Primitive.HMAC:
                 return HMAC.Wrapper
-            case Primitive.ECDH:
-                return ECDH.Wrapper
-            case Primitive.KYBER:
-                return Kyber.Wrapper
+            case Primitive.MLDSA:
+                return MLDSA.Wrapper
+            case Primitive.MLKEM:
+                return MLKEM.Wrapper
             case Primitive.RSASSA:
                 return RSASSA.Wrapper
             case Primitive.RSAES:
@@ -93,20 +93,6 @@ SUPPORTED_MODES: dict[Primitive, Modes] = {
         "output": True,
         "wrapper": True,
         "harness": False,
-    },
-    Primitive.KYBER: {
-        "audit": False,
-        "method": True,
-        "output": None,
-        "wrapper": True,
-        "harness": True,
-    },
-    Primitive.DILITHIUM: {
-        "audit": False,
-        "method": True,
-        "output": None,
-        "wrapper": True,
-        "harness": True,
     },
     Primitive.FALCON: {
         "audit": False,
@@ -165,6 +151,20 @@ SUPPORTED_MODES: dict[Primitive, Modes] = {
         "harness": False,
     },
     Primitive.ECDH: {
+        "audit": False,
+        "method": True,
+        "output": False,
+        "wrapper": True,
+        "harness": False,
+    },
+    Primitive.MLDSA: {
+        "audit": False,
+        "method": True,
+        "output": False,
+        "wrapper": True,
+        "harness": False,
+    },
+    Primitive.MLKEM: {
         "audit": False,
         "method": True,
         "output": False,

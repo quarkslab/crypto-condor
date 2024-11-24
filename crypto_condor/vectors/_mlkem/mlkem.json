@@ -1,0 +1,5 @@
+{
+	"ML-KEM-512": ["PQCkemKAT_1632.pb2"],
+	"ML-KEM-768": ["PQCkemKAT_2400.pb2"],
+	"ML-KEM-1024": ["PQCkemKAT_3168.pb2"]
+}

@@ -16,10 +16,10 @@ This guide has entries for each:
 :::{toctree}
 :titlesonly:
 
-Dilithium
 Falcon
 SPHINCS+
-Kyber
+MLDSA
+MLKEM
 :::
 
 [^kem]: <https://en.wikipedia.org/wiki/Key_encapsulation_mechanism>
@@ -46,7 +46,7 @@ three different signatures schemes to compare.
 :stub-columns: 1
 
 - -
-  - [Dilithium](/method/Dilithium)
+  - [Dilithium](/method/MLDSA)
   - [Falcon](/method/Falcon)
   - [SPHINCS+](/method/SPHINCS+)
 - - Based on

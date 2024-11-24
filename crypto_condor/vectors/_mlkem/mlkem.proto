@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single ML-KEM test vector. Can be used for testing encapsulation (uses pk, sk, ct,
+// and ss) or decapsulation (uses sk, ct, and ss).
+message MlkemTest {
+	// The test ID, unique in its set of vectors.
+	int32 id = 1;
+	// The type of test. One of: valid, invalid, acceptable.
+	string type = 2;
+	// A comment on the test.
+	string comment = 3;
+	// Flags that categorize this test.
+	repeated string flags = 4;
+
+	// The public (encapsulation) key.
+	bytes pk = 5;
+	// The secret (decapsulation) key.
+	bytes sk = 6;
+	// The ciphertext resulting from ML-KEM.Encaps().
+	bytes ct = 7;
+	// The shared secret resulting from ML-KEM.Encaps().
+	bytes ss = 8;
+}
+
+// A set of ML-KEM test vectors.
+message MlkemVectors {
+	// The source of the test vectors.
+	string source = 1;
+	// Description of the source.
+	string source_desc = 2;
+	// The URL of the source.
+	string source_url = 3;
+	// Whether these are compliance test vectors or not.
+	bool compliance = 4;
+	// A dictionary of test flags and their description.
+    map<string, string> notes = 5;
+
+	// The ML-KEM parameter set.
+	string paramset = 6;
+	// The test vectors.
+	repeated MlkemTest tests = 7;
+}

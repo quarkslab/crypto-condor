@@ -112,8 +112,8 @@ myst_heading_anchors = 2
 # -- Bibtex options ----------------------------------------------------------
 
 bibtex_bibfiles = [
-    "method/kyber.bib",
-    "method/dilithium.bib",
+    "method/mlkem.bib",
+    "method/mldsa.bib",
     "method/falcon.bib",
     "method/sphincs.bib",
 ]
