@@ -832,7 +832,7 @@ class Console(RichConsole):
                                 # For TestInfo we have to print the debug data
                                 # separately.
                                 if isinstance(data, TestInfo):
-                                    printer.print(str(data), str(data.data))
+                                    printer.print(str(data), str(data.data), sep="")
                                 else:
                                     printer.print(str(data))
                     else:
