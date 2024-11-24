@@ -17,32 +17,17 @@ debug.log
 
 # protobuf data -- included in package
 *.dat
+*.pb2
 !crypto_condor/primitives/_testu01/examples/excel.dat
 
 # objects
 *.o
-
-# compiled main -- included in package
-main
 
 # built docs
 docs/build
 
 # for importing NIST test vectors
 *.imported
-
-# Kyber executables -- included in package
-**/_kyber/kyber512
-**/_kyber/kyber512-90s
-**/_kyber/kyber768
-**/_kyber/kyber768-90s
-**/_kyber/kyber1024
-**/_kyber/kyber1024-90s
-
-# Dilithium executables -- included in package
-**/_dilithium/dilithium2
-**/_dilithium/dilithium3
-**/_dilithium/dilithium5
 
 # built package
 dist/
