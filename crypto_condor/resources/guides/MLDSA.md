@@ -1,4 +1,8 @@
-# CRYSTALS-Dilithium
+# ML-DSA
+
+:::{attention} Work in progress
+We are currently updating the CRYSTALS-Dilithium guide to ML-DSA.
+:::
 
 [Dilithium](https://pq-crystals.org/dilithium/index.shtml) is "a digital
 signature scheme that is strongly secure under chosen message attacks based on
@@ -155,5 +159,5 @@ Other attacks:
 
 ## Bibliography
 
-:::{bibliography} dilithium.bib
+:::{bibliography} mldsa.bib
 :::
