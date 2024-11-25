@@ -14,13 +14,13 @@ from crypto_condor.primitives import (
     ECDH,
     ECDSA,
     HMAC,
+    MLDSA,
+    MLKEM,
     RSAES,
     RSASSA,
     SHA,
     SHAKE,
     ChaCha20,
-    Dilithium,
-    Kyber,
 )
 from crypto_condor.primitives.common import Console
 
@@ -325,103 +325,6 @@ def ecdsa(
         )
     except FileNotFoundError as error:
         logger.error(error)
-        raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save, debug):
-        raise typer.Exit(0)
-    else:
-        raise typer.Exit(1)
-
-
-# TODO: expand.
-_kyber_help = "Run a Kyber wrapper"
-
-
-@app.command(name="Kyber", no_args_is_help=True, help=_kyber_help)
-@app.command(name="kyber", no_args_is_help=True, help=_kyber_help, hidden=True)
-def kyber(
-    language: Annotated[Kyber.Wrapper, _language],
-    parameter_set: Annotated[
-        Kyber.Paramset,
-        typer.Argument(help="The parameter set.", case_sensitive=False),
-    ],
-    encapsulate: Annotated[
-        bool,
-        typer.Option(
-            "--encapsulate/--no-encapsulate",
-            help="Whether to test the encapsulation function.",
-        ),
-    ] = True,
-    decapsulate: Annotated[
-        bool,
-        typer.Option(
-            "--decapsulate/--no-decapsulate",
-            help="Whether to test the decapsulation function.",
-        ),
-    ] = True,
-    filename: Annotated[str, _filename] = "",
-    no_save: Annotated[bool, _no_save] = False,
-    debug: Annotated[Optional[bool], _debug] = None,
-):
-    """Runs a Kyber wrapper.
-
-    Args:
-        language: The language of the wrapper to run.
-        parameter_set: The Kyber parameter set to use.
-        encapsulate: Whether to test the encapsulation function.
-        decapsulate: Whether to test the decapsulation function.
-        filename: Name of the file to save results.
-        no_save: Do not save results or prompt the user.
-        debug: When saving the results to a file, whether to add the debug data.
-    """
-    if not encapsulate and not decapsulate:  # pragma: no cover (not needed)
-        console.print(
-            "--no-encapsulate and --no-decapsulate used, no function to test."
-        )
-        raise typer.Exit(1)
-    try:
-        results = Kyber.run_wrapper(language, parameter_set, encapsulate, decapsulate)
-    except Exception as error:
-        console.print(error)
-        raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save, debug):
-        raise typer.Exit(0)
-    else:
-        raise typer.Exit(1)
-
-
-# TODO: expand.
-_dilithium_help = "Run a Dilithium wrapper."
-
-
-@app.command(name="Dilithium", no_args_is_help=True, help=_dilithium_help)
-@app.command(name="dilithium", no_args_is_help=True, help=_dilithium_help, hidden=True)
-def dilithium(
-    language: Annotated[Dilithium.Wrapper, _language],
-    parameter_set: Annotated[
-        Dilithium.Paramset,
-        typer.Argument(help="The parameter set.", case_sensitive=False),
-    ],
-    sign: Annotated[bool, _sign] = True,
-    verify: Annotated[bool, _verify] = True,
-    filename: Annotated[str, _filename] = "",
-    no_save: Annotated[bool, _no_save] = False,
-    debug: Annotated[Optional[bool], _debug] = None,
-):
-    """Runs a Dilithium wrapper.
-
-    Args:
-        language: The language of the wrapper to run.
-        parameter_set: The Dilithium parameter set to use.
-        sign: Whether to test the signing function.
-        verify: Whether to test the verifying function.
-        filename: Name of the file to save results.
-        no_save: Do not save results or prompt the user.
-        debug: When saving the results to a file, whether to add the debug data.
-    """
-    try:
-        results = Dilithium.run_wrapper(language, parameter_set, sign, verify)
-    except Exception as error:
-        console.print(error)
         raise typer.Exit(1) from error
     if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
@@ -790,6 +693,88 @@ def ecdh(
         results = ECDH.run_wrapper(Path(wrapper), lang, curve, compliance, resilience)
     except (FileNotFoundError, ModuleNotFoundError) as error:
         raise typer.Exit(1) from error
+    if console.process_results(results, filename, no_save, debug):
+        raise typer.Exit(0)
+    else:
+        raise typer.Exit(1)
+
+
+# TODO: expand.
+_mlkem_help = "Run a ML-KEM wrapper"
+
+
+@app.command(name="MLKEM", no_args_is_help=True, help=_mlkem_help)
+@app.command(name="mlkem", no_args_is_help=True, help=_mlkem_help, hidden=True)
+def mlkem(
+    wrapper: Annotated[Path, typer.Argument()],
+    compliance: Annotated[bool, _compliance] = True,
+    resilience: Annotated[bool, _resilience] = False,
+    filename: Annotated[str, _filename] = "",
+    no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
+):
+    """Runs a ML-KEM wrapper.
+
+    Args:
+        wrapper: The wrapper to test.
+        compliance: Whether to use compliance test vectors.
+        resilience: Whether to use resilience test vectors.
+        filename: Name of the file to save results.
+        no_save: Do not save results or prompt the user.
+        debug: When saving the results to a file, whether to add the debug data.
+    """
+    if not wrapper.is_file():
+        raise FileNotFoundError(f"ML-KEM wrapper not found: {str(wrapper)}")
+
+    match wrapper.suffix:
+        case ".py":
+            results = MLKEM.run_python_wrapper(wrapper, compliance, resilience)
+        case _:
+            console.print(
+                "There is no ML-KEM runner defined for %s wrappers" % wrapper.suffix
+            )
+            raise typer.Exit(1)
+    if console.process_results(results, filename, no_save, debug):
+        raise typer.Exit(0)
+    else:
+        raise typer.Exit(1)
+
+
+# TODO: expand.
+_mldsa_help = "Run a ML-DSA wrapper."
+
+
+@app.command(name="MLDSA", no_args_is_help=True, help=_mldsa_help)
+@app.command(name="mldsa", no_args_is_help=True, help=_mldsa_help, hidden=True)
+def mldsa(
+    wrapper: Annotated[Path, typer.Argument()],
+    compliance: Annotated[bool, _compliance] = True,
+    resilience: Annotated[bool, _resilience] = False,
+    filename: Annotated[str, _filename] = "",
+    no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
+):
+    """Runs a ML-DSA wrapper.
+
+    Args:
+        wrapper: The wrapper to test.
+        compliance: Whether to use compliance test vectors.
+        resilience: Whether to use resilience test vectors.
+        filename: Name of the file to save results.
+        no_save: Do not save results or prompt the user.
+        debug: When saving the results to a file, whether to add the debug data.
+    """
+    if not wrapper.is_file():
+        raise FileNotFoundError(f"ML-DSA wrapper not found: {str(wrapper)}")
+
+    match wrapper.suffix:
+        case ".py":
+            results = MLDSA.run_python_wrapper(wrapper, compliance, resilience)
+        case _:
+            console.print(
+                "There is no ML-DSA runner defined for %s wrappers" % wrapper.suffix
+            )
+            raise typer.Exit(1)
     if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:

@@ -13,9 +13,7 @@ Test vectors come from various sources.
 
    AES
    ChaCha20
-   Dilithium
    ECDSA
-   Kyber
    RSAES
    RSASSA
    SHA

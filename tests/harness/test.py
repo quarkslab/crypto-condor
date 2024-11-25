@@ -15,14 +15,14 @@ ROOT_DIR = Path("tests/harness")
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="dlopen's library in .local/share")
-@pytest.mark.parametrize("primitive", ["AES", "Dilithium", "Kyber"])
+@pytest.mark.parametrize("primitive", ["AES", "MLDSA", "MLKEM"])
 def test_harness(primitive: str):
     """Tests harnesses with :func:`crypto_condor.harness.test_harness`."""
     # Compile the hook
     subprocess.run(["make", "-C", ROOT_DIR, f"{primitive}.harness.so"], check=True)
 
     results = harness.test_harness(ROOT_DIR / f"{primitive}.harness.so")
-    for result in results:
+    for result in results.values():
         console.print_results(result)
         assert result.check()
 

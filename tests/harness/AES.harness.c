@@ -4,6 +4,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define AES_BLOCKLEN 16
+
+struct AES_ctx {
+  uint8_t round_key[240]; // Array for the expanded key. Expanding a 256-bit
+                          // key requires an array of 240 bytes.
+
+  uint8_t
+      Iv[AES_BLOCKLEN]; // The IV is the same size as a block, except for CTR
+                        // mode where it's 12 bytes long. As the low 4 bytes are
+                        // ignored, we can still use a 16-byte array.
+
+  uint8_t Nk; // The number of 32-bit words comprising the cipher key.
+  uint8_t Nr; // The number of rounds, depends on key length.
+};
+
 void *get_lib_handle(const char lib_name[]) {
   void *handle;
   char libdir[PATH_MAX];

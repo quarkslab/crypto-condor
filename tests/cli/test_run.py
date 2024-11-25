@@ -426,48 +426,6 @@ class TestRSAES:
             assert result.exit_code == 0
 
 
-class TestKyber:
-    """Tests Kyber wrappers."""
-
-    @pytest.mark.parametrize(
-        ("paramset", "lang", "example"), [("Kyber512", "Python", "1")]
-    )
-    def test_examples(self, paramset: str, lang: str, example: str, tmp_path: Path):
-        """Tests Kyber examples."""
-        with runner.isolated_filesystem(tmp_path):
-            wrap_result = runner.invoke(
-                app, ["get-wrapper", "Kyber", "--language", lang, "--example", example]
-            )
-            assert wrap_result.exit_code == 0, "Could not get wrapper"
-
-            args = ["test", "wrapper", "Kyber", lang, paramset, "--no-save"]
-            result = runner.invoke(app, args)
-            print(result.output)
-            assert result.exit_code == 0
-
-
-class TestDilithium:
-    """Tests Dilithium wrappers."""
-
-    @pytest.mark.xfail(reason="Dilithium tests fail in CI.")
-    @pytest.mark.parametrize(
-        ("paramset", "lang", "example"), [("dilithium2", "Python", "1")]
-    )
-    def test_examples(self, paramset: str, lang: str, example: str, tmp_path: Path):
-        """Tests Dilithium examples."""
-        with runner.isolated_filesystem(tmp_path):
-            wrap_result = runner.invoke(
-                app,
-                ["get-wrapper", "Dilithium", "--language", lang, "--example", example],
-            )
-            assert wrap_result.exit_code == 0, "Could not get wrapper"
-
-            args = ["test", "wrapper", "Dilithium", lang, paramset, "--no-save"]
-            result = runner.invoke(app, args)
-            print(result.output)
-            assert result.exit_code == 0
-
-
 class TestHmac:
     """Tests HMAC wrapper."""
 
@@ -502,6 +460,52 @@ class TestECDH:
             )
             assert wrap_result.exit_code == 0, "Could not get ECDH wrapper"
             args = ["test", "wrapper", "ECDH", lang, curve, "--resilience", "--no-save"]
+            result = runner.invoke(app, args)
+            print(result.output)
+            assert result.exit_code == 0, "Wrapper failed"
+
+
+class TestMldsa:
+    """Tests ML-DSA wrappers."""
+
+    @pytest.mark.parametrize(("lang", "example"), [("Python", "1")])
+    def test_examples(self, lang: str, example: str, tmp_path: Path):
+        """Tests ML-DSA examples."""
+        with runner.isolated_filesystem(tmp_path):
+            wrap_result = runner.invoke(
+                app, ["get-wrapper", "MLDSA", "--language", lang, "--example", example]
+            )
+            assert wrap_result.exit_code == 0, "Could not get ML-DSA wrapper"
+            args = [
+                "test",
+                "wrapper",
+                "MLDSA",
+                f"MLDSA_wrapper_example_{example}.py",
+                "--no-save",
+            ]
+            result = runner.invoke(app, args)
+            print(result.output)
+            assert result.exit_code == 0, "Wrapper failed"
+
+
+class TestMlkem:
+    """Tests ML-KEM wrappers."""
+
+    @pytest.mark.parametrize(("lang", "example"), [("Python", "1")])
+    def test_examples(self, lang: str, example: str, tmp_path: Path):
+        """Tests ML-KEM examples."""
+        with runner.isolated_filesystem(tmp_path):
+            wrap_result = runner.invoke(
+                app, ["get-wrapper", "MLKEM", "--language", lang, "--example", example]
+            )
+            assert wrap_result.exit_code == 0, "Could not get ML-KEM wrapper"
+            args = [
+                "test",
+                "wrapper",
+                "MLKEM",
+                f"MLKEM_wrapper_example_{example}.py",
+                "--no-save",
+            ]
             result = runner.invoke(app, args)
             print(result.output)
             assert result.exit_code == 0, "Wrapper failed"
