@@ -59,12 +59,11 @@ not depend on a given primitive) such as `method` and `get-wrapper`.
 
 The `primitives` are separated by modules, each with their own functions to test
 implementations, protocols to describe the expected function signatures, and
-their classes to load the test vectors.
+enums to define the parameters (mode of operation, elliptic curve, etc.).
 
 The `vectors` contain subdirectories where the source files for test vectors are
-stored. Some vectors come in plain text files that have to be parsed: each
-primitive includes its own parsing script that then serializes the vectors with
-`protobuf`, making it easy to load them at runtime.
+stored. These are parsed with the primitive's `_import.py` script and then
+serialised with `protobuf`, making it easy to load them at runtime.
 
 Finally, there is a fourth directory, `resources`. It contains the version of
 the method guides that is used by the `method` commands, as well as the wrapper
@@ -83,10 +82,10 @@ the `sphinx.ext.autodoc` extension doesn't support Markdown files.[^autodoc]
 
 ### Protobuf
 
-We use [protobuf](https://protobuf.dev/) to store test vectors that have to be
-parser, such as NIST's `.rsp` files. Protobuf uses `.proto` files that describe
-the message (in our case the vectors). These are then compiled with `protoc` to
-Python classes. For type-checking and adding docstrings to these classes, we use
+We use [protobuf](https://protobuf.dev/) to store test vectors. Protobuf uses
+`.proto` files that describe the message (in our case the vectors). These are
+then compiled with `protoc` to Python classes. For type-checking and adding
+docstrings to these classes, we use
 [mypy-protobuf](https://github.com/nipunn1313/mypy-protobuf), which creates
 `.pyi` files when compiling with `protoc`.
 
@@ -118,70 +117,73 @@ From here on out, we'll use AES as an example.
 
 ### Test vectors
 
+TL;DR:
+
+- Create a protobuf descriptor:
+    - Add a parameter to `Vectors` that characterises a set of tests.
+    - Add the necessary fields to `Test` so any source of vectors is supported.
+- Create a parsing script.
+
 First, there are the test vectors. It creates a directory named `_AES` to store
 the source files, protobuf descriptors, parsing script, and the serialized
 vectors. We mainly use test vectors from [NIST
 CAVP](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program)
-and [Project Wycheproof](https://github.com/google/wycheproof), though we may
-use other sources when needed, such as [RFC
-3686](https://datatracker.ietf.org/doc/html/rfc3686.html#section-6) for AES-CTR
-vectors.
+and [Project Wycheproof](https://github.com/google/wycheproof), though any
+reference (RFC, official implementation, etc.) source is welcome.
 
-To serialize test vectors we use [Protocol Buffers](https://protobuf.dev/) or
-protobufs for short. You will need two files: a protobuf descriptor and a
-parsing script. The protobuf descriptor is a `.proto` file that describes the
-message and its attributes, similar to a Python dataclass. This descriptor is
-compiled using `protoc` to a Python module that provide the messages as classes,
-which can be imported and used by the primitive module.
+All test vectors should be serialized. To serialize test vectors we use
+[Protocol Buffers](https://protobuf.dev/) or protobufs for short. You will need
+two files: a protobuf descriptor and a parsing script.
+
+The protobuf descriptor is a `.proto` file that defines the messages and their
+attributes, similar to Python dataclasses. `add_primitive.py` creates it with
+two types of message needed by `crypto-condor`: `Vectors` and `Test`. These
+are already filled with a common set of values requiring minimal changes.
+`Vectors` should define a characterising parameter (mode of operation, elliptic
+curve, etc.), while `Test` should define fields that allow any source of vectors
+to be added easily. This is pretty vague, but the idea is to stop having
+separate types of vectors for each source, which may require a bit of additional
+logic in the parsing to conform to a "standard format".
+
+The descriptor is compiled using `protoc` to a Python module that provide the
+messages as classes, which can be imported and used by the primitive module.
 
 The parsing script will use these classes, creating a new instance for each
 group of vectors, and parsing the text file to extract the values of each
 vector.
 
-Wycheproof vectors come in JSON files, which we can simply import using the
-`json` module and read like a dictionary. However, there are advantages of
-serializing these vectors too: the serialized file take less disk space,
-reducing the size of the published package, and we can use native Python types
-such as `bytes`, which saves us from doing the conversion from hexadecimal
-strings to bytes for every value used[^conversion].
-
-[^conversion]: This simplifies the code, both for reading and writing. It is not
-    intended as a way of improving the performance.
+The `add_primitive` script also generates a JSON file, which should associate
+the chosen parameter to a list of protobufs with vectors for that parameter.
 
 ### Primitive
 
-Second, it creates the primitive module, `AES.py` in this case, under
-`primitives`, where the code to test implementations will lie.
+Second, it creates the primitive module, `primitives/AES.py` in this case, where
+the code to test implementations will lie.
 
 As a rule of thumb, this module includes:
 
-- A class for test vectors, which is in charge of loading the test vectors from
-a given set of arguments (mode of operation, elliptic curve, etc.)
-- A `test` function that takes an implementation as argument and runs it with
-test vectors.
+- An enum which defines a parameter for the primitive (e.g. mode of operation,
+  elliptic curve). This makes it easy to document (with the `autoenum`
+  directive) and makes it clear which options are implemented. Also Typer uses
+  enums to provide auto-completion.
+- A function that loads test vectors, usually based on that enum and the JSON
+  file mentioned above.
 - One or more
-[Protocols](https://docs.python.org/3/library/typing.html#annotating-callable-objects).
-classes that describe the function signature that the implementation must have
-in order to be tested.
-- Some internal classes to run the methods associated with the primitive. For
-example, the AES module has `_encrypt` and `_decrypt` which call our internal
-implementation.
-- A function that takes a file of inputs/outputs, running the inputs with the
-internal implementation and comparing the outputs.
-- A function to run a wrapper.
+  [Protocol](https://docs.python.org/3/library/typing.html#annotating-callable-objects)
+  classes that describe the function signature that the implementation must have
+  in order to be tested.
+- A test function for each operation that is supported, which runs with test
+  vectors or user input files.
+- A function that runs a Python wrapper (or more if other languages are
+  supported).
 
-Some guidelines for this module include:
-
-- Use enums to define options such as mode of operation or elliptic curves. This
-makes it easy to document and makes it clear which options are implemented.
-Also, Typer uses enums to provide auto-completion.
-- Internal implementations, or wrappers of third-party implementations are
-considered *private*. The convention in Python is that the function name should
-start with an underscore. To improve its privacy, we do not include this
-function in the module's `__dir__()` (see below). Python does not have a way of
-enforcing this "privacy", users can still access these functions if they know
-they exist, but the idea is to convey the message that these are not meant to be
-used anywhere else, that no guarantees are made.
+Additionally, internal implementations or wrappers of third-party
+implementations are considered *private*. The convention in Python is that the
+function name should start with an underscore. To improve its privacy, we do not
+include this function in the module's `__dir__()` (see below). Python does not
+have a way of enforcing this "privacy", users can still access these functions
+if they know they exist, but the idea is to convey the message that these are
+not meant to be used anywhere else, no guarantees are made.
 
 #### A side-note on imports
 
@@ -232,7 +234,7 @@ A few aspects to consider:
 
 ### Adding a new harness
 
-crypto-condor can tests functions exposed by a shared library, similar to a
+crypto-condor can test functions exposed by a shared library, similar to a
 fuzzing hook. To do so, the functions must follow the conventions described by
 the harness API. Internally, this means adding a `test_lib` function to the
 corresponding primitive. This function has a particular signature:

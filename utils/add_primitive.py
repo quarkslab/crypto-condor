@@ -48,6 +48,10 @@ if __name__ == "__main__":
     Path(root / f"vectors/{primitive}.proto").write_text(template)
     print("[OK ] Create .proto file")
 
+    print("[...] Create .json file", end="\r")
+    Path(root / f"vectors/{primitive}.json").touch()
+    print("[OK ] Create .json file")
+
     # Wrappers
     print("[...] Create wrappers directory", end="\r")
     Path(root / f"resources/wrappers/{primitive}").mkdir(
