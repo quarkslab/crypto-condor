@@ -113,19 +113,20 @@ files:
 python utils/add_primitive.py <primitive name>
 ```
 
-From here on out, we'll use AES as an example.
+From here on out, we'll use ML-KEM as an example: since it's a recently updated
+module, it is a good reference for new ones.
 
 ### Test vectors
 
-TL;DR:
+Use the script to create:
 
-- Create a protobuf descriptor:
+- A protobuf descriptor:
     - Add a parameter to `Vectors` that characterises a set of tests.
     - Add the necessary fields to `Test` so any source of vectors is supported.
-- Create a parsing script.
+- A parsing script.
 
-First, there are the test vectors. It creates a directory named `_AES` to store
-the source files, protobuf descriptors, parsing script, and the serialized
+First, there are the test vectors. It creates a directory named `_mlkem` to
+store the source files, protobuf descriptors, parsing script, and the serialized
 vectors. We mainly use test vectors from [NIST
 CAVP](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program)
 and [Project Wycheproof](https://github.com/google/wycheproof), though any
@@ -150,15 +151,14 @@ messages as classes, which can be imported and used by the primitive module.
 
 The parsing script will use these classes, creating a new instance for each
 group of vectors, and parsing the text file to extract the values of each
-vector.
-
-The `add_primitive` script also generates a JSON file, which should associate
-the chosen parameter to a list of protobufs with vectors for that parameter.
+vector. It also includes a `generate_json` function that is used to generate the
+JSON file that declares the list of protobufs which are available for each
+parameter.
 
 ### Primitive
 
-Second, it creates the primitive module, `primitives/AES.py` in this case, where
-the code to test implementations will lie.
+Second, it creates the primitive module, `primitives/MLKEM.py` in this case,
+where the code to test implementations will lie.
 
 As a rule of thumb, this module includes:
 
@@ -213,7 +213,7 @@ Once this work on the primitive is done, add the integration to the CLI. This
 should mostly consist in adding a function for the primitive under the
 corresponding command, which parses the inputs with `typer.Argument` and
 `typer.Option`, and passes them to the corresponding function e.g.
-`AES.verify(...)`.
+`MLKEM.test_encaps(...)`.
 
 When the corresponding functions are implemented, add a new entry to the
 `SUPPORTED_MODES` dictionary in `constants.py` and the necessary tests.

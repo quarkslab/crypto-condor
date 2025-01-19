@@ -55,6 +55,9 @@ copy-guides: # Copy guides from the docs for the method command.
 	@echo
 
 copy-contributing: # Copy CONTRIBUTING from the docs to the root of the repo.
+copy-contributing: CONTRIBUTING.md
+
+CONTRIBUTING.md: docs/source/development/CONTRIBUTING.md
 	@echo "[+] Copying CONTRIBUTING"
 	cp docs/source/development/CONTRIBUTING.md .
 	@echo

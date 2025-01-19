@@ -3,7 +3,7 @@ syntax = "proto3";
 package crypto_condor;
 
 // A single PLACEHOLDER test vector.
-message PLACEHOLDERTest{
+message CapPLACEHOLDERTest{
 	// The test ID, unique in its set of vectors.
 	int32 id = 1;
 	// The type of test. One of: valid, invalid, acceptable.
@@ -15,7 +15,7 @@ message PLACEHOLDERTest{
 }
 
 // A set of PLACEHOLDER test vectors.
-message PLACEHOLDERVectors{
+message CapPLACEHOLDERVectors{
 	// The source of the test vectors.
 	string source = 1;
 	// Description of the source.
@@ -30,5 +30,5 @@ message PLACEHOLDERVectors{
 	// FIXME: some parameter that categorizes the vectors.
     string parameter = 6;
 	// The test vectors.
-	repeated PLACEHOLDERTest tests = 7;
+	repeated CapPLACEHOLDERTest tests = 7;
 }
