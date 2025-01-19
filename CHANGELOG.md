@@ -9,6 +9,41 @@ and this project adheres to [CalVer](https://calver.org/).
 
 Nothing yet. :)
 
+## 2025.01.19
+
+### Added
+
+- **Breaking**: add ML-DSA and ML-KEM (3855df8e).
+    - Dilithium and Kyber are replaced by ML-DSA and ML-KEM respectively. This
+      includes updating the reference implementation and the test vectors.
+    - The wrappers usage is simplified, adopting a similar approach to the
+      harness mode: the wrapper defines functions recognized by crypto-condor
+      such as `CC_MLKEM_512_encaps()`, removing the need for passing parameters
+      through the CLI, and thus allowing to test more than one set of parameters
+      at a time. This change will be propagated to other primitives eventually.
+    - Additionally, the language of the wrapper is inferred from the file
+      extension.
+    - Now both primitives support the `output` mode (encapsulation for ML-KEM
+      and signing for ML-DSA).
+    - The protocols have been updated, particularly for ML-DSA, taking the
+      signature and message separately instead of concatenated (the previous
+      *signed message*).
+    - Method guides have *not* been updated yet.
+- utils: add protobuf and parsing script templates (8df71abc, 33676c1b, fb43ae12)
+    - The protobuf template defines the common set of fields test vectors should have.
+    - The parsing script template serves as a base for writing the script, along
+      with the function that generates a JSON file that defines which vectors
+      are available depending on the parameter selected.
+    - The CONTRIBUTING page has been updated to use ML-KEM as an example of
+      these new templates.
+- common: `new_from_test` method for `TestInfo`, which takes a test vector
+  directly instead of unpacking its values. Relies on the new test vectors
+  template (e256bf23).
+
+### Fixed
+
+- Typo in method guide template, which prevented the docs from building (dae27832).
+
 ## 2024.09.24
 
 ### Fixed

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "crypto-condor"
-version = "2024.09.24"
+version = "2025.01.19"
 description = "Compliance testing for implementations of cryptographic primitives"
 license = "Apache-2.0"
 authors = [
