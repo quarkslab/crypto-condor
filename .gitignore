@@ -11,6 +11,7 @@ htmlcov/
 .coverage
 .ropeproject/
 .mypy_cache/
+.tox/
 
 # logs
 debug.log
@@ -31,3 +32,6 @@ docs/build
 
 # built package
 dist/
+
+# pyenv
+.python-version
