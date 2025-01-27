@@ -84,16 +84,14 @@ init: install import-nist-vectors compile-primitives copy-guides copy-contributi
 init-ci: # Common requirements before other CI targets.
 init-ci: ci-setup import-nist-vectors copy-guides copy-contributing
 
-lint: # Format with black and lint with ruff.
+lint: # Check linting with ruff.
 	@echo "[+] Linting"
-	black --check .
-	ruff check .
+	ruff check
 
-lint-ci: # Format with black, lint with ruff, generate report for CI.
+lint: # Check linting with ruff, generate report for CI.
 lint-ci: init-ci
 	@echo "[+] Linting (CI)"
-	poetry run black --check .
-	poetry run ruff check --output-format=github .
+	poetry run ruff check --output-format=github
 
 type-check: # Run mypy.
 	@echo "[+] Type checking"
