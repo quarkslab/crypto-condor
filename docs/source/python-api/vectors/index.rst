@@ -13,7 +13,6 @@ Test vectors come from various sources.
 
    AES
    ChaCha20
-   ECDSA
    RSAES
    RSASSA
    SHA
