@@ -770,12 +770,9 @@ class Console(RichConsole):
             "valid inputs that the implementation should use correctly.\n"
         )
         description += (
-            "Invalid tests   : "
-            "invalid inputs that the implementation should reject.\n"
+            "Invalid tests   : invalid inputs that the implementation should reject.\n"
         )
-        description += (
-            "Acceptable tests: " "inputs for legacy cases or weak parameters."
-        )
+        description += "Acceptable tests: inputs for legacy cases or weak parameters."
         self.print(Panel(description, title="Types of tests"))
         # Show results summary: give some general info like primitives tested and show
         # the total count of tests. Include CC version as subtitle for reference.

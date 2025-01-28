@@ -161,7 +161,7 @@ class HmacDigestData:
 key = {self.key.hex()}
 msg = {self.msg.hex()}
 mac = {self.mac.hex()}
-res = {self.res.hex() if self.res else '<none>'}
+res = {self.res.hex() if self.res else "<none>"}
 """
         return s
 
