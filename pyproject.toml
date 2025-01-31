@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "crypto-condor"
-version = "2025.01.19"
+version = "2025.01.20-rc1"
 description = "Compliance testing for implementations of cryptographic primitives"
 license = "Apache-2.0"
 authors = [
@@ -14,16 +14,16 @@ repository = "https://github.com/quarkslab/crypto-condor"
 documentation = "https://quarkslab.github.io/crypto-condor/latest/index.html"
 keywords = ["cryptography", "compliance"]
 include = [
-  "crypto_condor/vectors/_aes/dat/*.dat",
-  "crypto_condor/vectors/_ECDH/dat/*.dat",
-  "crypto_condor/vectors/_ecdsa/dat/*.dat",
-  "crypto_condor/vectors/_falcon/dat/*.dat",
-  "crypto_condor/vectors/_HMAC/dat/*.dat",
-  "crypto_condor/vectors/_mldsa/pb2/*.pb2",
-  "crypto_condor/vectors/_mlkem/pb2/*.pb2",
-  "crypto_condor/vectors/_rsa/dat/*.dat",
-  "crypto_condor/vectors/_sha/dat/*.dat",
-  "crypto_condor/primitives/_testu01/examples/excel.dat",
+  { path ="crypto_condor/vectors/_aes/dat/*.dat", format = ["sdist", "wheel"] },
+  { path ="crypto_condor/vectors/_ECDH/dat/*.dat", format = ["sdist", "wheel"] },
+  { path ="crypto_condor/vectors/_ecdsa/dat/*.dat", format = ["sdist", "wheel"] },
+  { path ="crypto_condor/vectors/_falcon/dat/*.dat", format = ["sdist", "wheel"] },
+  { path ="crypto_condor/vectors/_HMAC/dat/*.dat", format = ["sdist", "wheel"] },
+  { path ="crypto_condor/vectors/_mldsa/pb2/*.pb2", format = ["sdist", "wheel"] },
+  { path ="crypto_condor/vectors/_mlkem/pb2/*.pb2", format = ["sdist", "wheel"] },
+  { path ="crypto_condor/vectors/_rsa/dat/*.dat", format = ["sdist", "wheel"] },
+  { path ="crypto_condor/vectors/_sha/dat/*.dat", format = ["sdist", "wheel"] },
+  { path ="crypto_condor/primitives/_testu01/examples/excel.dat", format = ["sdist", "wheel"] },
 ]
 exclude = [
   "crypto_condor/vectors/_aes/rsp",
