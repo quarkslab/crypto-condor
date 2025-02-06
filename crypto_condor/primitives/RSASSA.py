@@ -433,7 +433,7 @@ def _test_verify_pss_wycheproof(
             "Tests a function that signs with RSASSA-PSS.",
             {"hash_algorithm": hash_algorithm, "vectors file": filename},
         )
-        results_dict["Wycheproof/verify/{filename}"] = results
+        results_dict[f"Wycheproof/verify/{filename}"] = results
         logger.debug("Using vectors from: %s" % filename)
         # Add Wycheproof notes to results.
         results.add_notes(vectors_file.get("notes", {}))
