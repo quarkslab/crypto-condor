@@ -577,21 +577,49 @@ class Results:
         return True
 
 
+# Key duplication checks from: https://stackoverflow.com/a/30242574
 class ResultsDict(dict):
     """A dictionary of Results.
 
     This class extends the built-in dictionary to group :class:`Results` as values. The
-    keys are defined by the calling function. Currently key uniqueness is not enforced,
-    the caller is responsible for not overwriting previous results. See :meth:`add` for
-    a suggestion.
+    uniqueness of the keys is enforced: updating the dictionary or trying to set a key
+    already present will raise ValueError. To facilitate the creation of unique keys,
+    see the :meth:`add` method.
 
-    It provides the :meth:`check` method to check for failed results over all of its
-    values. It also defines a string representation with :meth:`__str__`, similar to
-    that of :class:`Results`.
+    It provides the :meth:`check` method to check if the results included have failed
+    tests. It also defines a string representation with :meth:`__str__`, similar to that
+    of :class:`Results`.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, other=None, **kwargs):
+        super().__init__()
+        self.update(other, **kwargs)
+
+    # TODO: override __ror__ too?
+    # TODO: how to get rid of the type ignore?
+    def __ior__(self, other):  # type: ignore
+        """Override method to raise ValueError on duplicate keys."""
+        if isinstance(other, ResultsDict):
+            self.update(other)
+            return self
+        else:
+            raise TypeError(f"Invalid type '{type(other)}' for operator |=")
+
+    def __setitem__(self, k, v):
+        """Override method to raise ValueError on duplicate keys."""
+        if k in self:
+            raise ValueError(f"Duplicate key '{k}' in ResultsDict")
+        super().__setitem__(k, v)
+
+    def update(self, other=None, **kwargs):
+        """Override method to raise ValueError on duplicate keys."""
+        if other is not None:
+            for k, v in (
+                other.items() if isinstance(other, collections.abc.Mapping) else other
+            ):
+                self[k] = v
+        for k, v in kwargs.items():
+            self[k] = v
 
     def __str__(self) -> str:
         """Returns a summary of the results contained."""
@@ -770,12 +798,9 @@ class Console(RichConsole):
             "valid inputs that the implementation should use correctly.\n"
         )
         description += (
-            "Invalid tests   : "
-            "invalid inputs that the implementation should reject.\n"
+            "Invalid tests   : invalid inputs that the implementation should reject.\n"
         )
-        description += (
-            "Acceptable tests: " "inputs for legacy cases or weak parameters."
-        )
+        description += "Acceptable tests: inputs for legacy cases or weak parameters."
         self.print(Panel(description, title="Types of tests"))
         # Show results summary: give some general info like primitives tested and show
         # the total count of tests. Include CC version as subtitle for reference.
