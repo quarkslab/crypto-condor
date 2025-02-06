@@ -1912,13 +1912,15 @@ def verify_file(filename: str, mode: Mode, operation: Operation) -> Results:
 
 
 # --------------------------- Lib hook functions --------------------------------------
+
+
 def _test_lib_enc(
     ffi: cffi.FFI, lib, function: str, mode: Mode, key_length: KeyLength
-) -> list[Results]:
+) -> ResultsDict:
     """Tests CC_AES_encrypt.
 
     Returns:
-        A list of results, from the ResultsDict returned by :func:`test`.
+        The dictionary of results returned by :func:`test`.
     """
     logger.info("Testing harness function %s", function)
 
@@ -1936,17 +1938,16 @@ def _test_lib_enc(
         enc(buf, len(plaintext), _key, len(key), _iv, len(iv))
         return bytes(buf)
 
-    rd = test(_enc, None, mode, key_length)  # type: ignore
-    return list(rd.values())
+    return test(_enc, None, mode, key_length)  # type: ignore
 
 
 def _test_lib_dec(
     ffi: cffi.FFI, lib, function: str, mode: Mode, key_length: KeyLength
-) -> list[Results]:
+) -> ResultsDict:
     """Tests CC_AES_decrypt.
 
     Returns:
-        A list of results, from the ResultsDict returned by :func:`test`.
+        The dictionary of results returned by :func:`test`.
     """
     logger.info("Testing harness function %s", function)
 
@@ -1964,17 +1965,16 @@ def _test_lib_dec(
         dec(buf, len(ciphertext), _key, len(key), _iv, len(iv))
         return bytes(buf)
 
-    rd = test(None, _dec, mode, key_length)  # type: ignore
-    return list(rd.values())
+    return test(None, _dec, mode, key_length)  # type: ignore
 
 
 def _test_lib_enc_aead(
     ffi: cffi.FFI, lib, function: str, mode: Mode, key_length: KeyLength
-) -> list[Results]:
+) -> ResultsDict:
     """Tests CC_AES_AEAD_encrypt.
 
     Returns:
-        A list of results, from the ResultsDict returned by :func:`test`.
+        The dictionary of results returned by :func:`test`.
     """
     logger.info("Testing harness function %s", function)
 
@@ -2017,17 +2017,16 @@ def _test_lib_enc_aead(
         )
         return (bytes(buf), bytes(mac_buf))
 
-    rd = test(_enc, None, mode, key_length)  # type: ignore[arg-type]
-    return list(rd.values())
+    return test(_enc, None, mode, key_length)  # type: ignore[arg-type]
 
 
 def _test_lib_dec_aead(
     ffi: cffi.FFI, lib, function: str, mode: Mode, key_length: KeyLength
-) -> list[Results]:
+) -> ResultsDict:
     """Tests CC_AES_AEAD_decrypt.
 
     Returns:
-        A list of results, from the ResultsDict returned by :func:`test`.
+        The dictionary of results returned by :func:`test`.
     """
     logger.info("Testing harness function %s", function)
 
@@ -2075,8 +2074,7 @@ def _test_lib_dec_aead(
         else:
             raise ValueError(f"Invalid returned value {rc} (expected 0 or -1)")
 
-    rd = test(None, _dec, mode, key_length)  # type: ignore[arg-type]
-    return list(rd.values())
+    return test(None, _dec, mode, key_length)  # type: ignore[arg-type]
 
 
 def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
@@ -2145,21 +2143,13 @@ def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
         # If the condition is false, it continues searching for a pattern.
         match (mode, operation):
             case (mode, Operation.ENCRYPT) if mode in Mode.classic_modes():
-                results[f"AES/test_lib_enc/{str(mode)}"] = _test_lib_enc(
-                    ffi, lib, function, mode, key_size
-                )
+                results |= _test_lib_enc(ffi, lib, function, mode, key_size)
             case (mode, Operation.ENCRYPT):
-                results[f"AES/test_lib_enc_aead/{str(mode)}"] = _test_lib_enc_aead(
-                    ffi, lib, function, mode, key_size
-                )
+                results |= _test_lib_enc_aead(ffi, lib, function, mode, key_size)
             case (mode, Operation.DECRYPT) if mode in Mode.classic_modes():
-                results[f"AES/test_lib_dec/{str(mode)}"] = _test_lib_dec(
-                    ffi, lib, function, mode, key_size
-                )
+                results |= _test_lib_dec(ffi, lib, function, mode, key_size)
             case (mode, Operation.DECRYPT):
-                results[f"AES/test_lib_dec_aead/{str(mode)}"] = _test_lib_dec_aead(
-                    ffi, lib, function, mode, key_size
-                )
+                results |= _test_lib_dec_aead(ffi, lib, function, mode, key_size)
 
     return results
 
