@@ -2,59 +2,84 @@ syntax = "proto3";
 
 package crypto_condor;
 
-// A single ECDSA signature verification test vector.
-message EcdsaNistSigVerTest {
-    // Custom ID: simply the index of the test in the NIST file.
+// A single test for ECDSA signature verification. It requires all three values (msg,
+// sig. pubkey).
+message EcdsaSigVerTest {
+    // The test ID, unique in its set of vectors.
     int32 id = 1;
-    string message = 2;
-    string qx = 3;
-    string qy = 4;
-    string r = 5;
-    string s = 6;
-    // Either valid or invalid.
-    string result = 7;
-    // When a test is invalid, a comment is included.
-    string fail_reason = 8;
+    // The type of test. One of: valid, invalid, acceptable.
+    string type = 2;
+    // A comment on the test.
+    string comment = 3;
+    // Flags that categorize this test.
+    repeated string flags = 4;
 
-    // Points to the start of the test vector inside the file.
-    int32 line_number = 15;
+    // The message that was signed.
+    bytes msg = 5;
+    // The signature ASN.1 encoded as Dss-Sig-Value from RFC 3279.
+    bytes sig = 6;
+    // The public key as an encoded uncompressed point.
+    bytes pubkey = 7;
 }
 
+// Test vectors for ECDSA signature verification, grouped by elliptic curve and hash
+// function.
+message EcdsaSigVerVectors {
+	// The source of the test vectors.
+	string source = 1;
+	// Description of the source.
+	string source_desc = 2;
+	// The URL of the source.
+	string source_url = 3;
+	// Whether these are compliance test vectors or not.
+	bool compliance = 4;
+	// A dictionary of test flags and their description.
+    map<string, string> notes = 5;
 
-// A group of test vectors for a given curve and hashing algorithm.
-message EcdsaNistSigVerVectors {
-    // A name to show to the user (CURVE + HASH).
-    string name = 1;
-    string curve = 2;
-    string hash_algo = 3;
-
-    repeated EcdsaNistSigVerTest tests = 4;
+    // The elliptic curve.
+    string curve = 6;
+    // The hash function.
+    string hash = 7;
+	// The test vectors.
+	repeated EcdsaSigVerTest tests = 8;
 }
 
-
-// A single ECDSA signature generation test vector.
-message EcdsaNistSigGenTest {
-    // Custom ID: simply the index of the test in the NIST file.
+// A single test for ECDSA signature generation. It requires both values (msg, d).
+message EcdsaSigGenTest {
+    // The test ID, unique in its set of vectors.
     int32 id = 1;
-    string message = 2;
-    string d = 3;
-    string qx = 4;
-    string qy = 5;
-    string k = 6;
-    string r = 7;
-    string s = 8;
+    // The type of test. One of: valid, invalid, acceptable.
+    string type = 2;
+    // A comment on the test.
+    string comment = 3;
+    // Flags that categorize this test.
+    repeated string flags = 4;
 
-    // Points to the start of the test vector inside the file.
-    int32 line_number = 15;
+    // The message to sign.
+    bytes msg = 5;
+    // The secret value as bytes.
+    bytes d = 6;
 }
 
+// Test vectors for ECDSA signature generation, grouped by elliptic curve and hash
+// function.
+message EcdsaSigGenVectors {
+	// The source of the test vectors.
+	string source = 1;
+	// Description of the source.
+	string source_desc = 2;
+	// The URL of the source.
+	string source_url = 3;
+	// Whether these are compliance test vectors or not.
+	bool compliance = 4;
+	// A dictionary of test flags and their description.
+    map<string, string> notes = 5;
 
-// A group of test vectors for a given curve and hashing algorithm.
-message EcdsaNistSigGenVectors {
-    // A name to show to the user (CURVE + HASH).
-    string name = 1;
-    string curve = 2;
-    string hash_algo = 3;
-
-    repeated EcdsaNistSigGenTest tests = 4;
+    // The elliptic curve.
+    string curve = 6;
+    // The hash function.
+    string hash = 7;
+	// The test vectors.
+	repeated EcdsaSigGenTest tests = 8;
 }
+
