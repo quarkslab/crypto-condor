@@ -1,4 +1,4 @@
-"""Module to import NIST AES test vectors.
+"""Module to import AES test vectors.
 
 .. caution::
     This module is intended for developers of this tool, as it's only used for
@@ -6,257 +6,220 @@
     For use within the Makefile, ``cd`` to the corresponding directory first.
 """
 
-import re
+import json
+from collections import defaultdict
 from pathlib import Path
-from typing import List, Tuple
 
-from crypto_condor.vectors._aes.aes_pb2 import AesNistVectors
+from crypto_condor.vectors._aes.aes_pb2 import AesVectors
 
 VECTORS_DIR = Path("crypto_condor/vectors/_aes")
 
 
-def get_aes_vectors() -> List[Tuple[str, str, str, bool]]:
-    """Returns a list of tuples with all AES test vectors to import.
+def generate_cavp_files():
+    """Returns a dictionary of NIST CAVP test vectors."""
+    modes = ["ECB", "CBC", "CFB128", "CFB8"]
+    types = ["GFSbox", "KeySbox", "MMT", "VarKey", "VarTxt"]
+    klens = [128, 192, 256]
 
-    The tuples contain the input filename, the output filename, a name for
-    AesNistVectors, and whether the file contains test vectors for encryption.
+    files = {
+        (mode, klen): [f"{mode}{t}{klen}.rsp" for t in types]
+        for mode in modes
+        for klen in klens
+    }
 
-    This last parameter indicates that the importer should assume that all test
-    vectors are for encryption, until they encounter a [DECRYPT] header, if any.
-    """
-    ecb_test_vectors = [
-        ("ECBGFSbox128.rsp", "aes_ecb_128_gfsbox.dat", "ECB 128 GFSBox", True),
-        ("ECBGFSbox192.rsp", "aes_ecb_192_gfsbox.dat", "ECB 192 GFSBox", True),
-        ("ECBGFSbox256.rsp", "aes_ecb_256_gfsbox.dat", "ECB 256 GFSBox", True),
-        ("ECBKeySbox128.rsp", "aes_ecb_128_keysbox.dat", "ECB 128 KeySbox", True),
-        ("ECBKeySbox192.rsp", "aes_ecb_192_keysbox.dat", "ECB 192 KeySbox", True),
-        ("ECBKeySbox256.rsp", "aes_ecb_256_keysbox.dat", "ECB 256 KeySbox", True),
-        ("ECBVarKey128.rsp", "aes_ecb_128_varkey.dat", "ECB 128 VarKey", True),
-        ("ECBVarKey192.rsp", "aes_ecb_192_varkey.dat", "ECB 192 VarKey", True),
-        ("ECBVarKey256.rsp", "aes_ecb_256_varkey.dat", "ECB 256 VarKey", True),
-        ("ECBVarTxt128.rsp", "aes_ecb_128_txt.dat", "ECB 128 VarTxt", True),
-        ("ECBVarTxt192.rsp", "aes_ecb_192_txt.dat", "ECB 192 VarTxt", True),
-        ("ECBVarTxt256.rsp", "aes_ecb_256_txt.dat", "ECB 256 VarTxt", True),
-    ]
+    files.update({("CTR", klen): [f"CTR{klen}.rsp"] for klen in klens})
+    files.update(
+        {
+            ("GCM", klen): [f"gcmDecrypt{klen}.rsp", f"gcmEncryptExtIV{klen}.rsp"]
+            for klen in klens
+        }
+    )
 
-    ecb_mmt_test_vectors = [
-        ("ECBMMT128.rsp", "aes_ecb_128_mmt.dat", "ECB 128 MMT", True),
-        ("ECBMMT192.rsp", "aes_ecb_192_mmt.dat", "ECB 192 MMT", True),
-        ("ECBMMT256.rsp", "aes_ecb_256_mmt.dat", "ECB 256 MMT", True),
-    ]
-
-    cbc_test_vectors = [
-        ("CBCGFSbox128.rsp", "aes_cbc_128_gfsbox.dat", "CBC 128 GFSBox", True),
-        ("CBCGFSbox192.rsp", "aes_cbc_192_gfsbox.dat", "CBC 192 GFSBox", True),
-        ("CBCGFSbox256.rsp", "aes_cbc_256_gfsbox.dat", "CBC 256 GFSBox", True),
-        ("CBCKeySbox128.rsp", "aes_cbc_128_keysbox.dat", "CBC 128 KeySbox", True),
-        ("CBCKeySbox192.rsp", "aes_cbc_192_keysbox.dat", "CBC 192 KeySbox", True),
-        ("CBCKeySbox256.rsp", "aes_cbc_256_keysbox.dat", "CBC 256 KeySbox", True),
-        ("CBCVarKey128.rsp", "aes_cbc_128_varkey.dat", "CBC 128 VarKey", True),
-        ("CBCVarKey192.rsp", "aes_cbc_192_varkey.dat", "CBC 192 VarKey", True),
-        ("CBCVarKey256.rsp", "aes_cbc_256_varkey.dat", "CBC 256 VarKey", True),
-        ("CBCVarTxt128.rsp", "aes_cbc_128_txt.dat", "CBC 128 VarTxt", True),
-        ("CBCVarTxt192.rsp", "aes_cbc_192_txt.dat", "CBC 192 VarTxt", True),
-        ("CBCVarTxt256.rsp", "aes_cbc_256_txt.dat", "CBC 256 VarTxt", True),
-    ]
-
-    cbc_mmt_test_vectors = [
-        ("CBCMMT128.rsp", "aes_cbc_128_mmt.dat", "CBC 128 MMT", True),
-        ("CBCMMT192.rsp", "aes_cbc_192_mmt.dat", "CBC 192 MMT", True),
-        ("CBCMMT256.rsp", "aes_cbc_256_mmt.dat", "CBC 256 MMT", True),
-    ]
-
-    # CFB1 test vectors aren't included as the 1-byte plaintext is not supported
-    # by pycryptodome.
-    cfb_test_vectors = [
-        ("CFB8GFSbox128.rsp", "aes_cfb8_128_gfsbox.dat", "CFB8 128 GFSBox", True),
-        ("CFB8GFSbox192.rsp", "aes_cfb8_192_gfsbox.dat", "CFB8 192 GFSBox", True),
-        ("CFB8GFSbox256.rsp", "aes_cfb8_256_gfsbox.dat", "CFB8 256 GFSBox", True),
-        ("CFB8KeySbox128.rsp", "aes_cfb8_128_keysbox.dat", "CFB8 128 KeySbox", True),
-        ("CFB8KeySbox192.rsp", "aes_cfb8_192_keysbox.dat", "CFB8 192 KeySbox", True),
-        ("CFB8KeySbox256.rsp", "aes_cfb8_256_keysbox.dat", "CFB8 256 KeySbox", True),
-        ("CFB8VarKey128.rsp", "aes_cfb8_128_varkey.dat", "CFB8 128 VarKey", True),
-        ("CFB8VarKey192.rsp", "aes_cfb8_192_varkey.dat", "CFB8 192 VarKey", True),
-        ("CFB8VarKey256.rsp", "aes_cfb8_256_varkey.dat", "CFB8 256 VarKey", True),
-        ("CFB8VarTxt128.rsp", "aes_cfb8_128_txt.dat", "CFB8 128 VarTxt", True),
-        ("CFB8VarTxt192.rsp", "aes_cfb8_192_txt.dat", "CFB8 192 VarTxt", True),
-        ("CFB8VarTxt256.rsp", "aes_cfb8_256_txt.dat", "CFB8 256 VarTxt", True),
-        ("CFB128GFSbox128.rsp", "aes_cfb128_128_gfsbox.dat", "CFB128 128 GFSBox", True),
-        ("CFB128GFSbox192.rsp", "aes_cfb128_192_gfsbox.dat", "CFB128 192 GFSBox", True),
-        ("CFB128GFSbox256.rsp", "aes_cfb128_256_gfsbox.dat", "CFB128 256 GFSBox", True),
-        (
-            "CFB128KeySbox128.rsp",
-            "aes_cfb128_128_keysbox.dat",
-            "CFB128 128 KeySbox",
-            True,
-        ),
-        (
-            "CFB128KeySbox192.rsp",
-            "aes_cfb128_192_keysbox.dat",
-            "CFB128 192 KeySbox",
-            True,
-        ),
-        (
-            "CFB128KeySbox256.rsp",
-            "aes_cfb128_256_keysbox.dat",
-            "CFB128 256 KeySbox",
-            True,
-        ),
-        ("CFB128VarKey128.rsp", "aes_cfb128_128_varkey.dat", "CFB128 128 VarKey", True),
-        ("CFB128VarKey192.rsp", "aes_cfb128_192_varkey.dat", "CFB128 192 VarKey", True),
-        ("CFB128VarKey256.rsp", "aes_cfb128_256_varkey.dat", "CFB128 256 VarKey", True),
-        ("CFB128VarTxt128.rsp", "aes_cfb128_128_txt.dat", "CFB128 128 VarTxt", True),
-        ("CFB128VarTxt192.rsp", "aes_cfb128_192_txt.dat", "CFB128 192 VarTxt", True),
-        ("CFB128VarTxt256.rsp", "aes_cfb128_256_txt.dat", "CFB128 256 VarTxt", True),
-    ]
-
-    cfb_mmt_test_vectors = [
-        ("CFB8MMT128.rsp", "aes_cfb8_128_mmt.dat", "CFB8 128 MMT", True),
-        ("CFB8MMT192.rsp", "aes_cfb8_192_mmt.dat", "CFB8 192 MMT", True),
-        ("CFB8MMT256.rsp", "aes_cfb8_256_mmt.dat", "CFB8 256 MMT", True),
-        ("CFB128MMT128.rsp", "aes_cfb128_128_mmt.dat", "CFB128 128 MMT", True),
-        ("CFB128MMT192.rsp", "aes_cfb128_192_mmt.dat", "CFB128 192 MMT", True),
-        ("CFB128MMT256.rsp", "aes_cfb128_256_mmt.dat", "CFB128 256 MMT", True),
-    ]
-
-    ctr_test_vectors = [
-        ("CTR128.rsp", "aes_ctr_128.dat", "CTR 128", True),
-        ("CTR192.rsp", "aes_ctr_192.dat", "CTR 192", True),
-        ("CTR256.rsp", "aes_ctr_256.dat", "CTR 256", True),
-    ]
-
-    gcm_test_vectors = [
-        ("gcmEncryptExtIV128.rsp", "aes_gcm_128_enc.dat", "GCM 128 enc", True),
-        ("gcmEncryptExtIV192.rsp", "aes_gcm_192_enc.dat", "GCM 192 enc", True),
-        ("gcmEncryptExtIV256.rsp", "aes_gcm_256_enc.dat", "GCM 256 enc", True),
-        ("gcmDecrypt128.rsp", "aes_gcm_128_dec.dat", "GCM 128 dec", False),
-        ("gcmDecrypt192.rsp", "aes_gcm_192_dec.dat", "GCM 192 dec", False),
-        ("gcmDecrypt256.rsp", "aes_gcm_256_dec.dat", "GCM 256 dec", False),
-    ]
-
-    aes_vectors = list()
-    aes_vectors.extend(ecb_test_vectors)
-    aes_vectors.extend(ecb_mmt_test_vectors)
-    aes_vectors.extend(cbc_test_vectors)
-    aes_vectors.extend(cbc_mmt_test_vectors)
-    aes_vectors.extend(cfb_test_vectors)
-    aes_vectors.extend(cfb_mmt_test_vectors)
-    aes_vectors.extend(ctr_test_vectors)
-    aes_vectors.extend(gcm_test_vectors)
-
-    return aes_vectors
+    return files
 
 
-def import_aes_file(in_file: str, out_file: str, name: str, encrypt: bool = True):
-    """Imports a file of AES test vectors to a protobuf-based class.
+def parse_cavp(mode: str, keylen: int, files: list[str]):
+    """Parses NIST CAVP test vectors."""
+    enc_vectors = AesVectors(
+        source="NIST CAVP",
+        source_desc="Test vectors from NIST's Cryptographic Algorithm Validation Program",  # noqa: E501
+        source_url="https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/block-ciphers#AES",
+        compliance=True,
+        mode=mode,
+        keylen=keylen,
+        encrypt=True,
+    )
+    dec_vectors = AesVectors(
+        source="NIST CAVP",
+        source_desc="Test vectors from NIST's Cryptographic Algorithm Validation Program",  # noqa: E501
+        source_url="https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/block-ciphers#AES",
+        compliance=True,
+        mode=mode,
+        keylen=keylen,
+        decrypt=True,
+    )
 
-    Args:
-        in_file:
-            The name of the file containing the test vectors.
-        out_file:
-            The name of the file to which the serialized data is written.
-        name:
-            The name of the group of test vectors.
-        encrypt:
-            Whether the test should encrypt or decrypt the data.
+    tid = 0
+    for filename in files:
+        file = VECTORS_DIR / "cavp" / filename
+        blocks = file.read_text().split("\n\n")
 
-    Notes:
-        This is meant for developers of the tool to parse NIST .rsp vectors to
-        protobuf serialized data. From the filenames paths are constructed by
-        prepending the directory <path-to-vectors>/nist/aes, where path-to-vectors is
-        a relative path to the resource directory containing the test vectors.
-    """
-    test_vectors = AesNistVectors()
+        encrypt = True
+        for block in blocks:
+            if block.startswith("#") or not block:
+                continue
 
-    # WARN: hard-coded prefix.
-    vectors_dir = Path("crypto_condor/vectors/_aes")
-    rsp = vectors_dir / "rsp" / in_file
-    dat = vectors_dir / "dat" / out_file
-
-    with rsp.open("r") as file:
-        data = file.readlines()
-
-    test_vectors.name = name
-    # We can get the mode and key length from the name.
-    split_name = name.split(" ")
-    test_vectors.mode = split_name[0]
-    test_vectors.key_length = int(split_name[1])
-
-    i = 0
-    tv = None
-    new_group = True
-    count = 1
-
-    while i < len(data) - 1:
-        i += 1
-        line = data[i]
-        line = line.strip()
-
-        if line.startswith("#"):
-            continue
-
-        if not line:
-            tv = None
-            new_group = True
-            continue
-
-        if line.startswith("["):
-            if line == "[DECRYPT]":
+            if block.startswith("[DECRYPT]"):
                 encrypt = False
-            continue
 
-        if new_group:
-            tv = test_vectors.tests.add()
-            tv.is_valid = True  # Vector is valid by default
-            tv.encrypt = encrypt
-            new_group = False
+            # Ignore all other headers.
+            if block.startswith("["):
+                continue
 
-        res = re.match("([A-Za-z0-9]+) = ?(.*)", line)
-        if not res:
-            if line == "FAIL":
-                tv.is_valid = False
-            continue
-
-        k = res.group(1).lower()
-        v = res.group(2).lower()
-
-        # Keys aren't consistent between test vector files
-        if k == "ct":
-            k = "ciphertext"
-        if k == "pt":
-            k = "plaintext"
-
-        try:
-            if k == "count":
-                setattr(tv, k, int(v))
-                tv.id = count
-                count += 1
-                tv.line_number = i + 1
+            if encrypt:
+                test = enc_vectors.tests.add()
             else:
-                setattr(tv, k, v)
-        except Exception as error:
-            print(f"line: {i}")
-            print(f"content: {line}")
-            print(f"error: {error}")
-            exit(1)
+                test = dec_vectors.tests.add()
 
-    with dat.open("wb") as file:
-        file.write(test_vectors.SerializeToString())
+            tid += 1
+            test.id = tid
+            test.type = "valid"
+
+            for line in block.split("\n"):
+                sp = line.split(" = ")
+                if len(sp) == 1:
+                    if sp[0] == "FAIL":
+                        test.type = "invalid"
+                        continue
+                    else:
+                        raise ValueError(f"Only one value in split: {sp}")
+
+                key, value = sp
+
+                match key:
+                    case "COUNT" | "Count":
+                        pass
+                    case "KEY" | "Key" | "IV" | "PT" | "CT" | "AAD" | "Tag":
+                        setattr(test, key.lower(), bytes.fromhex(value))
+                    case "PLAINTEXT":
+                        test.pt = bytes.fromhex(value)
+                    case "CIPHERTEXT":
+                        test.ct = bytes.fromhex(value)
+                    case _:
+                        raise ValueError(f"Unexpected {key = }")
+
+    out_enc = VECTORS_DIR / "pb2" / f"cavp-{mode}-{keylen}-enc.pb2"
+    out_enc.write_bytes(enc_vectors.SerializeToString())
+    out_dec = VECTORS_DIR / "pb2" / f"cavp-{mode}-{keylen}-dec.pb2"
+    out_dec.write_bytes(dec_vectors.SerializeToString())
 
 
-def main():
-    """Imports all AES test vectors."""
-    dat_dir = VECTORS_DIR / "dat"
-    dat_dir.mkdir(exist_ok=True)
+def parse_wycheproof(filename: str):
+    """Parses Wycheproof test vectors."""
+    pb2_dir = VECTORS_DIR / "pb2"
 
-    vectors = get_aes_vectors()
-    for vector in vectors:
-        import_aes_file(*vector)
+    vectors_file = VECTORS_DIR / "wycheproof" / filename
+    with vectors_file.open("r") as file:
+        data = json.load(file)
 
-    vectors_dir = Path("crypto_condor/vectors/_aes")
-    imported_marker = vectors_dir / "aes.imported"
-    imported_marker.touch()
+    mode = data["algorithm"].lstrip("AES-")
+
+    v128 = AesVectors(
+        source="Wycheproof",
+        source_desc="Test vectors for encryption and decryption.",
+        source_url="https://github.com/C2SP/wycheproof/tree/master/testvectors",
+        compliance=False,
+        notes=data["notes"],
+        mode=mode,
+        keylen=128,
+        encrypt=True,
+        decrypt=True,
+    )
+    v192 = AesVectors(
+        source="Wycheproof",
+        source_desc="Resilience test vectors from Project Wycheproof",
+        source_url="https://github.com/C2SP/wycheproof/tree/master/testvectors",
+        compliance=False,
+        notes=data["notes"],
+        mode=mode,
+        keylen=192,
+        encrypt=True,
+        decrypt=True,
+    )
+    v256 = AesVectors(
+        source="Wycheproof",
+        source_desc="Resilience test vectors from Project Wycheproof",
+        source_url="https://github.com/C2SP/wycheproof/tree/master/testvectors",
+        compliance=False,
+        notes=data["notes"],
+        mode=mode,
+        keylen=256,
+        encrypt=True,
+        decrypt=True,
+    )
+
+    for group in data["testGroups"]:
+        if group["keySize"] == 128:
+            vectors = v128
+        elif group["keySize"] == 192:
+            vectors = v192
+        else:
+            vectors = v256
+
+        for test in group["tests"]:
+            aad = bytes.fromhex(test["aad"]) if "aad" in test else None
+            tag = bytes.fromhex(test["tag"]) if "tag" in test else None
+            vectors.tests.add(
+                id=test["tcId"],
+                type=test["result"],
+                comment=test["comment"],
+                flags=test["flags"],
+                key=bytes.fromhex(test["key"]),
+                pt=bytes.fromhex(test["msg"]),
+                ct=bytes.fromhex(test["ct"]),
+                iv=bytes.fromhex(test["iv"]),
+                aad=aad,
+                tag=tag,
+            )
+
+    out128 = pb2_dir / f"wycheproof-{mode}-128.pb2"
+    out192 = pb2_dir / f"wycheproof-{mode}-192.pb2"
+    out256 = pb2_dir / f"wycheproof-{mode}-256.pb2"
+
+    out128.write_bytes(v128.SerializeToString())
+    out192.write_bytes(v192.SerializeToString())
+    out256.write_bytes(v256.SerializeToString())
+
+
+def generate_json() -> None:
+    """Generates the JSON file categorizing test vectors."""
+    pb2_dir = VECTORS_DIR / "pb2"
+    vectors: dict[str, dict[int, list[str]]] = defaultdict(lambda: defaultdict(list))
+
+    for file in pb2_dir.iterdir():
+        _vec = AesVectors()
+        _vec.ParseFromString(file.read_bytes())
+        vectors[_vec.mode][_vec.keylen].append(file.name)
+
+    out = VECTORS_DIR / "aes.json"
+    with out.open("w") as fp:
+        json.dump(vectors, fp, indent=2)
 
 
 if __name__ == "__main__":
-    main()
+    pb2_dir = VECTORS_DIR / "pb2"
+    pb2_dir.mkdir(exist_ok=True)
+
+    cavp_files = generate_cavp_files()
+    for k, files in cavp_files.items():
+        mode, keylen = k
+        parse_cavp(mode, keylen, files)
+
+    wp_files = ["aes_cbc_pkcs5_test.json", "aes_ccm_test.json", "aes_gcm_test.json"]
+    for filename in wp_files:
+        parse_wycheproof(filename)
+
+    generate_json()
+
+    imported_marker = VECTORS_DIR / "aes.imported"
+    imported_marker.touch()
