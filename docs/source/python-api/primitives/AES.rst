@@ -7,19 +7,27 @@ AES
 
 .. currentmodule:: crypto_condor.primitives.AES
 
-Test an implementation
-----------------------
+Test encryption
+---------------
 
-.. autofunction:: test
+.. autofunction:: test_encrypt
+
+.. autofunction:: test_output_encrypt
+
+Test decryption
+---------------
+
+.. autofunction:: test_decrypt
+
+.. autofunction:: test_output_decrypt
 
 Parameters
 ----------
 
 .. autoenum:: Mode
+   :members:
 
 .. autoenum:: KeyLength
-
-.. autoenum:: Operation
 
 Protocols
 ---------
@@ -28,16 +36,8 @@ Protocols
 
 .. autoprotocol:: Decrypt
 
-Test its output
----------------
-
-.. autofunction:: verify_file
-
 Run a wrapper
 -------------
 
-.. autofunction:: run_wrapper
-
-.. autoenum:: Wrapper
-
+.. autofunction:: run_python_wrapper
 
