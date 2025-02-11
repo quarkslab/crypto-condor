@@ -113,14 +113,23 @@ def aes(
         input_file: The input file to read and parse.
         mode: The mode of operation.
         operation: The operation being tested (encrypt/decrypt).
+
+    Keyword Args:
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
     """
-    try:
-        results = AES.verify_file(str(input_file), mode, operation)
-    except ValueError as error:
-        logger.error(error)
-        raise typer.Exit(1) from error
+    if operation == "encrypt":
+        try:
+            results = AES.test_output_encrypt(str(input_file), mode)
+        except ValueError as error:
+            logger.error(str(error))
+            raise typer.Exit(1) from error
+    else:
+        try:
+            results = AES.test_output_decrypt(str(input_file), mode)
+        except ValueError as error:
+            logger.error(str(error))
+            raise typer.Exit(1) from error
     if console.process_results(results, filename, no_save):
         raise typer.Exit(0)
     else:

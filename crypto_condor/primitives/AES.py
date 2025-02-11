@@ -1,13 +1,15 @@
 """Module to test AES implementations.
 
-The :mod:`crypto_condor.primitives.AES` module can test implementations of `AES
+The :mod:`crypto_condor.primitives.AES` module can test implementations of :doc:`AES
 </method/AES>` encryption and decryption using several modes of operations with the
-:func:`test` function. Supported modes are defined by the :enum:`Mode` enum.
+:func:`test_encrypt` and :func:`test_decrypt` functions. Supported modes are defined by
+the :enum:`Mode` enum.
 """
 
 from __future__ import annotations
 
 import importlib
+import json
 import logging
 import subprocess
 import sys
@@ -27,14 +29,15 @@ from rich.progress import track
 
 from crypto_condor.primitives.common import (
     CiphertextAndTag,
-    DebugInfo,
     PlaintextAndBool,
     Results,
     ResultsDict,
+    TestInfo,
     TestType,
     get_appdata_dir,
 )
-from crypto_condor.vectors.AES import AesVectors, KeyLength, Mode
+from crypto_condor.vectors._aes.aes_pb2 import AesTest, AesVectors
+from crypto_condor.vectors.aes import KeyLength, Mode
 
 logger = logging.getLogger(__name__)
 
@@ -42,19 +45,21 @@ logger = logging.getLogger(__name__)
 def __dir__():  # pragma: no cover
     return [
         # Enums
+        KeyLength.__name__,
+        Mode.__name__,
         Wrapper.__name__,
         Operation.__name__,
         # Protocols
         Encrypt.__name__,
         Decrypt.__name__,
-        # Dataclasses
         # Test functions
-        run_wrapper.__name__,
-        test.__name__,
-        verify_file.__name__,
-        # Imported
-        KeyLength.__name__,
-        Mode.__name__,
+        test_encrypt.__name__,
+        test_decrypt.__name__,
+        test_output_encrypt.__name__,
+        test_output_decrypt.__name__,
+        test_lib.__name__,
+        # Runners
+        run_python_wrapper.__name__,
     ]
 
 
@@ -203,7 +208,6 @@ class Wrapper(strenum.StrEnum):
     """Supported languages for wrappers."""
 
     PYTHON = "Python"
-    C = "C"
 
 
 class Operation(strenum.StrEnum):
@@ -355,67 +359,98 @@ class Decrypt(Protocol):
 
 
 @attrs.define
-class AesData:
-    """Debug data for AES tests.
+class EncData:
+    """Debug data for :func:`test_encrypt`.
 
     Args:
-        info: Common debug info, see :class:`crypto_condor.primitives.common.DebugInfo`.
-        operation: The operation performed, see :enum:`Operation`.
-        key: The symmetric key used.
-        message: The message to encrypt or decrypt.
-        expected: The expected plaintext or ciphertext.
-        result: The actual plaintext or ciphertext. Can be None if the operation failed.
-        iv: The IV or nonce used by most modes of operation. Use None if there is no IV.
-        aad: The associated data for AEAD modes, None if there is no associated data.
-        mac: The MAC tag used by AEAD modes. Use None if there is no MAC tag.
-        expected_mac: The expected MAC when encrypting with AEAD modes. Use None if
-            there is no MAC tag.
-        valid_mac: Whether the received MAC is valid for a given set of inputs. Use None
-            if the tag is not being verified (the mode is not AEAD or the operation is
-            encryption).
+        key: The key used.
+        pt: The plaintext to encrypt.
+        ct: The expected ciphertext.
+        iv: The IV or nonce.
+        aad: Associated data, only for AEAD modes.
+        tag: The expected tag in AEAD modes.
+        ret_ct: The ciphertext returned by the implementation.
+        ret_tag: The tag returned by the AEAD implementation.
     """
 
-    info: DebugInfo
-    operation: Operation
     key: bytes
-    message: bytes
-    expected: bytes | None
-    result: bytes | None = None
-    iv: bytes | None = None
-    aad: bytes | None = None
-    expected_mac: bytes | None = None
-    mac: bytes | None = None
-    valid_mac: bool | None = None
+    pt: bytes
+    ct: bytes
+    iv: bytes | None
+    aad: bytes | None
+    tag: bytes | None
+    ret_ct: bytes | None = None
+    ret_tag: bytes | None = None
 
     def __str__(self) -> str:
         """Returns a string representation of the present fields."""
-        s = str(self.info)
-
-        s += f"Operation: {self.operation}\n"
+        s = ""
         s += f"key = {self.key.hex()}\n"
-        s += f"message = {self.message.hex() if self.message else '<empty>'}\n"
-        s += f"expected = {self.expected.hex() if self.expected else '<empty>'}\n"
-
-        # If no tag verification or valid MAC, try to print the result, otherwise if the
-        # MAC is invalid don't release the plaintext even if it was returned.
-        if self.valid_mac is None or self.valid_mac:
-            s += f"result = {self.result.hex() if self.result else '<empty>'}\n"
-        else:
-            s += "result = <decryption error>\n"
+        s += f"pt = {self.pt.hex()}\n"
 
         if self.iv is not None:
-            s += f"iv/nonce = {self.iv.hex() if self.iv else '<empty>'}\n"
+            s += f"iv = {self.iv.hex()}\n"
         if self.aad is not None:
-            s += f"aad = {self.aad.hex() if self.aad else '<empty>'}\n"
-        if self.mac is not None:
-            s += f"tag = {self.mac.hex() if self.mac else '<empty>'}\n"
-        if self.expected_mac is not None:
-            et = f"{self.expected_mac.hex() if self.expected_mac else '<empty>'}"
-            s += f"expected tag = {et}\n"
-        if self.valid_mac is not None:
-            s += f"MAC is valid = {'TRUE' if self.valid_mac else 'FALSE'}\n"
+            s += f"aad = {self.aad.hex()}\n"
+
+        s += f"ct = {self.ct.hex()}\n"
+        if self.ret_ct is not None:
+            s += f"returned ct = {self.ret_ct.hex()}\n"
+        else:
+            s += "returned ct = <none>\n"
+
+        if self.tag is not None:
+            s += f"tag = {self.tag.hex()}\n"
+        if self.ret_tag is not None:
+            s += f"returned tag = {self.ret_tag.hex()}\n"
+        else:
+            s += "returned tag = <none>\n"
 
         return s
+
+
+@attrs.define
+class DecData:
+    """Debug data for :func:`test_decrypt`."""
+
+    key: bytes
+    ct: bytes
+    pt: bytes
+    iv: bytes | None
+    aad: bytes | None
+    tag: bytes | None
+    ret_pt: bytes | None = None
+    ret_valid_tag: bool | None = None
+
+    def __str__(self) -> str:
+        """Returns a string representation of the present fields."""
+        s = ""
+        s += f"key = {self.key.hex()}\n"
+        s += f"ct = {self.ct.hex()}\n"
+
+        if self.iv is not None:
+            s += f"iv = {self.iv.hex()}\n"
+        if self.aad is not None:
+            s += f"aad = {self.aad.hex()}\n"
+
+        s += f"pt = {self.pt.hex()}\n"
+        if self.ret_pt is not None:
+            s += f"returned pt = {self.ret_pt.hex()}\n"
+        else:
+            s += "returned pt = <none>\n"
+
+        if self.tag is not None:
+            s += f"tag = {self.tag.hex()}\n"
+        if self.ret_valid_tag is not None:
+            s += f"valid tag = {self.ret_valid_tag}\n"
+
+        return s
+
+
+class ParsingError(Exception):
+    """Exception for errors while parsing output files."""
+
+    pass
 
 
 # ----------------------------- AES functions -----------------------------------------
@@ -679,1138 +714,549 @@ def _decrypt(
 # ----------------------------- Test functions ----------------------------------------
 
 
-def _run_python(
-    wrapper: Path,
-    mode: Mode,
-    key_length: KeyLength,
-    compliance: bool,
-    resilience: bool,
-    encrypt: bool,
-    decrypt: bool,
-    iv_length: int,
-) -> ResultsDict:
-    """Runs the Python AES wrapper.
+# def _run_c(
+#     wrapper: Path,
+#     mode: Mode,
+#     key_length: KeyLength,
+#     compliance: bool,
+#     resilience: bool,
+#     encrypt: bool,
+#     decrypt: bool,
+#     iv_length: int,
+# ) -> ResultsDict:
+#     """Runs the C AES wrapper.
+#
+#     Args:
+#         wrapper: The executable C wrapper to test.
+#         mode: The mode of operation to test.
+#         key_length: The length of the keys to use, in bits. Use 0 to test all lengths.
+#         compliance: Whether to run compliance test vectors.
+#         resilience: Whether to run resilience test vectors.
+#         encrypt: Whether to test the encryption.
+#         decrypt: Whether to test the decryption.
+#         iv_length: The length of the IV to test. If 0, use any test vector available.
+#
+#     Raises:
+#         FileNotFoundError: If the wrapper couldn't be found or imported.
+#     """
+#     exe = wrapper.absolute()
+#
+#     def enc(
+#         key: bytes,
+#         plaintext: bytes,
+#         *,
+#         iv: bytes | None = None,
+#         aad: bytes | None = None,
+#         mac_len: int = 0,
+#     ) -> bytes | CiphertextAndTag:
+#         """Function for encryption.
+#
+#         See :func:`~crypto_condor.primitives.AES._encrypt`.
+#         """
+#         args = [str(exe)]
+#         args += ["--key", key.hex()]
+#         args += ["--text", plaintext.hex()]
+#         if iv is not None:
+#             args += ["--iv", iv.hex()]
+#         if aad is not None:
+#             args += ["--aad", aad.hex() if aad else ""]
+#         if mac_len > 0:
+#             args += ["--tag-length", str(mac_len)]
+#         if mode == Mode.CFB or mode == Mode.CFB128:
+#             args += ["--segment-size", "128"]
+#         elif mode == Mode.CFB8:
+#             args += ["--segment-size", "8"]
+#         if mode not in Mode.classic_modes():
+#             args += ["--mode", "1"]
+#         result = subprocess.run(args, capture_output=True, text=True)
+#         if result.returncode != 0:
+#             raise ValueError(result.stdout)
+#
+#         if mode in Mode.classic_modes():
+#             ct = bytes.fromhex(result.stdout.strip())
+#             return ct
+#         else:
+#             # remove trailing whitespace
+#             out = result.stdout.rstrip()
+#             # separate the two lines of output
+#             lines = out.split("\n")
+#             # get the ciphertext
+#             if len(lines[0].split(" = ")) == 1:
+#                 c = ""
+#             else:
+#                 _, c = lines[0].split(" = ")
+#             # get the tag
+#             _, t = lines[1].split(" = ")
+#             return (bytes.fromhex(c), bytes.fromhex(t))
+#
+#     def dec(
+#         key: bytes,
+#         ciphertext: bytes,
+#         *,
+#         iv: bytes | None = None,
+#         aad: bytes | None = None,
+#         mac: bytes | None = None,
+#         mac_len: int = 0,
+#     ) -> bytes | PlaintextAndBool:
+#         """Function for decryption.
+#
+#         See :func:`~crypto_condor.primitives.AES._decrypt`.
+#         """
+#         args = [str(exe)]
+#         args += ["--key", key.hex()]
+#         args += ["--text", ciphertext.hex()]
+#         args += ["--decrypt"]
+#         if iv is not None:
+#             args += ["--iv", iv.hex()]
+#         if aad is not None:
+#             args += ["--aad", aad.hex() if aad else ""]
+#         if mac is not None:
+#             args += ["--tag", mac.hex() if mac else ""]
+#         if mode == Mode.CFB or mode == Mode.CFB128:
+#             args += ["--segment-size", "128"]
+#         elif mode == Mode.CFB8:
+#             args += ["--segment-size", "8"]
+#         if mode not in Mode.classic_modes():
+#             args += ["--mode", "1"]
+#         result = subprocess.run(args, capture_output=True, text=True)
+#         if result.returncode != 0:
+#             raise ValueError(result.stdout)
+#
+#         if mode in Mode.classic_modes():
+#             pt = bytes.fromhex(result.stdout.strip())
+#             return pt
+#         else:
+#             # strip the trailing newline
+#             out = result.stdout.rstrip()
+#             # separate the two output lines
+#             lines = out.split("\n")
+#             # check the tag verification
+#             _, v = lines[0].split(" = ")
+#             if v == "FAIL":
+#                 return (None, False)
+#             # get the message
+#             _, p = lines[1].split(" = ")
+#             return (bytes.fromhex(p), True)
+#
+#     encrypt_function = enc if encrypt else None
+#     decrypt_function = dec if decrypt else None
+#     # TODO: fix type error by defining encrypt/decrypt depending on the mode of
+#     # operation.
+#     result_group = test(
+#         encrypt_function,  # type: ignore
+#         decrypt_function,  # type: ignore
+#         mode,
+#         key_length,
+#         compliance=compliance,
+#         resilience=resilience,
+#         iv_length=iv_length,
+#     )
+#     return result_group
 
-    Args:
-        wrapper: The Python wrapper to test.
-        mode: The mode of operation to test.
-        key_length: The length of the keys to use, in bits. Use 0 to test all lengths.
-        compliance: Whether to run compliance test vectors.
-        resilience: Whether to run resilience test vectors.
-        encrypt: Whether to test the encryption.
-        decrypt: Whether to test the decryption.
-        iv_length: The length of the IV to test. If 0, use any test vector available.
 
-    Raises:
-        FileNotFoundError: If the wrapper couldn't be found or imported.
+def _load_vectors(mode: Mode, keylen: KeyLength) -> list[AesVectors]:
+    """Loads vectors for a given mode and key length.
+
+    Returns:
+        A list of vectors.
     """
-    logger.info("Running Python AES wrapper")
-    sys.path.insert(0, str(wrapper.parent.absolute()))
-    already_imported = wrapper.stem in sys.modules.keys()
-    try:
-        aes_wrapper = importlib.import_module(wrapper.stem)
-    except ModuleNotFoundError as error:
-        logger.error("Can't import wrapper: %s", str(error))
-        raise
-    if already_imported:
-        logger.debug("Reloading AES wrapper module %s", wrapper.stem)
-        aes_wrapper = importlib.reload(aes_wrapper)
-    encrypt_function = aes_wrapper.encrypt if encrypt else None
-    decrypt_function = aes_wrapper.decrypt if decrypt else None
-    result_dict = test(
-        encrypt_function,
-        decrypt_function,
-        mode,
-        key_length,
-        iv_length=iv_length,
-        compliance=compliance,
-        resilience=resilience,
-    )
-    return result_dict
+    vectors_dir = importlib.resources.files("crypto_condor") / "vectors/_aes"
+    vectors = list()
+
+    sources_file = vectors_dir / "aes.json"
+    with sources_file.open("r") as file:
+        sources = json.load(file)
+
+    if keylen == 0:
+        klens = ["128", "192", "256"]
+    else:
+        klens = [str(keylen)]
+    if mode == "CFB":
+        mode = Mode.CFB128
+
+    for klen in klens:
+        for filename in sources[mode][str(klen)]:
+            vectors_file = vectors_dir / "pb2" / filename
+            _vec = AesVectors()
+            logger.debug("Loading AES vectors from %s", str(filename))
+            try:
+                _vec.ParseFromString(vectors_file.read_bytes())
+            except Exception:
+                logger.exception("Failed to load AES vectors from %s", str(filename))
+                continue
+            vectors.append(_vec)
+
+    return vectors
 
 
-def _run_c(
-    wrapper: Path,
+def _try_one_enc(enc: Encrypt, mode: Mode, test: AesTest) -> tuple[bytes, bytes | None]:
+    ret_tag: bytes | None = None
+    match mode:
+        case Mode.ECB:
+            ret_ct = enc(test.key, test.pt)
+        case Mode.CBC | Mode.CTR | Mode.CFB | Mode.CFB8 | Mode.CFB128:
+            ret_ct = enc(test.key, test.pt, iv=test.iv)
+        case Mode.CBC_PKCS7:
+            ret_ct = enc(test.key, test.pt, iv=test.iv)
+            # TODO: improve this.
+            ret_ct = ret_ct[: len(test.ct)]
+        case Mode.GCM | Mode.CCM:
+            ret_ct, ret_tag = enc(
+                test.key, test.pt, iv=test.iv, aad=test.aad, mac_len=len(test.tag)
+            )
+    return ret_ct, ret_tag
+
+
+def _try_one_dec(
+    dec: Decrypt, mode: Mode, test: AesTest
+) -> tuple[bytes | None, bool | None]:
+    ret_pt: bytes | None
+    ret_valid_tag: bool | None
+
+    match mode:
+        case Mode.ECB:
+            ret_pt = dec(test.key, test.ct)
+            ret_valid_tag = None
+        case Mode.CBC | Mode.CTR | Mode.CFB | Mode.CFB8 | Mode.CFB128 | Mode.CBC_PKCS7:
+            ret_pt = dec(test.key, test.ct, iv=test.iv)
+            ret_valid_tag = None
+        case Mode.GCM | Mode.CCM:
+            ret_pt, ret_valid_tag = dec(
+                test.key,
+                test.ct,
+                iv=test.iv,
+                aad=test.aad,
+                mac=test.tag,
+                mac_len=len(test.tag),
+            )
+        case _:
+            raise ValueError(f"Invalid mode: {mode}")
+
+    return ret_pt, ret_valid_tag
+
+
+def test_encrypt(
+    encrypt: Encrypt,
     mode: Mode,
-    key_length: KeyLength,
-    compliance: bool,
-    resilience: bool,
-    encrypt: bool,
-    decrypt: bool,
-    iv_length: int,
-) -> ResultsDict:
-    """Runs the C AES wrapper.
-
-    Args:
-        wrapper: The executable C wrapper to test.
-        mode: The mode of operation to test.
-        key_length: The length of the keys to use, in bits. Use 0 to test all lengths.
-        compliance: Whether to run compliance test vectors.
-        resilience: Whether to run resilience test vectors.
-        encrypt: Whether to test the encryption.
-        decrypt: Whether to test the decryption.
-        iv_length: The length of the IV to test. If 0, use any test vector available.
-
-    Raises:
-        FileNotFoundError: If the wrapper couldn't be found or imported.
-    """
-    exe = wrapper.absolute()
-
-    def enc(
-        key: bytes,
-        plaintext: bytes,
-        *,
-        iv: bytes | None = None,
-        aad: bytes | None = None,
-        mac_len: int = 0,
-    ) -> bytes | CiphertextAndTag:
-        """Function for encryption.
-
-        See :func:`~crypto_condor.primitives.AES._encrypt`.
-        """
-        args = [str(exe)]
-        args += ["--key", key.hex()]
-        args += ["--text", plaintext.hex()]
-        if iv is not None:
-            args += ["--iv", iv.hex()]
-        if aad is not None:
-            args += ["--aad", aad.hex() if aad else ""]
-        if mac_len > 0:
-            args += ["--tag-length", str(mac_len)]
-        if mode == Mode.CFB or mode == Mode.CFB128:
-            args += ["--segment-size", "128"]
-        elif mode == Mode.CFB8:
-            args += ["--segment-size", "8"]
-        if mode not in Mode.classic_modes():
-            args += ["--mode", "1"]
-        result = subprocess.run(args, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise ValueError(result.stdout)
-
-        if mode in Mode.classic_modes():
-            ct = bytes.fromhex(result.stdout.strip())
-            return ct
-        else:
-            # remove trailing whitespace
-            out = result.stdout.rstrip()
-            # separate the two lines of output
-            lines = out.split("\n")
-            # get the ciphertext
-            if len(lines[0].split(" = ")) == 1:
-                c = ""
-            else:
-                _, c = lines[0].split(" = ")
-            # get the tag
-            _, t = lines[1].split(" = ")
-            return (bytes.fromhex(c), bytes.fromhex(t))
-
-    def dec(
-        key: bytes,
-        ciphertext: bytes,
-        *,
-        iv: bytes | None = None,
-        aad: bytes | None = None,
-        mac: bytes | None = None,
-        mac_len: int = 0,
-    ) -> bytes | PlaintextAndBool:
-        """Function for decryption.
-
-        See :func:`~crypto_condor.primitives.AES._decrypt`.
-        """
-        args = [str(exe)]
-        args += ["--key", key.hex()]
-        args += ["--text", ciphertext.hex()]
-        args += ["--decrypt"]
-        if iv is not None:
-            args += ["--iv", iv.hex()]
-        if aad is not None:
-            args += ["--aad", aad.hex() if aad else ""]
-        if mac is not None:
-            args += ["--tag", mac.hex() if mac else ""]
-        if mode == Mode.CFB or mode == Mode.CFB128:
-            args += ["--segment-size", "128"]
-        elif mode == Mode.CFB8:
-            args += ["--segment-size", "8"]
-        if mode not in Mode.classic_modes():
-            args += ["--mode", "1"]
-        result = subprocess.run(args, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise ValueError(result.stdout)
-
-        if mode in Mode.classic_modes():
-            pt = bytes.fromhex(result.stdout.strip())
-            return pt
-        else:
-            # strip the trailing newline
-            out = result.stdout.rstrip()
-            # separate the two output lines
-            lines = out.split("\n")
-            # check the tag verification
-            _, v = lines[0].split(" = ")
-            if v == "FAIL":
-                return (None, False)
-            # get the message
-            _, p = lines[1].split(" = ")
-            return (bytes.fromhex(p), True)
-
-    encrypt_function = enc if encrypt else None
-    decrypt_function = dec if decrypt else None
-    # TODO: fix type error by defining encrypt/decrypt depending on the mode of
-    # operation.
-    result_group = test(
-        encrypt_function,  # type: ignore
-        decrypt_function,  # type: ignore
-        mode,
-        key_length,
-        compliance=compliance,
-        resilience=resilience,
-        iv_length=iv_length,
-    )
-    return result_group
-
-
-def run_wrapper(
-    wrapper: Path,
-    mode: Mode,
-    key_length: KeyLength = KeyLength.ALL,
+    keylen: KeyLength,
     *,
     compliance: bool = True,
-    resilience: bool = True,
-    encrypt: bool = True,
-    decrypt: bool = True,
-    iv_length: int = 0,
-):
-    """Runs a wrapper.
+    resilience: bool = False,
+) -> ResultsDict:
+    """Tests a function that encrypts with AES.
 
     Args:
-        wrapper: The wrapper to test.
-        mode: The mode of operation to test.
-        key_length: The length of the keys to use, in bits.
+        encrypt: The function to test.
+        mode: The AES mode implemented. To more different modes, make separate calls to
+            this function.
+        keylen: The length of the keys to use.
 
     Keyword Args:
-        compliance: Whether to run compliance test vectors.
-        resilience: Whether to run resilience test vectors.
-        encrypt: Whether to test the encryption.
-        decrypt: Whether to test the decryption.
-        iv_length: The length of the IV to test. If 0, use any test vector available.
-
-    Returns:
-        Returns the results from :func:`test`.
-    """
-    if not wrapper.is_file():
-        raise FileNotFoundError(f"AES wrapper not found: {str(wrapper)}")
-    if wrapper.suffix == ".py":
-        return _run_python(
-            wrapper,
-            mode,
-            key_length,
-            compliance,
-            resilience,
-            encrypt,
-            decrypt,
-            iv_length,
-        )
-    else:
-        return _run_c(
-            wrapper,
-            mode,
-            key_length,
-            compliance,
-            resilience,
-            encrypt,
-            decrypt,
-            iv_length,
-        )
-
-
-def _test_nist_encrypt(
-    encrypt: Encrypt, mode: Mode, key_length: KeyLength
-) -> ResultsDict:
-    """Tests encryption using NIST test vectors.
-
-    This function tests classic modes of operation only.
-
-    Args:
-        encrypt: The function to test.
-        mode: The mode of operation.
-        key_length: The key length in bits. Used to only select test vectors that have
-            keys with the given length.
-
-    Returns:
-        A dictionary of results. NIST vectors are separated in several files, each
-        Results corresponds to a single file. The keys are the name of the files,
-        prefixed by "NIST/encrypt/".
-    """
-    results_dict = ResultsDict()
-
-    vectors = AesVectors.load(mode, key_length)
-
-    for keylen in vectors.nist.keys():
-        vectors_list = vectors.nist[keylen]
-        for vector in track(
-            vectors_list, f"[NIST] Encrypt AES-{keylen}-{str(mode)} vectors"
-        ):
-            results = Results(
-                "AES",
-                "test_encrypt (NIST)",
-                "Tests an implementation of AES encryption with NIST vectors.",
-                {
-                    "mode": mode,
-                    "key_length": key_length,
-                    "test vectors file": vector.name,
-                },
-            )
-            results_dict[f"NIST/encrypt/{vector.name}"] = results
-            for tid, test in enumerate(vector.tests):
-                test_type = TestType.VALID if test.is_valid else TestType.INVALID
-                key = bytes.fromhex(test.key)
-                pt = bytes.fromhex(test.plaintext)
-                ct = bytes.fromhex(test.ciphertext)
-                info = DebugInfo(tid, test_type, ["Compliance"])
-                data = AesData(info, Operation.ENCRYPT, key, pt, ct, None)
-
-                try:
-                    match mode:
-                        case Mode.ECB:
-                            c = encrypt(key, pt)
-                        case Mode.CBC | Mode.CTR | Mode.CFB | Mode.CFB8 | Mode.CFB128:
-                            iv = bytes.fromhex(test.iv)
-                            c = encrypt(key, pt, iv=iv)
-                        case Mode.CBC_PKCS7:
-                            iv = bytes.fromhex(test.iv)
-                            c = encrypt(key, pt, iv=iv)
-                            # TODO: improve this.
-                            c = c[: len(ct)]
-                    if c == ct:
-                        info.result = True
-                    else:
-                        info.error_msg = "Wrong ciphertext"
-                    data.result = c
-                    results.add(data)
-                except Exception as error:
-                    info.error_msg = f"Encryption error: {str(error)}"
-                    logger.debug("Encryption error", exc_info=True)
-                    results.add(data)
-                    continue
-
-    return results_dict
-
-
-def _test_nist_decrypt(
-    decrypt: Decrypt, mode: Mode, key_length: KeyLength
-) -> ResultsDict:
-    """Tests the implementation using NIST test vectors.
-
-    This function tests classic modes of operation only.
-
-    Args:
-        decrypt: The function to test.
-        mode: The mode of operation.
-        key_length: The key length in bits. Used to only select test vectors that have
-            keys with the given length.
-
-    Returns:
-        A dictionary of results. NIST vectors are separated in several files, each
-        Results corresponds to a single file. The keys are the name of the files,
-        prefixed by "NIST/decrypt/".
-    """
-    results_dict = ResultsDict()
-
-    vectors = AesVectors.load(mode, key_length)
-
-    for keylen in vectors.nist.keys():
-        vectors_list = vectors.nist[keylen]
-        for vector in track(
-            vectors_list, f"[NIST] Decrypt AES-{keylen}-{str(mode)} vectors"
-        ):
-            results = Results(
-                "AES",
-                "test_decrypt (NIST)",
-                "Tests an implementation of AES decryption with NIST vectors.",
-                {
-                    "mode": mode,
-                    "key_length": key_length,
-                    "test vectors file": vector.name,
-                },
-            )
-            results_dict[f"NIST/decrypt/{vector.name}"] = results
-            for tid, test in enumerate(vector.tests):
-                test_type = TestType.VALID if test.is_valid else TestType.INVALID
-                key = bytes.fromhex(test.key)
-                pt = bytes.fromhex(test.plaintext)
-                ct = bytes.fromhex(test.ciphertext)
-                iv = bytes.fromhex(test.iv) or None
-
-                info = DebugInfo(tid, test_type, ["Compliance"])
-                data = AesData(info, Operation.DECRYPT, key, ct, pt, iv=iv)
-
-                try:
-                    match mode:
-                        case Mode.ECB:
-                            p = decrypt(key, ct)
-                        case Mode.CBC | Mode.CTR | Mode.CFB | Mode.CFB8 | Mode.CFB128:
-                            p = decrypt(key, ct, iv=iv)
-                        case Mode.CBC_PKCS7:
-                            ct = _encrypt(mode, key, pt, iv=iv)
-                            p = decrypt(key, ct, iv=iv)
-                except Exception as error:
-                    info.error_msg = f"Decryption error: {str(error)}"
-                    logger.debug("Decryption error", exc_info=True)
-                    results.add(data)
-                    continue
-                if p == pt:
-                    info.result = True
-                else:
-                    info.error_msg = "Wrong plaintext"
-                data.result = p
-                results.add(data)
-
-    return results_dict
-
-
-def _test_nist_aead_encrypt(
-    encrypt: Encrypt, mode: Mode, key_length: KeyLength, iv_length: int = 0
-) -> ResultsDict:
-    """Tests the implementation with NIST test vectors.
-
-    This function tests AEAD modes of operation only.
-
-    Args:
-        encrypt: The function to test.
-        mode: The mode of operation.
-        key_length: The key length in bits. Used to only select test vectors that have
-            keys with the given length.
-        iv_length: The length of the IV. Selects only the test vectors that have an IV
-            of the given length. If 0, use any test vector available.
-
-    Returns:
-        A dictionary of results. NIST vectors are separated in several files, each
-        Results corresponds to a single file. The keys are the name of the files,
-        prefixed by "NIST/encrypt/".
-    """
-    results_dict = ResultsDict()
-
-    vectors = AesVectors.load(mode, key_length)
-
-    for keylen in vectors.nist.keys():
-        vectors_list = vectors.nist.get(keylen, None)
-        if vectors_list is None:
-            continue
-        for vector in track(
-            vectors_list, f"[NIST] Encrypt AES-{keylen}-{str(mode)} vectors"
-        ):
-            if "dec" in vector.name:
-                continue
-            results = Results(
-                "AES",
-                "test_encrypt (NIST)",
-                "Tests an implementation of AES encryption with NIST vectors.",
-                {
-                    "mode": mode,
-                    "key_length": key_length,
-                    "iv_length": iv_length,
-                    "test vectors file": vector.name,
-                },
-            )
-            results_dict[f"NIST/encrypt/{vector.name}"] = results
-            for tid, test in enumerate(vector.tests):
-                test_type = TestType.VALID if test.is_valid else TestType.INVALID
-                key = bytes.fromhex(test.key)
-                pt = bytes.fromhex(test.plaintext)
-                ct = bytes.fromhex(test.ciphertext)
-                iv = bytes.fromhex(test.iv)
-                if iv_length > 0 and len(iv) * 8 != iv_length:
-                    continue
-                aad = bytes.fromhex(test.aad) if test.aad else None
-                tag = bytes.fromhex(test.tag)
-                mac_len = len(tag)
-                flag = ["Compliance"] if pt else ["Compliance/EmptyPlaintext"]
-                info = DebugInfo(tid, test_type, flag)
-                data = AesData(
-                    info,
-                    Operation.ENCRYPT,
-                    key,
-                    pt,
-                    ct,
-                    iv=iv,
-                    aad=aad,
-                    expected_mac=tag,
-                )
-
-                try:
-                    c, t = encrypt(key, pt, iv=iv, aad=aad, mac_len=mac_len)
-                except Exception as error:
-                    # Invalid tests are meant to fail so we count it as a pass.
-                    if test_type == TestType.INVALID:
-                        info.result = True
-                    else:
-                        info.error_msg = f"Encryption error: {str(error)}"
-                        logger.debug("Encryption error", exc_info=True)
-                    results.add(data)
-                    continue
-
-                data.result = c
-                data.mac = t
-                res = (c == ct) and (t == tag)
-                match (test_type, res):
-                    case (TestType.VALID, True) | (TestType.INVALID, False):
-                        info.result = True
-                    case (TestType.VALID, False) | (TestType.INVALID, True):
-                        if test_type == TestType.INVALID:
-                            info.error_msg = "Invalid ciphertext and MAC returned"
-                        elif c != ct and t != tag:
-                            info.error_msg = "Wrong ciphertext and MAC"
-                        elif c != ct:
-                            info.error_msg = "Wrong ciphertext"
-                        else:
-                            info.error_msg = "Wrong MAC"
-                results.add(data)
-
-    return results_dict
-
-
-def _test_nist_aead_decrypt(
-    decrypt: Decrypt, mode: Mode, key_length: KeyLength, iv_length: int = 0
-) -> ResultsDict:
-    """Tests the implementation with NIST test vectors.
-
-    This function tests AEAD modes of operation only.
-
-    Args:
-        decrypt: The function to test.
-        mode: The mode of operation.
-        key_length: The key length in bits. Used to only select test vectors that have
-            keys with the given length.
-        iv_length: The length of the IV. Selects only the test vectors that have an IV
-            of the given length. If 0, use any test vector available.
-
-    Returns:
-        A dictionary of results. NIST vectors are separated in several files, each
-        Results corresponds to a single file. The keys are the name of the files,
-        prefixed by "NIST/decrypt/".
-    """
-    results_dict = ResultsDict()
-
-    vectors = AesVectors.load(mode, key_length)
-
-    for keylen in vectors.nist.keys():
-        vectors_list = vectors.nist.get(keylen, None)
-        if vectors_list is None:
-            continue
-        for vector in track(
-            vectors_list, f"[NIST] Decrypt AES-{keylen}-{str(mode)} vectors"
-        ):
-            if "enc" in vector.name:
-                continue
-            results = Results(
-                "AES",
-                "test_encrypt (NIST)",
-                "Tests an implementation of AES decryption with NIST vectors.",
-                {
-                    "mode": mode,
-                    "key_length": key_length,
-                    "iv_length": iv_length,
-                    "test vectors file": vector.name,
-                },
-            )
-            results_dict[f"NIST/decrypt/{vector.name}"] = results
-            for tid, test in enumerate(vector.tests):
-                test_type = TestType.VALID if test.is_valid else TestType.INVALID
-                key = bytes.fromhex(test.key)
-                pt = bytes.fromhex(test.plaintext)
-                ct = bytes.fromhex(test.ciphertext)
-                iv = bytes.fromhex(test.iv)
-                if iv_length > 0 and len(iv) * 8 != iv_length:
-                    continue
-                aad = bytes.fromhex(test.aad) if test.aad else None
-                tag = bytes.fromhex(test.tag)
-                mac_len = len(tag)
-                flag = ["Compliance"] if ct else ["Compliance/EmptyCiphertext"]
-                info = DebugInfo(tid, test_type, flag)
-                data = AesData(
-                    info,
-                    Operation.DECRYPT,
-                    key,
-                    ct,
-                    pt,
-                    iv=iv,
-                    aad=aad,
-                    expected_mac=tag,
-                )
-
-                try:
-                    p, status = decrypt(
-                        key, ct, iv=iv, aad=aad, mac=tag, mac_len=mac_len
-                    )
-                except Exception as error:
-                    # Invalid tests are meant to fail so we count it as a pass.
-                    if test_type == TestType.INVALID:
-                        info.result = True
-                    else:
-                        info.error_msg = f"Decryption error: {str(error)}"
-                        logger.debug("Decryption error", exc_info=True)
-                    results.add(data)
-                    continue
-
-                data.result = p
-                data.valid_mac = status
-                res = status and (p == pt)
-                match (test_type, res):
-                    case (TestType.VALID, True) | (TestType.INVALID, False):
-                        info.result = True
-                    case (TestType.VALID, False) | (TestType.INVALID, True):
-                        if test_type == TestType.INVALID:
-                            info.error_msg = "Invalid plaintext/MAC accepted"
-                        elif not status:
-                            info.error_msg = "MAC verification failed"
-                        else:
-                            info.error_msg = "Wrong plaintext"
-                results.add(data)
-
-    return results_dict
-
-
-def _test_nist_vectors(
-    encrypt: Encrypt | None,
-    decrypt: Decrypt | None,
-    mode: Mode,
-    key_length: KeyLength,
-    iv_length: int = 0,
-) -> ResultsDict:
-    """Tests using NIST test vectors.
-
-    Args:
-        encrypt: The encryption function to test. Use None to skip this test.
-        decrypt: The decryption function to test. Use None to skip this test.
-        mode: The mode of operation to test.
-        key_length: The key length in bits. Used to only select test vectors that have
-            keys with the given length.
-        iv_length: The length of the IV to use. Some implementations only deal with IVs
-            of specific sizes, so this option restricts the test vectors used to only
-            those that have the correct IV length.
-
-    Returns:
-        A dictionary of results. NIST vectors are separated in several files, each
-        Results corresponds to a single file. The keys are the name of the files,
-        prefixed by "NIST/encrypt/" or "NIST/decrypt/".
-    """
-    results_dict = ResultsDict()
-
-    if mode in Mode.classic_modes():
-        if encrypt is not None:
-            results_dict |= _test_nist_encrypt(encrypt, mode, key_length)
-        if decrypt is not None:
-            results_dict |= _test_nist_decrypt(decrypt, mode, key_length)
-    else:
-        if encrypt is not None:
-            results_dict |= _test_nist_aead_encrypt(
-                encrypt, mode, key_length, iv_length
-            )
-        if decrypt is not None:
-            results_dict |= _test_nist_aead_decrypt(
-                decrypt, mode, key_length, iv_length
-            )
-
-    return results_dict
-
-
-def _test_wycheproof_encrypt(
-    encrypt: Encrypt, mode: Mode, key_length: KeyLength, iv_length: int = 0
-) -> Results | None:
-    """Tests a mode of operation with Wycheproof test vectors.
-
-    Args:
-        encrypt: The function to test.
-        mode: The mode of operation.
-        key_length: The key length in bits. Used to only select test vectors that have
-            keys with the given length.
-        iv_length: The length of the IV to test. If 0, use any test vector available.
-
-    Returns:
-        The results of testing with Wycheproof vectors. Only one file is available per
-        mode of operation. If there are no vectors for the given mode, returns None.
-    """
-    vectors = AesVectors.load(mode, key_length)
-    if vectors.wycheproof is None:
-        return None
-
-    results = Results(
-        "AES",
-        "test_encryption (Wycheproof)",
-        "Tests an implementation of AES encryption with Wycheproof vectors.",
-        {"mode": mode, "key_length": key_length, "iv_length": iv_length},
-    )
-
-    for group in track(
-        vectors.wycheproof["testGroups"],
-        f"[Wycheproof] Encrypt AES-{key_length}-{str(mode)} vectors",
-    ):
-        for test in group["tests"]:
-            key = bytes.fromhex(test["key"])
-            # Skip tests that don't match key_length when used.
-            if key_length > 0 and len(key) * 8 != key_length:
-                continue
-            iv = bytes.fromhex(test["iv"])
-            # Skip tests that don't match iv_length when used.
-            if iv_length > 0 and len(iv) * 8 != iv_length:
-                continue
-            plaintext = bytes.fromhex(test["msg"])
-            ciphertext = bytes.fromhex(test["ct"])
-            mac = bytes.fromhex(test.get("tag", ""))
-            aad = bytes.fromhex(test.get("aad", ""))
-            mac_len = len(mac)
-
-            test_type = TestType(test["result"])
-            if test["flags"]:
-                flags = test["flags"]
-            else:
-                flags = ["Resilience"] if plaintext else ["Resilience/EmptyPlaintext"]
-            info = DebugInfo(
-                test["tcId"], test_type, flags, comment=test.get("comment", None)
-            )
-            data = AesData(
-                info,
-                Operation.ENCRYPT,
-                key,
-                plaintext,
-                ciphertext,
-                iv=iv,
-                aad=aad,
-                expected_mac=mac,
-            )
-
-            try:
-                if mode == Mode.CBC_PKCS7:
-                    ct, mt = encrypt(key, plaintext, iv=iv), None
-                    res = ct[: len(ciphertext)] == ciphertext
-                else:
-                    ct, mt = encrypt(key, plaintext, iv=iv, aad=aad, mac_len=mac_len)
-                    res = (ct == ciphertext) and (mt == mac)
-            except Exception as error:
-                # Invalid tests are meant to fail so we count it as a pass.
-                if test_type == TestType.INVALID:
-                    info.result = True
-                else:
-                    info.error_msg = f"Encryption error: {str(error)}"
-                    logger.debug("Encryption error", exc_info=True)
-                results.add(data)
-                continue
-
-            data.result = ct
-            data.mac = mt
-            match (test_type, res):
-                case (TestType.VALID, True) | (TestType.INVALID, False):
-                    info.result = True
-                case (TestType.VALID, False) | (TestType.INVALID, True):
-                    if test_type == TestType.INVALID:
-                        info.error_msg = "Invalid ciphertext and MAC produced"
-                    elif ct != ciphertext and mt != mac:
-                        info.error_msg = "Wrong ciphertext and MAC"
-                    elif ct != ciphertext:
-                        info.error_msg = "Wrong ciphertext"
-                    else:
-                        info.error_msg = "Wrong MAC"
-                case (TestType.ACCEPTABLE, (True | False)):
-                    info.result = res
-            results.add(data)
-
-    return results
-
-
-def _test_wycheproof_decrypt(
-    decrypt: Decrypt, mode: Mode, key_length: KeyLength, iv_length: int = 0
-) -> Results | None:
-    """Tests a mode of operation with Wycheproof test vectors.
-
-    Args:
-        decrypt: The function to test.
-        mode: The mode of operation.
-        key_length: The key length in bits. Used to only select test vectors that have
-            keys with the given length.
-        iv_length: The length of the IV to test. If 0, use any test vector available.
-
-    Returns:
-        The results of testing with Wycheproof vectors. Only one file is available per
-        mode of operation. If there are no vectors for the given mode, returns None.
-    """
-    vectors = AesVectors.load(mode, key_length)
-    if vectors.wycheproof is None:
-        return None
-
-    results = Results(
-        "AES",
-        "test_decryption (Wycheproof)",
-        "Tests an implementation of AES decryption with Wycheproof vectors.",
-        {"mode": mode, "key_length": key_length, "iv_length": iv_length},
-    )
-
-    for group in track(
-        vectors.wycheproof["testGroups"],
-        f"[Wycheproof] Decrypt AES-{key_length}-{str(mode)} vectors",
-    ):
-        for test in group["tests"]:
-            key = bytes.fromhex(test["key"])
-            # Skip tests that don't match key_length when used.
-            if key_length != 0 and len(key) * 8 != key_length:
-                continue
-            iv = bytes.fromhex(test["iv"])
-            # Skip tests that don't match iv_length when used.
-            if iv_length > 0 and len(iv) * 8 != iv_length:
-                continue
-            plaintext = bytes.fromhex(test["msg"])
-            ciphertext = bytes.fromhex(test["ct"])
-            mac = bytes.fromhex(test.get("tag", ""))
-            aad = bytes.fromhex(test.get("aad", ""))
-
-            test_type = TestType(test["result"])
-            if test["flags"]:
-                flags = test["flags"]
-            else:
-                flags = ["Resilience"] if plaintext else ["Resilience/EmptyCiphertext"]
-            info = DebugInfo(
-                test["tcId"], test_type, flags, comment=test.get("comment", None)
-            )
-            data = AesData(
-                info,
-                Operation.DECRYPT,
-                key,
-                ciphertext,
-                plaintext,
-                iv=iv,
-                aad=aad,
-                expected_mac=mac,
-            )
-
-            try:
-                # CCM mode uses the mac_len parameter and omitting it makes some valid
-                # tests fail.
-                if mode == Mode.CCM:
-                    mac_len = len(mac)
-                    pt, status = decrypt(
-                        key, ciphertext, iv=iv, aad=aad, mac=mac, mac_len=mac_len
-                    )
-                    res = status and (pt == plaintext)
-                elif mode == Mode.GCM:
-                    mac_len = len(mac)
-                    pt, status = decrypt(
-                        key, ciphertext, iv=iv, aad=aad, mac=mac, mac_len=mac_len
-                    )
-                    res = status and (pt == plaintext)
-                else:
-                    # Add a second argument to bound a value to status, which is
-                    # used when adding the result.
-                    pt, status = decrypt(key, ciphertext, iv=iv), True
-                    res = pt[: len(plaintext)] == plaintext
-            except Exception as error:
-                # Invalid tests are meant to fail so we count it as a pass.
-                if test_type == TestType.INVALID:
-                    info.result = True
-                else:
-                    info.error_msg = f"Decryption error: {str(error)}"
-                    logger.debug("Decryption error", exc_info=True)
-                results.add(data)
-                continue
-
-            data.result = pt
-            data.valid_mac = status
-            match (test_type, res):
-                case (TestType.VALID, True) | (TestType.INVALID, False):
-                    info.result = True
-                case (TestType.VALID, False) | (TestType.INVALID, True):
-                    if test_type == TestType.INVALID:
-                        info.error_msg = "Invalid input accepted"
-                    elif not status:
-                        info.error_msg = "MAC verification failed"
-                    else:
-                        info.error_msg = "Wrong plaintext"
-                case (TestType.ACCEPTABLE, (True | False)):
-                    info.result = res
-            results.add(data)
-
-    return results
-
-
-def _test_wycheproof(
-    encrypt: Encrypt | None,
-    decrypt: Decrypt | None,
-    mode: Mode,
-    key_length: KeyLength,
-    iv_length: int = 0,
-) -> ResultsDict:
-    """Tests an implementation using Wycheproof test vectors.
-
-    Args:
-        encrypt: The encryption function to test, use None to skip.
-        decrypt: The decryption function to test, use None to skip.
-        mode: The mode of operation to test.
-        key_length: The key length in bits. Used to only select test vectors that have
-            keys with the given length.
-        iv_length: The length of the IV to test. If 0, use any test vector available.
-
-    Returns:
-        A dictionary of results. Since there is only one file of test vectors per mode
-        of operation, results are simply indexed by "Wycheproof/encrypt" and
-        "Wycheproof/decrypt". If there are no test vectors for the given mode, no
-        results are included.
-    """
-    results_dict = ResultsDict()
-    if encrypt is not None:
-        encrypt_results = _test_wycheproof_encrypt(encrypt, mode, key_length, iv_length)
-        if encrypt_results is not None:
-            results_dict["Wycheproof encrypt"] = encrypt_results
-    if decrypt is not None:
-        decrypt_results = _test_wycheproof_decrypt(decrypt, mode, key_length, iv_length)
-        if decrypt_results is not None:
-            results_dict["Wycheproof decrypt"] = decrypt_results
-    return results_dict
-
-
-def test(
-    encrypt: Encrypt | None,
-    decrypt: Decrypt | None,
-    mode: Mode,
-    key_length: KeyLength,
-    *,
-    iv_length: int = 0,
-    compliance: bool = True,
-    resilience: bool = True,
-) -> ResultsDict:
-    """Tests implementations of AES encryption and decryption.
-
-    It runs the given functions on a set of test vectors determined by the mode of
-    operation, key length, selection of compliance or resilience test vectors, and the
-    IV length.
-
-    The functions to test must conform to the :protocol:`Encrypt` and
-    :protocol:`Decrypt` protocols.
-
-    Args:
-        encrypt: The encryption function to test.
-        decrypt: The decryption function to test.
-        mode: The mode of operation to test.
-        key_length: The size of the key in bits. Use 0 to test all three values.
-
-    Keyword Args:
-        iv_length: The length of the IV. This options restrict the test vectors to only
-            those that use IVs of the given length. Set to 0 to use all test vectors.
         compliance: Whether to use compliance test vectors.
         resilience: Whether to use resilience test vectors.
 
     Returns:
         A dictionary of results.
 
-        If the compliance option is True then NIST test vectors are used. They are
-        separated in several files, each result corresponds to a single file and they
-        are indexed by the file name, prefixed by ``NIST/encrypt/`` and
-        ``NIST/decrypt/``.
-
-        If the resilience option is True then Wycheproof test vectors are used, if
-        Wycheproof supports the given mode of operation. The dictionary key for results
-        of testing the encrypt function (resp. the decrypt function) is
-        ``Wycheproof/encrypt/`` (resp. ``Wycheproof/decrypt/``).
-
     Example:
-        Let's test PyCryptodome's implementation of AES-256-ECB.
+        Let's test PyCryptodome with AES-256-GCM.
 
         We start by importing the AES module.
 
         >>> from crypto_condor.primitives import AES
 
-        We need to wrap the functions to match the signature defined by
-        :protocol:`Encrypt` and :protocol:`Decrypt`. In this case, we want to match the
-        first overload, as it is the one that corresponds to ECB.
+        We need to wrap the encryption to match the signature of :protocol:`Encrypt`.
 
         >>> from Crypto.Cipher import AES as pycAES
 
-        >>> def my_enc(key: bytes, plaintext: bytes) -> bytes:
-        ...     cipher = pycAES.new(key, pycAES.MODE_ECB)
-        ...     return cipher.encrypt(plaintext)
+        >>> def aes_gcm(
+        ...     key: bytes,
+        ...     plaintext: bytes,
+        ...     *,
+        ...     iv: bytes | None = None,
+        ...     aad: bytes | None = None,
+        ...     mac_len: int = 0,
+        ... ) -> AES.CiphertextAndTag:
+        ...     cipher = pycAES.new(key, pycAES.MODE_GCM, nonce=iv, mac_len=mac_len)
+        ...     if aad is not None:
+        ...         cipher.update(aad)
+        ...     return cipher.encrypt_and_digest(plaintext)
 
-        >>> def my_dec(key: bytes, ciphertext: bytes) -> bytes:
-        ...     cipher = pycAES.new(key, pycAES.MODE_ECB)
-        ...     return cipher.decrypt(ciphertext)
+        We define the parameters to test using the corresponding enums. We can use them
+        directly but this simplifies the function call.
 
-        We define the parameters to test using the corresponding enums.
+        >>> mode, keylen = AES.Mode.GCM, AES.KeyLength.AES256
 
-        >>> mode = AES.Mode.ECB
-        >>> keylen = AES.KeyLength.AES256
+        And now, we test the function.
 
-        And now we test the functions we defined.
+        >>> res = AES.test_encrypt(aes_gcm, mode, keylen)
+        [GCM][256][NIST CAVP] Testing encryption ...
+        >>> assert res.check()
+    """
+    all_vectors = _load_vectors(mode, keylen)
+    rd = ResultsDict()
 
-        >>> results_dict = AES.test(my_enc, my_dec, mode, keylen)
-        [NIST] ...
-        >>> assert results_dict.check()
+    test: AesTest
+    for vectors in all_vectors:
+        if not vectors.encrypt:
+            continue
+        if not compliance and vectors.compliance:
+            continue
+        if not resilience and not vectors.compliance:
+            continue
 
-        Now let's try a more specific example: testing AES-256-GCM decryption with only
-        IVs of size 96.
+        results = Results.new(f"Tests AES-{mode} encryption", ["mode", "keylen"])
+        rd.add(
+            results,
+            ["mode"],
+            extra_values=[str(vectors.keylen), vectors.source.replace(" ", "_")],
+        )
 
-        >>> def my_gcm_dec(
+        for test in track(
+            vectors.tests,
+            rf"\[{mode}]\[{vectors.keylen}]\[{vectors.source}] Testing encryption",
+        ):
+            info = TestInfo.new_from_test(test, vectors.compliance)
+            data = EncData(test.key, test.pt, test.ct, test.iv, test.aad, test.tag)
+
+            try:
+                ret_ct, ret_tag = _try_one_enc(encrypt, mode, test)
+            except Exception as error:
+                if test.type == "invalid":
+                    # FIXME: overly permissive.
+                    info.ok(data)
+                else:
+                    info.fail(f"Exception raised: {str(error)}", data)
+                results.add(info)
+                continue
+
+            # Add returned values to debug data.
+            data.ret_ct = ret_ct
+            data.ret_tag = ret_tag
+
+            # In all modes, check if ciphertext matches.
+            is_same_ct = ret_ct == test.ct
+            # Check if the tag matches only for AEAD modes, not classic ones.
+            if mode in Mode.classic_modes():
+                is_same_tag = True
+            else:
+                is_same_tag = ret_tag == test.tag
+
+            match (is_same_ct and is_same_tag, test.type):
+                case (True, TestType.VALID):
+                    info.ok(data)
+                case (False, TestType.VALID):
+                    if not is_same_ct and not is_same_tag:
+                        err_msg = "Wrong ciphertext and tag"
+                    elif not is_same_ct:
+                        err_msg = "Wrong ciphertext"
+                    else:
+                        err_msg = "Wrong tag"
+                    info.fail(err_msg, data)
+                case (True, TestType.INVALID):
+                    # TODO: think of a message for this case.
+                    info.fail(None, data)
+                case (False, TestType.INVALID):
+                    # FIXME: testing should use the flags/comments and check if the
+                    # expected behaviour is triggered or another error is used.
+                    info.ok(data)
+                case (True, TestType.ACCEPTABLE):
+                    info.ok(data)
+                case (False, TestType.ACCEPTABLE):
+                    # TODO: add a message?
+                    info.fail(data=data)
+                case _:
+                    # Catch-all in case shenanigans happen.
+                    raise ValueError(
+                        f"Unexpected result: {is_same_ct = }, {is_same_tag = }, {test.type = }"  # noqa: E501
+                    )
+            results.add(info)
+
+    return rd
+
+
+def test_decrypt(
+    decrypt: Decrypt,
+    mode: Mode,
+    keylen: KeyLength,
+    *,
+    compliance: bool = True,
+    resilience: bool = False,
+) -> ResultsDict:
+    """Tests a function that decrypt with AES.
+
+    Args:
+        decrypt: The function to test.
+        mode: The AES mode implemented. To more different modes, make separate calls to
+            this function.
+        keylen: The length of the keys to use.
+
+    Keyword Args:
+        compliance: Whether to use compliance test vectors.
+        resilience: Whether to use resilience test vectors.
+
+    Returns:
+        A dictionary of results.
+
+    Example:
+        Let's test PyCryptodome with AES-256-GCM.
+
+        We start by importing the AES module.
+
+        >>> from crypto_condor.primitives import AES
+
+        We need to wrap the encryption to match the signature of :protocol:`Decrypt`.
+
+        >>> from Crypto.Cipher import AES as pycAES
+
+        >>> def aes_gcm(
         ...     key: bytes,
         ...     ciphertext: bytes,
         ...     *,
-        ...     iv: bytes | None,
-        ...     aad: bytes | None,
-        ...     mac: bytes | None,
-        ...     mac_len: int,
-        ... ) -> tuple[bytes | None, bool]:
+        ...     iv: bytes | None = None,
+        ...     aad: bytes | None = None,
+        ...     mac: bytes | None = None,
+        ...     mac_len: int = 0,
+        ... ) -> AES.CiphertextAndTag:
         ...     cipher = pycAES.new(key, pycAES.MODE_GCM, nonce=iv, mac_len=mac_len)
         ...     if aad is not None:
         ...         cipher.update(aad)
         ...     try:
-        ...         plaintext = cipher.decrypt_and_verify(ciphertext, mac)
-        ...         return (plaintext, True)
+        ...         pt = cipher.decrypt_and_verify(ciphertext, mac)
+        ...         return (pt, True)
         ...     except ValueError:
         ...         return (None, False)
 
-        >>> mode = AES.Mode.GCM
-        >>> results_dict = AES.test(None, my_gcm_dec, mode, keylen, iv_length=96)
-        [NIST] ...
-        >>> assert results_dict.check()
+        We define the parameters to test using the corresponding enums. We can use them
+        directly but this simplifies the function call.
+
+        >>> mode, keylen = AES.Mode.GCM, AES.KeyLength.AES256
+
+        And now, we test the function.
+
+        >>> res = AES.test_decrypt(aes_gcm, mode, keylen)
+        [GCM][256][NIST CAVP] Testing decryption ...
+        >>> assert res.check()
     """
-    results_dict = ResultsDict()
-    if not compliance and not resilience:  # pragma: no cover (not interesting)
-        return results_dict
-    if compliance:
-        results_dict |= _test_nist_vectors(
-            encrypt, decrypt, mode, key_length, iv_length
-        )
-    if resilience:
-        results_dict |= _test_wycheproof(encrypt, decrypt, mode, key_length, iv_length)
-    return results_dict
+    all_vectors = _load_vectors(mode, keylen)
+    rd = ResultsDict()
 
-
-def _verify_file_encrypt(filename: str, mode: Mode) -> Results:
-    with open(filename, "r") as file:
-        lines = file.readlines()
-    logger.debug("Read %s lines from %s.", len(lines), filename)
-
-    results = Results(
-        "AES",
-        "verify_file",
-        "Checks the output of an implementation.",
-        {"filename": filename, "mode": mode, "operation": Operation.ENCRYPT},
-    )
-
-    tid = 0
-    for line_number, line in track(enumerate(lines, start=1), "Testing file"):
-        if line.startswith("#"):
+    test: AesTest
+    for vectors in all_vectors:
+        if not vectors.decrypt:
             continue
-        tid += 1
-        args = line.rstrip().split("/")
-        info = DebugInfo(
-            tid, TestType.VALID, ["UserInput"], comment=f"Line number {line_number}"
-        )
-        # Default values for non-AEAD modes.
-        aad, mac, mt = None, None, None
-        match mode:
-            case Mode.ECB:
-                key, plaintext, ciphertext = map(bytes.fromhex, args)
-                iv = None
-                ct = _encrypt(mode, key, plaintext)
-            case (
-                Mode.CBC
-                | Mode.CTR
-                | Mode.CBC_PKCS7
-                | Mode.CFB
-                | Mode.CFB8
-                | Mode.CFB128
-            ):
-                key, plaintext, ciphertext, iv = map(bytes.fromhex, args)
-                ct = _encrypt(mode, key, plaintext, iv=iv)
-            case Mode.CCM | Mode.GCM:
-                key, plaintext, ciphertext, iv, aad, mac = map(bytes.fromhex, args)
-                ct, mt = _encrypt(
-                    mode, key, plaintext, iv=iv, aad=aad, mac_len=len(mac)
-                )
-        # Works even for non-AEAD modes since mac and mt would be None.
-        if ciphertext == ct and mac == mt:
-            info.result = True
-        elif ciphertext != ct and mac != mt:
-            info.error_msg = "Wrong ciphertext and MAC"
-        elif ciphertext != ct:
-            info.error_msg = "Wrong ciphertext"
-        else:
-            info.error_msg = "Wrong MAC"
-        data = AesData(
-            info, Operation.ENCRYPT, key, plaintext, ct, ciphertext, iv, aad, mt, mac
-        )
-        results.add(data)
-
-    return results
-
-
-def _verify_file_decrypt(filename: str, mode: Mode) -> Results:
-    with open(filename, "r") as file:
-        lines = file.readlines()
-    logger.debug("Read %s lines from %s.", len(lines), filename)
-
-    results = Results(
-        "AES",
-        "verify_file",
-        "Checks the output of an implementation.",
-        {"filename": filename, "mode": mode, "operation": Operation.DECRYPT},
-    )
-
-    for tid, line in track(enumerate(lines, start=1), "Testing file"):
-        if line.startswith("#"):
+        if not compliance and vectors.compliance:
             continue
-        args = line.rstrip().split("/")
-        info = DebugInfo(
-            tid, TestType.VALID, ["UserInput"], comment=f"Line number {tid}"
+        if not resilience and not vectors.compliance:
+            continue
+
+        results = Results.new(f"Tests AES-{mode} decryption", ["mode", "keylen"])
+        rd.add(
+            results,
+            ["mode"],
+            extra_values=[str(vectors.keylen), vectors.source.replace(" ", "_")],
         )
-        # Default values for non-AEAD modes.
-        aad, mac, st = None, None, True
-        pt: bytes | None
-        match mode:
-            case Mode.ECB:
-                key, ciphertext, plaintext = map(bytes.fromhex, args)
-                iv = None
-                pt = _decrypt(mode, key, ciphertext)
-            case (
-                Mode.CBC
-                | Mode.CTR
-                | Mode.CBC_PKCS7
-                | Mode.CFB
-                | Mode.CFB8
-                | Mode.CFB128
-            ):
-                key, ciphertext, plaintext, iv = map(bytes.fromhex, args)
-                pt = _decrypt(mode, key, ciphertext, iv=iv)
-            case Mode.CCM | Mode.GCM:
-                key, ciphertext, plaintext, iv, aad, mac = map(bytes.fromhex, args)
-                pt, st = _decrypt(
-                    mode, key, ciphertext, iv=iv, aad=aad, mac=mac, mac_len=len(mac)
+
+        for test in track(
+            vectors.tests,
+            rf"\[{mode}]\[{keylen}]\[{vectors.source}] Testing decryption",
+        ):
+            info = TestInfo.new_from_test(test, vectors.compliance)
+            data = DecData(test.key, test.ct, test.pt, test.iv, test.aad, test.tag)
+
+            try:
+                ret_pt, ret_valid_tag = _try_one_dec(decrypt, mode, test)
+            except Exception as error:
+                if test.type == "invalid":
+                    # FIXME: overly permissive
+                    info.ok(data)
+                else:
+                    info.fail(f"Exception raised: {str(error)}", data)
+                results.add(info)
+                continue
+
+            # Add returned values to debug data.
+            data.ret_pt = ret_pt
+            data.ret_valid_tag = ret_valid_tag
+
+            # In all modes, check if plaintext matches.
+            is_same_pt = ret_pt == test.pt
+
+            # Check if tag is considered valid only for AEAD modes.
+            if mode in Mode.classic_modes():
+                is_valid_tag = True
+            elif ret_valid_tag is None:
+                # For AEAD modes, the second returned value must be a bool.
+                info.fail(
+                    "Second returned value is None, missing tag verification status",
+                    data,
                 )
-        # Works even for non-AEAD modes since mac and mt would be None.
-        if st and plaintext == pt:
-            info.result = True
-        elif not st:
-            info.error_msg = "MAC verification failed"
-        else:
-            info.error_msg = "Wrong plaintext"
-        data = AesData(
-            info,
-            Operation.DECRYPT,
-            key,
-            ciphertext,
-            pt,
-            plaintext,
-            iv,
-            aad,
-            mac,
-            valid_mac=st,
-        )
-        results.add(data)
+                results.add(info)
+                continue
+            else:
+                is_valid_tag = ret_valid_tag
 
-    return results
+            match (test.type, is_same_pt and is_valid_tag, mode):
+                case (TestType.VALID, True, _):
+                    info.ok(data)
+                case (TestType.VALID, False, Mode.CCM | Mode.GCM):
+                    if not is_valid_tag:
+                        err_msg = "Tag considered invalid"
+                    if not is_same_pt:
+                        err_msg = "Wrong plaintext"
+                    info.fail(err_msg, data)
+                case (TestType.VALID, False, _):
+                    info.fail("Wrong plaintext", data)
+                case (TestType.INVALID, True, Mode.CCM | Mode.GCM):
+                    # FIXME: use flags/comments to check if expected behaviour is
+                    # triggered or if it's another error.
+                    info.fail("Invalid plaintext/tag accepted", data)
+                case (TestType.INVALID, True, _):
+                    info.fail("Wrong plaintext")
+                case (TestType.INVALID, False, _):
+                    # FIXME: overly permissive.
+                    info.ok(data)
+                case (TestType.ACCEPTABLE, True, _):
+                    info.ok(data)
+                case (TestType.ACCEPTABLE, False, _):
+                    # TODO: add a message.
+                    info.fail(None, data)
+                case _:
+                    # Catch-all in case shenanigans happen.
+                    raise ValueError(
+                        f"Unexpected result: {is_same_pt = }, {is_valid_tag = }, {test.type = }"  # noqa: E501
+                    )
+            results.add(info)
+
+    return rd
 
 
-def verify_file(filename: str, mode: Mode, operation: Operation) -> Results:
-    r"""Tests the output of an implementation.
+def _test_output_enc(line: str, mode: Mode):
+    match line.rstrip().split("/"):
+        case [_k, _p, _c]:
+            if mode != Mode.ECB:
+                raise ParsingError("")
+            key, pt, ct = map(bytes.fromhex, (_k, _p, _c))
+            ref_ct = _encrypt(mode, key, pt)
+            return EncData(key, pt, ct, None, None, None, ref_ct, None)
+        case [_k, _p, _c, _i]:
+            if mode == Mode.ECB or mode == Mode.CCM or mode == Mode.GCM:
+                raise ParsingError("")
+            key, pt, ct, iv = map(bytes.fromhex, (_k, _p, _c, _i))
+            ref_ct = _encrypt(mode, key, pt, iv=iv)
+            return EncData(key, pt, ct, iv, None, None, ref_ct, None)
+        case [_k, _p, _c, _i, _a, _t]:
+            if mode != Mode.CCM and mode != Mode.GCM:
+                raise ParsingError("")
+            key, pt, ct, iv, aad, tag = map(bytes.fromhex, (_k, _p, _c, _i, _a, _t))
+            ref_ct, ref_tag = _encrypt(mode, key, pt, iv=iv, aad=aad, mac_len=len(tag))
+            return EncData(key, pt, ct, iv, aad, tag, ref_ct, ref_tag)
+        case _:
+            raise ParsingError("")
 
-    Tests an implementation from a set of inputs passed to it and the outputs it
-    returned. These inputs are passed to the internal implementation and the results
-    are compared to the outputs given.
+
+def test_output_encrypt(filename: str, mode: Mode) -> ResultsDict:
+    r"""Tests the output of an implementation of AES encryption.
 
     .. attention::
 
@@ -1820,95 +1266,379 @@ def verify_file(filename: str, mode: Mode, operation: Operation) -> Results:
 
     Format:
         - One set of arguments per line.
-        - Lines are separated by newlines (``\n``).
-        - Lines that start with '#' are counted as comments and ignored.
-        - Arguments are written in hexadecimal and separated by slashes.
-        - For ECB the order is:
+        - Lines are separated by newlines ``\n``.
+        - Lines that start with ``#`` are counted as comments and ignored.
+        - Arguments are written in hexadecimal and separated by forward slashes.
+        - For ECB, the order is:
 
         .. code::
 
-            key/input/output
+            key/plaintext/ciphertext
 
         - For other classic modes of operation (CBC, CTR, CFB) the order is:
 
         .. code::
 
-            key/input/output/iv
+            key/plaintext/ciphertext/iv
 
         - For AEAD modes (CCM, GCM) the order is:
 
         .. code::
 
-            key/input/output/iv/[aad]/[mac]
+            key/plaintext/ciphertext/iv/[aad]/[mac]
 
         - Where:
             - ``key`` is the key used.
-            - ``input`` is the plaintext when encrypting (resp. the ciphertext when
-              decrypting).
-            - ``output`` is the ciphertext when encrypting (resp. the plaintext when
-              decrypting).
+            - ``plaintext`` is the input message.
+            - ``ciphertext`` is the result of the operation.
             - ``iv`` is the IV or nonce used for that operation.
             - ``aad`` is the associated data. It is optional and can be empty. Even if
               not used, the corresponding slashes must be present.
-            - ``mac`` is the MAC tag generated when encrypting. When testing encryption,
-              it is compared to the MAC generated internally. When decrypting, it is
-              used for authenticating the ciphertext and associated data.
+            - ``mac`` is the MAC tag generated when encrypting.
 
     Args:
         filename: The name of the file to test.
-        mode: The mode of operation to use.
-        operation: The operation being tested, 'encrypt' or 'decrypt'.
+        mode: The mode of operation used.
 
     Returns:
-        The results of testing each line of the line.
-
-    Raises:
-        FileNotFoundError: If there is not file with that filename.
-
-    Example:
-        Let's generate 10 random tuples of (key, plaintext, IV), encrypt the plaintexts
-        using PyCryptodome's AES-128-GCM, and write everything to a file. We won't use
-        any associated data to illustrate how to skip it.
-
-        >>> import random
-        >>> from crypto_condor.primitives import AES
-        >>> from Crypto.Cipher import AES as pyAES
-        >>> filename = "/tmp/crypto-condor-test/aes-verify.txt"
-        >>> with open(filename, "w") as file:
-        ...     for _ in range(10):
-        ...         # Pick random values.
-        ...         key = random.randbytes(16)
-        ...         plaintext = random.randbytes(16)
-        ...         iv = random.randbytes(12)
-        ...         # Encrypt.
-        ...         cipher = pyAES.new(key, pyAES.MODE_GCM, nonce=iv)
-        ...         ciphertext, mac = cipher.encrypt_and_digest(plaintext)
-        ...         # Convert to hex.
-        ...         kh = bytes.hex(key)
-        ...         ph = bytes.hex(plaintext)
-        ...         ih = bytes.hex(iv)
-        ...         ch = bytes.hex(ciphertext)
-        ...         mh = bytes.hex(mac)
-        ...         # Create the line to write.
-        ...         # key/input/output/iv/[aad]/[mac]
-        ...         line = f"{kh}/{ph}/{ch}/{ih}//{mh}\n"
-        ...         _ = file.write(line)
-
-        Now we can test this file.
-
-        >>> mode = AES.Mode.GCM
-        >>> operation = AES.Operation.ENCRYPT
-        >>> results = AES.verify_file(filename, mode, operation)
-        Testing ...
-        >>> assert results.check()
+        A dictionary of Results, containing a single instance.
     """
-    if not Path(filename).is_file():
-        raise FileNotFoundError("Can't find file %s", filename)
+    in_file = Path(filename)
+    if not in_file.is_file():
+        raise FileNotFoundError(f"Can't find file {filename}")
 
+    with in_file.open("r") as file:
+        lines = file.readlines()
+    res = Results.new(
+        "Tests the output of implementation of AES encryption.", ["filename", "mode"]
+    )
+
+    tid = 0
+    for line_number, line in track(enumerate(lines, start=1), "Testing file"):
+        if line.startswith("#"):
+            continue
+        tid += 1
+        info = TestInfo.new(tid, TestType.VALID, ["UserInput"], f"Line {line_number}")
+
+        try:
+            data = _test_output_enc(line, mode)
+        except ValueError:
+            pass
+
+        if mode in Mode.classic_modes():
+            if data.ref_ct == data.ct:
+                info.ok(data)
+            else:
+                info.fail("Wrong ciphertext", data)
+        else:
+            if data.ref_ct != data.ct and data.ref_tag != data.tag:
+                info.fail("Wrong ciphertext and tag", data)
+            elif data.ref_ct != data.ct:
+                info.fail("Wrong ciphertext", data)
+            elif data.ref_tag != data.tag:
+                info.fail("Wrong tag", data)
+            else:
+                info.ok(data)
+        res.add(info)
+
+    rd = ResultsDict()
+    rd.add(res)
+    return rd
+
+
+def _test_output_dec(line: str, mode: Mode):
+    match line.rstrip().split("/"):
+        case [_k, _c, _p]:
+            if mode != Mode.ECB:
+                raise ParsingError("")
+            key, ct, pt = map(bytes.fromhex, (_k, _c, _p))
+            ref_pt = _decrypt(mode, key, ct)
+            return DecData(key, ct, pt, None, None, None, ref_pt, None)
+        case [_k, _c, _p, _i]:
+            if mode == Mode.ECB or mode == Mode.CCM or mode == Mode.GCM:
+                raise ParsingError("")
+            key, ct, pt, iv = map(bytes.fromhex, (_k, _c, _p, _i))
+            ref_pt = _decrypt(mode, key, ct, iv=iv)
+            return DecData(key, ct, pt, iv, None, None, ref_pt, None)
+        case [_k, _c, _p, _i, _a, _t]:
+            if mode != Mode.CCM and mode != Mode.GCM:
+                raise ParsingError("")
+            key, ct, pt, iv, aad, tag = map(bytes.fromhex, (_k, _c, _p, _i, _a, _t))
+            ref_pt_aead, ref_status = _decrypt(mode, key, ct, iv=iv, aad=aad, mac=tag)
+            return DecData(key, ct, pt, iv, aad, tag, ref_pt_aead, ref_status)
+        case _:
+            raise ParsingError("")
+
+
+def test_output_decrypt(filename: str, mode: Mode) -> ResultsDict:
+    r"""Tests the output of an implementation of AES decryption.
+
+    .. attention::
+
+        This function uses the internal implementation of AES, which must be compiled
+        and installed locally. This is done automatically when the function is called
+        for the first time. If the installation fails, this function will not work.
+
+    Format:
+        - One set of arguments per line.
+        - Lines are separated by newlines ``\n``.
+        - Lines that start with ``#`` are counted as comments and ignored.
+        - Arguments are written in hexadecimal and separated by forward slashes.
+        - For ECB, the order is:
+
+        .. code::
+
+            key/ciphertext/plaintext
+
+        - For other classic modes of operation (CBC, CTR, CFB) the order is:
+
+        .. code::
+
+            key/ciphertext/plaintext/iv
+
+        - For AEAD modes (CCM, GCM) the order is:
+
+        .. code::
+
+            key/ciphertext/plaintext/iv/[aad]/[mac]
+
+        - Where:
+            - ``key`` is the key used.
+            - ``ciphertext`` is the input message.
+            - ``plaintext`` is the result of the operation.
+            - ``iv`` is the IV or nonce used for that operation.
+            - ``aad`` is the associated data. It is optional and can be empty. Even if
+              not used, the corresponding slashes must be present.
+            - ``mac`` is the MAC tag generated when encrypting.
+
+    Args:
+        filename: The name of the file to test.
+        mode: The mode of operation used.
+
+    Returns:
+        A dictionary of Results, containing a single instance.
+    """
+    in_file = Path(filename)
+    if not in_file.is_file():
+        raise FileNotFoundError(f"Can't find file {filename}")
+
+    with in_file.open("r") as file:
+        lines = file.readlines()
+    res = Results.new(
+        "Tests the output of implementation of AES decryption.", ["filename", "mode"]
+    )
+
+    tid = 0
+    for line_number, line in track(enumerate(lines, start=1), "Testing file"):
+        if line.startswith("#"):
+            continue
+        tid += 1
+        info = TestInfo.new(tid, TestType.VALID, ["UserInput"], f"Line {line_number}")
+
+        try:
+            data = _test_output_dec(line, mode)
+        except ValueError:
+            pass
+
+        if mode in Mode.classic_modes():
+            if data.ref_pt == data.pt:
+                info.ok(data)
+            else:
+                info.fail("Wrong plaintext", data)
+        else:
+            if not data.ret_valid_tag:
+                info.fail("Tag verification failed", data)
+            elif data.ref_pt != data.pt:
+                info.fail("Wrong plaintext", data)
+            else:
+                info.ok(data)
+        res.add(info)
+
+    rd = ResultsDict()
+    rd.add(res)
+    return rd
+
+
+def test(
+    encrypt: Encrypt | None,
+    decrypt: Decrypt | None,
+    mode: Mode,
+    key_length: KeyLength,
+    *,
+    compliance: bool = True,
+    resilience: bool = False,
+) -> ResultsDict:
+    """Tests implementations of AES encryption and decryption.
+
+    Args:
+        encrypt: The encryption function to test.
+        decrypt: The decryption function to test.
+        mode: The mode of operation.
+        key_length: The key sizes to use.
+
+    Keyword Args:
+        compliance: Whether to use compliance test vectors.
+        resilience: Whether to use resilience test vectors.
+
+    Returns:
+        A dictionary of results.
+
+    .. deprecated:: TODO(version)
+        Use :func:`test_encrypt` and :func:`test_decrypt` instead.
+    """
+    rd = ResultsDict()
+    if not compliance and not resilience:
+        return rd
+    if encrypt is not None:
+        rd |= test_encrypt(
+            encrypt, mode, key_length, compliance=compliance, resilience=resilience
+        )
+    if decrypt is not None:
+        rd |= test_decrypt(
+            decrypt, mode, key_length, compliance=compliance, resilience=resilience
+        )
+    return rd
+
+
+def verify_file(filename: str, mode: Mode, operation: Operation) -> ResultsDict:
+    r"""Tests the output of an implementation.
+
+    Format:
+        - One set of arguments per line.
+        - Lines are separated by newlines ``\n``.
+        - Lines that start with ``#`` are counted as comments and ignored.
+        - Arguments are written in hexadecimal and separated by forward slashes.
+        - For ECB, the order is:
+
+        .. code::
+
+            key/plaintext/ciphertext
+
+        - For other classic modes of operation (CBC, CTR, CFB) the order is:
+
+        .. code::
+
+            key/plaintext/ciphertext/iv
+
+        - For AEAD modes (CCM, GCM) the order is:
+
+        .. code::
+
+            key/plaintext/ciphertext/iv/[aad]/[mac]
+
+        - Where:
+            - ``key`` is the key used.
+            - ``plaintext`` is the input message.
+            - ``ciphertext`` is the result of the operation.
+            - ``iv`` is the IV or nonce used for that operation.
+            - ``aad`` is the associated data. It is optional and can be empty. Even if
+              not used, the corresponding slashes must be present.
+            - ``mac`` is the MAC tag generated when encrypting.
+
+    Args:
+        filename: The name of the file to test.
+        mode: The mode of operation used to generate the file.
+        operation: The operation used.
+
+    Returns:
+        A dictionary of results.
+
+    .. deprecated:: TODO(version)
+        Use :func:`test_output_encrypt` and :func:`test_output_decrypt` instead.
+    """
     if operation == Operation.ENCRYPT:
-        return _verify_file_encrypt(filename, mode)
+        return test_output_encrypt(filename, mode)
     else:
-        return _verify_file_decrypt(filename, mode)
+        return test_output_decrypt(filename, mode)
+
+
+# --------------------------- Runners -------------------------------------------------
+
+
+def run_python_wrapper(
+    wrapper: Path, compliance: bool, resilience: bool
+) -> ResultsDict:
+    """Runs an AES Python wrapper.
+
+    Args:
+        wrapper: A path to the wrapper to run. Must be a Python program.
+        compliance: Whether to use compliance test vectors.
+        resilience: Whether to use resilience test vectors.
+
+    Returns:
+        A dictionary of results.
+    """
+    logger.info("Running Python AES wrapper: '%s'", str(wrapper.name))
+    sys.path.insert(0, str(wrapper.parent.absolute()))
+    already_imported = wrapper.stem in sys.modules.keys()
+    try:
+        aes_wrapper = importlib.import_module(wrapper.stem)
+    except ModuleNotFoundError as error:
+        logger.error("Can't import wrapper: '%s'", str(error))
+        raise
+    if already_imported:
+        logger.debug("Reloading AES wrapper: '%s'", wrapper.stem)
+        aes_wrapper = importlib.reload(aes_wrapper)
+
+    rd = ResultsDict()
+
+    for symbol in dir(aes_wrapper):
+        match symbol.split("_"):
+            case ["CC", "AES", _mode, ("encrypt" | "decrypt") as op]:
+                logger.info("Found CC_AES function %s", symbol)
+                try:
+                    mode = Mode(_mode)
+                except ValueError:
+                    logger.error("Unknown mode %s for AES", _mode)
+                    continue
+                if op == "encrypt":
+                    rd |= test_encrypt(
+                        getattr(aes_wrapper, symbol),
+                        mode,
+                        KeyLength.ALL,
+                        compliance=compliance,
+                        resilience=resilience,
+                    )
+                else:
+                    rd |= test_decrypt(
+                        getattr(aes_wrapper, symbol),
+                        mode,
+                        KeyLength.ALL,
+                        compliance=compliance,
+                        resilience=resilience,
+                    )
+            case ["CC", "AES", _mode, _klen, ("encrypt" | "decrypt") as op]:
+                logger.info("Found CC_AES function %s", symbol)
+                try:
+                    mode = Mode(_mode)
+                    klen = KeyLength(int(_klen))
+                except ValueError as error:
+                    logger.error(
+                        "Invalid parameter '%s', skip function %s", str(error), symbol
+                    )
+                    continue
+                if op == "encrypt":
+                    rd |= test_encrypt(
+                        getattr(aes_wrapper, symbol),
+                        mode,
+                        klen,
+                        compliance=compliance,
+                        resilience=resilience,
+                    )
+                else:
+                    rd |= test_decrypt(
+                        getattr(aes_wrapper, symbol),
+                        mode,
+                        klen,
+                        compliance=compliance,
+                        resilience=resilience,
+                    )
+            case ["CC", "AES", *_]:
+                logger.warning("Ignored unknown CC_AES symbol %s", symbol)
+            case _:
+                pass
+
+    return rd
 
 
 # --------------------------- Lib hook functions --------------------------------------
@@ -1938,7 +1668,7 @@ def _test_lib_enc(
         enc(buf, len(plaintext), _key, len(key), _iv, len(iv))
         return bytes(buf)
 
-    return test(_enc, None, mode, key_length)  # type: ignore
+    return test_encrypt(_enc, mode, key_length)  # type: ignore
 
 
 def _test_lib_dec(
@@ -1965,7 +1695,7 @@ def _test_lib_dec(
         dec(buf, len(ciphertext), _key, len(key), _iv, len(iv))
         return bytes(buf)
 
-    return test(None, _dec, mode, key_length)  # type: ignore
+    return test_decrypt(_dec, mode, key_length)  # type: ignore
 
 
 def _test_lib_enc_aead(
@@ -2017,7 +1747,7 @@ def _test_lib_enc_aead(
         )
         return (bytes(buf), bytes(mac_buf))
 
-    return test(_enc, None, mode, key_length)  # type: ignore[arg-type]
+    return test_encrypt(_enc, mode, key_length)  # type: ignore[arg-type]
 
 
 def _test_lib_dec_aead(
@@ -2074,7 +1804,7 @@ def _test_lib_dec_aead(
         else:
             raise ValueError(f"Invalid returned value {rc} (expected 0 or -1)")
 
-    return test(None, _dec, mode, key_length)  # type: ignore[arg-type]
+    return test_decrypt(_dec, mode, key_length)  # type: ignore[arg-type]
 
 
 def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
@@ -2098,58 +1828,42 @@ def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
     # into account before passing the string to Mode.
     for function in functions:
         match function.split("_"):
-            case ["CC", "AES", md, op]:
+            case ["CC", "AES", _mode, ("encrypt" | "decrypt") as op]:
+                logger.info("Found CC_AES function %s", function)
                 try:
-                    mode = Mode.CBC_PKCS7 if md == "CBCPKCS7" else Mode(md)
-                except ValueError:
-                    logger.error("Unknown AES mode %s", md)
-                    logger.warning("Skipped function %s", function)
+                    mode = Mode.CBC_PKCS7 if _mode == "CBCPKCS7" else Mode(_mode)
+                except ValueError as error:
+                    logger.error(
+                        "Invalid parameter '%s', skip function %s", str(error), function
+                    )
                     continue
-                key_size = KeyLength.ALL
-                if op == "encrypt":
-                    operation = Operation.ENCRYPT
-                elif op == "decrypt":
-                    operation = Operation.DECRYPT
-                else:
-                    logger.error("Unknown AES operation %s", op)
-                    logger.warning("Skipped function %s", function)
-                    continue
-            case ["CC", "AES", md, ks, op]:
+                klen = KeyLength.ALL
+            case ["CC", "AES", _mode, _klen, ("encrypt" | "decrypt") as op]:
+                logger.info("Found CC_AES function %s", function)
                 try:
-                    mode = Mode.CBC_PKCS7 if md == "CBCPKCS7" else Mode(md)
-                except ValueError:
-                    logger.error("Unknown AES mode %s", md)
-                    logger.warning("Skipped function %s", function)
+                    mode = Mode.CBC_PKCS7 if _mode == "CBCPKCS7" else Mode(_mode)
+                    klen = KeyLength(int(_klen))
+                except ValueError as error:
+                    logger.error(
+                        "Invalid parameter '%s', skip function %s", str(error), function
+                    )
                     continue
-                try:
-                    key_size = KeyLength(int(ks))
-                except ValueError:
-                    logger.error("Unsupported AES key size %s", ks)
-                    logger.warning("Skipped function %s", function)
-                    continue
-                if op == "encrypt":
-                    operation = Operation.ENCRYPT
-                elif op == "decrypt":
-                    operation = Operation.DECRYPT
-                else:
-                    logger.error("Unknown AES operation %s", op)
-                    logger.warning("Skipped function %s", function)
-                    continue
-            case _:
-                logger.warning(
-                    "Skipped function %s as it does not match the convention", function
-                )
+            case ["CC", "AES", *_]:
+                logger.warning("Ignored unknown CC_AES function '%s'", function)
                 continue
+            case _:
+                continue
+
         # If the condition is false, it continues searching for a pattern.
-        match (mode, operation):
-            case (mode, Operation.ENCRYPT) if mode in Mode.classic_modes():
-                results |= _test_lib_enc(ffi, lib, function, mode, key_size)
-            case (mode, Operation.ENCRYPT):
-                results |= _test_lib_enc_aead(ffi, lib, function, mode, key_size)
-            case (mode, Operation.DECRYPT) if mode in Mode.classic_modes():
-                results |= _test_lib_dec(ffi, lib, function, mode, key_size)
-            case (mode, Operation.DECRYPT):
-                results |= _test_lib_dec_aead(ffi, lib, function, mode, key_size)
+        match (mode, op):
+            case (mode, "encrypt") if mode in Mode.classic_modes():
+                results |= _test_lib_enc(ffi, lib, function, mode, klen)
+            case (mode, "encrypt"):
+                results |= _test_lib_enc_aead(ffi, lib, function, mode, klen)
+            case (mode, "decrypt") if mode in Mode.classic_modes():
+                results |= _test_lib_dec(ffi, lib, function, mode, klen)
+            case (mode, "decrypt"):
+                results |= _test_lib_dec_aead(ffi, lib, function, mode, klen)
 
     return results
 
