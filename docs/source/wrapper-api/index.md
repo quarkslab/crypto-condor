@@ -1,4 +1,4 @@
-# Wrapper interface
+# Wrapper API
 
 Each module defines the primitive operations it can test. These operations can
 be tested through the Python wrappers by defining functions with specific names
@@ -9,6 +9,7 @@ protocol.
 :::{toctree}
 :maxdepth: 1
 
+AES <AES>
 ECDH <ECDH>
 HMAC <HMAC>
 SHA <SHA>

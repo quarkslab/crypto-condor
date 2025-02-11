@@ -1560,6 +1560,8 @@ def run_python_wrapper(
 ) -> ResultsDict:
     """Runs an AES Python wrapper.
 
+    See :doc:`AES wrapper </wrapper-api/AES>` for a description of the wrappers.
+
     Args:
         wrapper: A path to the wrapper to run. Must be a Python program.
         compliance: Whether to use compliance test vectors.

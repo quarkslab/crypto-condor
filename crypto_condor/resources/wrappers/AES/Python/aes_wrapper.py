@@ -11,82 +11,89 @@ The tool expects them to be present and will likely fail if one is missing.
 """
 
 
-def encrypt(
+def CC_AES_CBC_encrypt(
+    key: bytes, plaintext: bytes, *, iv: bytes | None = None
+) -> bytes:
+    """Encrypts with AES-CBC.
+
+    Args:
+        key: The AES key.
+        plaintext: The message to encrypt.
+
+    Keyword Args:
+        iv: The IV.
+
+    Returns:
+        The plaintext.
+    """
+    raise NotImplementedError()
+
+
+def CC_AES_CBC_decrypt(
+    key: bytes, ciphertext: bytes, *, iv: bytes | None = None
+) -> bytes:
+    """Decrypts with AES-CBC.
+
+    Args:
+        key: The AES key.
+        ciphertext: The message to decrypt.
+
+    Keyword Args:
+        iv: The IV.
+
+    Returns:
+        The plaintext.
+    """
+    raise NotImplementedError()
+
+
+def CC_AES_GCM_encrypt(
     key: bytes,
-    message: bytes,
+    plaintext: bytes,
     *,
     iv: bytes | None = None,
     aad: bytes | None = None,
     mac_len: int = 0,
-    segment_size: int = 0,
-) -> bytes | tuple[bytes, bytes]:
-    """Function for encryption.
+) -> tuple[bytes, bytes]:
+    """Encrypts with AES-GCM.
 
     Args:
-        key:
-            The cryptographic key.
-        message:
-            The message to encrypt.
+        key: The AES key.
+        plaintext: The message to encrypt.
 
     Keyword Args:
-        iv:
-            (All modes except ECB) The IV or nonce, depending on the mode of operation.
-        aad:
-            (AEAD modes) The associated data, it may be empty (b"").
-            (Classic modes) None.
-        mac_len:
-            (AEAD modes) The desired length of the authentication tag in bytes.
-            (Classic modes) None.
-        segment_size:
-            (CFB modes) The size of the segment in bits, either 8 or 128.
+        iv: The IV.
+        aad: The associated data.
+        mac_len: The length of the MAC tag.
 
     Returns:
-        (Classic modes) The ciphertext.
-        (AEAD modes) A tuple containing the ciphertext and tag. See
-        CiphertextAndTag in the documentation for the AES module.
+        A tuple (ciphertext, tag).
     """
-    # TO FILL
-    pass
+    raise NotImplementedError()
 
 
-def decrypt(
+def CC_AES_GCM_decrypt(
     key: bytes,
-    message: bytes,
+    ciphertext: bytes,
     *,
     iv: bytes | None = None,
     aad: bytes | None = None,
+    mac: bytes | None = None,
     mac_len: int = 0,
-    tag: bytes | None = None,
-    segment_size: int = 0,
-) -> bytes | tuple[bytes | None, bool]:
-    """Function for decryption.
+) -> tuple[bytes | None, bool]:
+    """Decrypts with AES-GCM.
 
     Args:
-        key:
-            The cryptographic key.
-        message:
-            The message to encrypt.
+        key: The AES key.
+        ciphertext: The message to decrypt.
 
     Keyword Args:
-        iv:
-            (All modes except ECB) The IV or nonce, depending on the mode of operation.
-        aad:
-            (AEAD modes) The associated data, it may be empty (b"").
-            (Classic modes) None.
-        mac_len:
-            (AEAD modes) The expected length of the authentication tag in bytes.
-            (Classic modes) None.
-        tag:
-            (AEAD-modes) The authentication tag.
-            (Classic modes) None.
-        segment_size:
-            (CFB modes) The size of the segment in bits, either 8 or 128.
+        iv: The IV.
+        aad: The associated data.
+        mac: The MAC tag.
+        mac_len: The length of the tag in bytes.
 
     Returns:
-        (Classic modes) The plaintext.
-        (AEAD modes) A tuple containing (plaintext, True) if the decryption was
-        successful (i.e. the tag was correctly verified), (None, False)
-        otherwise. See PlaintextAndBool in the documentation of the AES module.
+        The plaintext.
     """
-    # TO FILL
-    pass
+    raise NotImplementedError()

@@ -10,7 +10,6 @@ import typer
 from rich.prompt import Prompt
 
 from crypto_condor.primitives import (
-    AES,
     ECDSA,
     MLDSA,
     MLKEM,
@@ -95,26 +94,9 @@ _aes_help = """Run an AES wrapper."""
 @app.command(name="AES", no_args_is_help=True, help=_aes_help)
 @app.command(name="aes", no_args_is_help=True, help=_aes_help, hidden=True)
 def aes(
-    # language: Annotated[AES.Wrapper, _language],
-    wrapper: Annotated[str, typer.Argument(metavar="FILE")],
-    mode: Annotated[AES.Mode, _mode],
-    key_length: Annotated[
-        AesStrKeyLength,
-        typer.Argument(help="The length of the key in bits. Use 0 for any."),
-    ] = AesStrKeyLength.ALL,
-    iv_length: Annotated[
-        int,
-        typer.Option(
-            help=(
-                "The length of the IV, if the implementation only supports"
-                " a specific length"
-            )
-        ),
-    ] = 0,
+    wrapper: Annotated[Path, typer.Argument(metavar="FILE")],
     compliance: Annotated[bool, _compliance] = True,
     resilience: Annotated[bool, _resilience] = False,
-    encrypt: Annotated[bool, _encrypt] = True,
-    decrypt: Annotated[bool, _decrypt] = True,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
     debug: Annotated[Optional[bool], _debug] = None,
@@ -123,45 +105,34 @@ def aes(
 
     Args:
         wrapper: The wrapper to test.
-        mode: The mode of operation.
-        key_length: The length of the keys to use in bits.
-        iv_length: The length of the IV that can be tested.
+
+    Keyword Args:
         compliance: Whether to use compliance test vectors.
         resilience: Whether to use resilience test vectors.
-        encrypt: Whether to test encryption.
-        decrypt: Whether to test decryption.
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
         debug: When saving the results to a file, whether to add the debug data.
-
-    Notes:
-        - no_encrypt and no_decrypt should not be True at the same time.
-        - no_compliance and no_resilience should not be True at the same time.
     """
-    if not encrypt and not decrypt:  # pragma: no cover (not needed)
-        console.print("--no-encrypt and --no-decrypt used, no operation selected!")
-        raise typer.Exit(1)
+    from crypto_condor.primitives import AES
+
     if not compliance and not resilience:  # pragma: no cover (not needed)
         console.print(
             "--no-compliance and --no-resilience used, no test vectors to use!"
         )
         raise typer.Exit(1)
 
-    try:
-        results = AES.run_wrapper(
-            Path(wrapper),
-            mode,
-            AES.KeyLength(int(key_length)),
-            compliance=compliance,
-            resilience=resilience,
-            encrypt=encrypt,
-            decrypt=decrypt,
-            iv_length=iv_length,
-        )
-    except (SubprocessError, ValueError, FileNotFoundError) as error:
-        logger.error(error)
-        raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save, debug):
+    if not wrapper.is_file():
+        raise FileNotFoundError(f"AES wrapper not found: {str(wrapper)}")
+
+    match wrapper.suffix:
+        case ".py":
+            rd = AES.run_python_wrapper(wrapper, compliance, resilience)
+        case _:
+            console.print(
+                f"There is no AES runner defined for {wrapper.suffix} wrappers"
+            )
+            raise typer.Exit(1)
+    if console.process_results(rd, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
