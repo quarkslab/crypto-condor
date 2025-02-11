@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 
 from crypto_condor.cli.main import app
 from crypto_condor.constants import SUPPORTED_MODES, Primitive
-from crypto_condor.primitives import AES, ECDSA
+from crypto_condor.primitives import ECDSA
 
 runner = CliRunner()
 
@@ -17,53 +17,21 @@ PRIMITIVES_WITH_RUN = set(
 )
 
 
-@pytest.mark.parametrize(
-    "language,example,wrapper,mode,key_length,encrypt,decrypt",
-    [
-        (
-            AES.Wrapper.PYTHON,
-            "1",
-            "aes_wrapper.py",
-            AES.Mode.GCM,
-            AES.KeyLength.ALL,
-            True,
-            True,
-        ),
-        # (AES.Wrapper.C, "1", AES.Mode.CBC, AES.KeyLength.AES128, True, True),
-    ],
-)
-def test_aes_examples(
-    language: AES.Wrapper,
-    example: str,
-    wrapper: str,
-    mode: AES.Mode,
-    key_length: AES.KeyLength,
-    encrypt: bool,
-    decrypt: bool,
-    tmp_path: Path,
-):
-    """Tests the AES wrapper examples."""
+def test_aes_example(tmp_path: Path):
+    """Tests AES wrapper example."""
     with runner.isolated_filesystem(tmp_path):
         result = runner.invoke(
-            app,
-            ["get-wrapper", "AES", "--language", language, "--example", example],
+            app, ["get-wrapper", "AES", "--language", "Python", "--example", "1"]
         )
         assert result.exit_code == 0, "Could not get wrapper example"
-
         args = [
             "test",
             "wrapper",
             "AES",
-            wrapper,
-            mode,
-            str(int(key_length)),
+            "aes_wrapper_example.py",
             "--no-save",
+            "--resilience",
         ]
-        if not encrypt:
-            args += ["--no-encrypt"]
-        if not decrypt:
-            args += ["--no-decrypt"]
-
         result = runner.invoke(app, args)
         print(result.output)
         assert result.exit_code == 0
