@@ -2,34 +2,55 @@ syntax = "proto3";
 
 package crypto_condor;
 
-// A single NIST test vector for AES.
-message AesNistTest {
-    // Custom ID: simply the index of the test in the NIST file.
-    int32 id = 1;
-    // The COUNT field from the test vector file.
-    int32 count = 2;
-    string key = 3;
-    string plaintext = 4;
-    string ciphertext = 5;
-    string iv = 6;
-    string aad = 7;
-    string tag = 8;
+// A single AES test. Can be used for both encryption and decryption, and also for AEAD
+// modes (aad and tag fields).
+message AesTest {
+	// The test ID, unique in its set of vectors.
+	int32 id = 1;
+	// The type of test. One of: valid, invalid, acceptable.
+	string type = 2;
+	// A comment on the test.
+	string comment = 3;
+	// Flags that categorize this test.
+	repeated string flags = 4;
 
-    // Whether the test should pass or fail.
-    bool is_valid = 10;
-    // Whether to encrypt or decrypt.
-    bool encrypt = 11;
-
-    // Points to the start of the test vector inside the file.
-    int32 line_number = 15;
+	// The symmetric key.
+	bytes key = 5;
+	// The plaintext.
+	bytes pt = 6;
+	// The ciphertext.
+	bytes ct = 7;
+	// The IV or nonce.
+	bytes iv = 8;
+	// The associated data for AEAD modes.
+	bytes aad = 9;
+	// The MAC tag for AEAD modes.
+	bytes tag = 10;
 }
 
+// A set of AES test vectors.
+message AesVectors {
+	// The source of the test vectors.
+	string source = 1;
+	// Description of the source.
+	string source_desc = 2;
+	// The URL of the source.
+	string source_url = 3;
+	// Whether these are compliance test vectors or not.
+	bool compliance = 4;
+	// A dictionary of test flags and their description.
+    map<string, string> notes = 5;
+	// The test vectors.
+	repeated AesTest tests = 6;
 
-// A group of test vectors corresponding to a single mode of operation.
-message AesNistVectors {
-    // The name of the file/mode of operation, to display to the user.
-    string name = 1;
-    repeated AesNistTest tests = 2;
-    string mode = 3;
-    int32 key_length = 4;
+	// The mode of operation.
+	string mode = 7;
+	// The size of the keys used, in bits. All tests in this set shall have the same bit
+	// length.
+	int32 keylen = 8;
+
+	// Whether these tests can be used to test encryption.
+	bool encrypt = 9;
+	// Whether these tests can be used to test decryption.
+	bool decrypt = 10;
 }
