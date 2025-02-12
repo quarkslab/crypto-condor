@@ -2,11 +2,11 @@
 
 import logging
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 
-from crypto_condor.primitives import AES, ECDSA, SHA, ChaCha20
+from crypto_condor.primitives import AES, ECDSA, SHA, SHAKE, ChaCha20
 from crypto_condor.primitives.common import Console
 
 # --------------------------- Module --------------------------------------------------
@@ -48,6 +48,9 @@ _filename = typer.Option(
     metavar="FILE",
 )
 _no_save = typer.Option("--no-save", help="Do not prompt to save results.")
+_debug = typer.Option(
+    "--debug/--no-debug", help="When saving results, whether to include debug data"
+)
 
 # --------------------------- Commands ------------------------------------------------
 
@@ -308,6 +311,67 @@ def chacha20(
         console.print(error)
         raise typer.Exit(1) from error
     if console.process_results(results, filename, no_save):
+        raise typer.Exit(0)
+    else:
+        raise typer.Exit(1)
+
+
+_shake_help = """Test the output of a SHAKE implementation.
+
+The format of the output file is as follows:
+
+- One line per operation, separated by newlines ``\n``.
+- Lines starting with ``#`` are considered comments and ignored.
+- Values are written in hexadecimal.
+- Values are separated by forward slashes ``/``.
+- The order of the values is:
+
+    ``msg/out``
+
+Where:
+    - ``msg`` is the input message to hash.
+    - ``out`` is the result.
+"""
+
+
+@app.command(
+    name="SHAKE",
+    help=_shake_help,
+    no_args_is_help=True,
+    rich_help_panel="Subcommands",
+    context_settings={"max_content_width": console.width},
+)
+@app.command(
+    name="shake",
+    help=_shake_help,
+    no_args_is_help=True,
+    rich_help_panel="Subcommands",
+    context_settings={"max_content_width": console.width},
+    hidden=True,
+)
+def shake(
+    input_file: Annotated[Path, typer.Argument(metavar="FILE")],
+    algorithm: Annotated[
+        SHAKE.Algorithm,
+        typer.Argument(help="The SHAKE algorithm used to generate the file."),
+    ],
+    filename: Annotated[str, _filename] = "",
+    no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
+):
+    """Tests the output of a SHAKE implementation.
+
+    Args:
+        input_file: The file to test.
+        algorithm: The SHAKE variant used to generate the outputs.
+
+    Keyword Args:
+        filename: The name of the file to save the results.
+        no_save: If True, results are not saved and the user is not prompted.
+        debug: If the results are saved, include debug data.
+    """
+    rd = SHAKE.test_output_digest(input_file, algorithm)
+    if console.process_results(rd, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)

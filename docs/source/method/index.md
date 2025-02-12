@@ -16,5 +16,6 @@ HMAC
 RSAES
 RSASSA
 SHA
+SHAKE
 post-quantum
 :::

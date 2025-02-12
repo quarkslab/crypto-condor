@@ -19,7 +19,6 @@ from crypto_condor.primitives import (
     RSAES,
     RSASSA,
     SHA,
-    SHAKE,
     ChaCha20,
 )
 from crypto_condor.primitives.common import Console
@@ -386,39 +385,37 @@ _shake_help = "Run a SHAKE wrapper."
 @app.command(name="SHAKE", no_args_is_help=True, help=_shake_help)
 @app.command(name="shake", no_args_is_help=True, help=_shake_help, hidden=True)
 def shake(
-    language: Annotated[SHAKE.Wrapper, _language],
-    algorithm: Annotated[
-        SHAKE.Algorithm,
-        typer.Argument(help="The XOF algorithm to test.", case_sensitive=False),
-    ],
-    orientation: Annotated[
-        SHAKE.Orientation,
-        typer.Argument(
-            help="The orientation of the implementation, either bit- or byte-oriented.",
-            case_sensitive=False,
-        ),
-    ],
+    wrapper: Annotated[Path, typer.Argument(metavar="FILE")],
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
     debug: Annotated[Optional[bool], _debug] = None,
+    compliance: Annotated[bool, _compliance] = True,
+    resilience: Annotated[bool, _resilience] = False,
 ):
     """Runs a SHAKE wrapper.
 
     Args:
-        language: The language of the wrapper to run.
-        algorithm: The SHAKE algorithm to test.
-        orientation: The orientation of the implementation, either bit- or
-            byte-oriented.
+        wrapper: The wrapper to test.
+
+    Keyword Args:
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
         debug: When saving the results to a file, whether to add the debug data.
+        compliance: Whether to use compliance test vectors.
+        resilience: Whether to use resilience test vectors.
     """
-    try:
-        results = SHAKE.run_wrapper(language, algorithm, orientation)
-    except ValueError as error:
-        logger.error(error)
-        raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save, debug):
+    if not wrapper.is_file():
+        raise FileNotFoundError(f"Could not find wrapper {str(wrapper)}")
+
+    from crypto_condor.primitives import SHAKE
+
+    match wrapper.suffix:
+        case ".py":
+            rd = SHAKE.run_python_wrapper(wrapper, compliance, resilience)
+        case _:
+            console.print(f"There are no runners for {wrapper.stem} wrappers")
+            raise typer.Exit(1)
+    if console.process_results(rd, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)

@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e_sha/sha.proto\x12\rcrypto_condor\"3\n\x0bShaNistTest\x12\x0b\n\x03len\x18\x01 \x01(\x05\x12\x0b\n\x03msg\x18\x02 \x01(\x0c\x12\n\n\x02md\x18\x03 \x01(\x0c\"M\n\x0eShaNistVectors\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12)\n\x05tests\x18\x02 \x03(\x0b\x32\x1a.crypto_condor.ShaNistTest\"\xbd\x01\n\x18ShaMonteCarloNistVectors\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x0c\n\x04seed\x18\x02 \x01(\x0c\x12M\n\x0b\x63heckpoints\x18\x03 \x03(\x0b\x32\x38.crypto_condor.ShaMonteCarloNistVectors.CheckpointsEntry\x1a\x32\n\x10\x43heckpointsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"9\n\rShakeNistTest\x12\x0b\n\x03len\x18\x01 \x01(\x05\x12\x0b\n\x03msg\x18\x02 \x01(\x0c\x12\x0e\n\x06output\x18\x03 \x01(\x0c\"e\n\x10ShakeNistVectors\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x12\n\noutput_len\x18\x02 \x01(\x05\x12+\n\x05tests\x18\x03 \x03(\x0b\x32\x1c.crypto_condor.ShakeNistTest\"\xd8\x01\n\x15ShakeMonteNistVectors\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x0b\n\x03msg\x18\x02 \x01(\x0c\x12\x0f\n\x07max_len\x18\x03 \x01(\x05\x12\x0f\n\x07min_len\x18\x04 \x01(\x05\x12J\n\x0b\x63heckpoints\x18\x05 \x03(\x0b\x32\x35.crypto_condor.ShakeMonteNistVectors.CheckpointsEntry\x1a\x32\n\x10\x43heckpointsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"W\n\x15ShakeVariableNistTest\x12\r\n\x05\x63ount\x18\x01 \x01(\x05\x12\x12\n\noutput_len\x18\x02 \x01(\x05\x12\x0b\n\x03msg\x18\x03 \x01(\x0c\x12\x0e\n\x06output\x18\x04 \x01(\x0c\"a\n\x18ShakeVariableNistVectors\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x33\n\x05tests\x18\x03 \x03(\x0b\x32$.crypto_condor.ShakeVariableNistTestb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e_sha/sha.proto\x12\rcrypto_condor\"3\n\x0bShaNistTest\x12\x0b\n\x03len\x18\x01 \x01(\x05\x12\x0b\n\x03msg\x18\x02 \x01(\x0c\x12\n\n\x02md\x18\x03 \x01(\x0c\"M\n\x0eShaNistVectors\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12)\n\x05tests\x18\x02 \x03(\x0b\x32\x1a.crypto_condor.ShaNistTest\"\xbd\x01\n\x18ShaMonteCarloNistVectors\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x0c\n\x04seed\x18\x02 \x01(\x0c\x12M\n\x0b\x63heckpoints\x18\x03 \x03(\x0b\x32\x38.crypto_condor.ShaMonteCarloNistVectors.CheckpointsEntry\x1a\x32\n\x10\x43heckpointsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -23,8 +23,6 @@ if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
   _globals['_SHAMONTECARLONISTVECTORS_CHECKPOINTSENTRY']._loaded_options = None
   _globals['_SHAMONTECARLONISTVECTORS_CHECKPOINTSENTRY']._serialized_options = b'8\001'
-  _globals['_SHAKEMONTENISTVECTORS_CHECKPOINTSENTRY']._loaded_options = None
-  _globals['_SHAKEMONTENISTVECTORS_CHECKPOINTSENTRY']._serialized_options = b'8\001'
   _globals['_SHANISTTEST']._serialized_start=33
   _globals['_SHANISTTEST']._serialized_end=84
   _globals['_SHANISTVECTORS']._serialized_start=86
@@ -33,16 +31,4 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_SHAMONTECARLONISTVECTORS']._serialized_end=355
   _globals['_SHAMONTECARLONISTVECTORS_CHECKPOINTSENTRY']._serialized_start=305
   _globals['_SHAMONTECARLONISTVECTORS_CHECKPOINTSENTRY']._serialized_end=355
-  _globals['_SHAKENISTTEST']._serialized_start=357
-  _globals['_SHAKENISTTEST']._serialized_end=414
-  _globals['_SHAKENISTVECTORS']._serialized_start=416
-  _globals['_SHAKENISTVECTORS']._serialized_end=517
-  _globals['_SHAKEMONTENISTVECTORS']._serialized_start=520
-  _globals['_SHAKEMONTENISTVECTORS']._serialized_end=736
-  _globals['_SHAKEMONTENISTVECTORS_CHECKPOINTSENTRY']._serialized_start=305
-  _globals['_SHAKEMONTENISTVECTORS_CHECKPOINTSENTRY']._serialized_end=355
-  _globals['_SHAKEVARIABLENISTTEST']._serialized_start=738
-  _globals['_SHAKEVARIABLENISTTEST']._serialized_end=825
-  _globals['_SHAKEVARIABLENISTVECTORS']._serialized_start=827
-  _globals['_SHAKEVARIABLENISTVECTORS']._serialized_end=924
 # @@protoc_insertion_point(module_scope)

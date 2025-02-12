@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single SHAKE test vector.
+message ShakeTest {
+	// The test ID, unique in its set of vectors.
+	int32 id = 1;
+	// The type of test. One of: valid, invalid, acceptable.
+	string type = 2;
+	// A comment on the test.
+	string comment = 3;
+	// Flags that categorize this test.
+	repeated string flags = 4;
+
+    // The input message.
+    bytes msg = 5;
+    // The resulting digest.
+    bytes out = 6;
+}
+
+// A Monte-Carlo test -- refer to SHA3VS from CAVP for usage instructions.
+message ShakeMcTest {
+	// The test ID, unique in its set of vectors.
+	int32 id = 1;
+	// The type of test. One of: valid, invalid, acceptable.
+	string type = 2;
+	// A comment on the test.
+	string comment = 3;
+	// Flags that categorize this test.
+	repeated string flags = 4;
+
+	// The initial message.
+	bytes seed = 5;
+	// A dictionary of checkpoints: the indexes are the keys, the checkpoints
+	// are the values.
+	map<int32, bytes> checkpoints = 6;
+    // The minimum length that is tested, in bits.
+    int32 min_len = 7;
+    // The maximum length that is tested, in bits.
+    int32 max_len = 8;
+}
+
+// A set of SHAKE test vectors.
+message ShakeVectors {
+	// The source of the test vectors.
+	string source = 1;
+	// Description of the source.
+	string source_desc = 2;
+	// The URL of the source.
+	string source_url = 3;
+	// Whether these are compliance test vectors or not.
+	bool compliance = 4;
+	// A dictionary of test flags and their description.
+    map<string, string> notes = 5;
+	// The test vectors.
+	repeated ShakeTest tests = 6;
+	// The Monte-Carlo test. This field is used for NIST CAVP tests and is not required.
+	// Users of this class are expected to check the presence of this field.
+	ShakeMcTest mc_test = 7;
+
+	// The SHAKE variant.
+	string algorithm = 8;
+	// The orientation of the implementation: bit- or byte-oriented.
+	string orientation = 9;
+}

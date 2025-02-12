@@ -1,0 +1,18 @@
+{
+  "SHAKE128": {
+    "bit": [
+      "cavp-SHAKE128-bit.pb2"
+    ],
+    "byte": [
+      "cavp-SHAKE128-byte.pb2"
+    ]
+  },
+  "SHAKE256": {
+    "bit": [
+      "cavp-SHAKE256-bit.pb2"
+    ],
+    "byte": [
+      "cavp-SHAKE256-byte.pb2"
+    ]
+  }
+}

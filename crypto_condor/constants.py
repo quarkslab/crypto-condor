@@ -117,8 +117,8 @@ SUPPORTED_MODES: dict[Primitive, Modes] = {
     },
     Primitive.SHAKE: {
         "audit": False,
-        "method": None,
-        "output": False,
+        "method": True,
+        "output": True,
         "wrapper": True,
         "harness": True,
     },
