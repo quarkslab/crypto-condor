@@ -19,7 +19,7 @@ pyproject = toml["tool"]["poetry"]
 
 project = pyproject["name"]
 author = "Julio Loayza Meneses"
-copyright = "2023, Julio Loayza Meneses"
+copyright = "2023-2025, Quarkslab"
 version = pyproject["version"]
 release = pyproject["version"]
 

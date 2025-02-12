@@ -552,7 +552,7 @@ def test_output_encaps(output: Path, paramset: Paramset) -> ResultsDict:
         A dictionary of results.
 
     Format:
-        - One line per hashing operation, separated by newlines ``\n``.
+        - One line per operation, separated by newlines ``\n``.
         - Lines starting with ``#`` are considered comments and ignored.
         - Values are written in hexadecimal.
         - Values are separated by forward slashes ``/``.

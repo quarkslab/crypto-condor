@@ -34,6 +34,6 @@ def test_shake(xof_algorithm: SHAKE.Algorithm):
         return digest.finalize()
 
     # cryptography's implementation is byte-oriented
-    results_dict = SHAKE.test(_xof, xof_algorithm, SHAKE.Orientation.BYTE)
+    results_dict = SHAKE.test_digest(_xof, xof_algorithm, SHAKE.Orientation.BYTE)
     console.print_results(results_dict)
     assert results_dict.check()

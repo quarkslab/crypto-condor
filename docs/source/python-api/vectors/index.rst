@@ -17,6 +17,5 @@ Test vectors come from various sources.
    RSAES
    RSASSA
    SHA
-   SHAKE
 
 .. [1] Project Wycheproof is "a collection of unit tests that detect known weaknesses or check for expected behaviors of some cryptographic algorithm".

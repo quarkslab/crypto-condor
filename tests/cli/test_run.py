@@ -306,7 +306,6 @@ class TestSha:
 class TestShake:
     """Tests for SHAKE module."""
 
-    # TODO: parametrize
     def test_shake_examples(self):
         """Tests the SHAKE wrapper examples."""
         with runner.isolated_filesystem():
@@ -326,15 +325,7 @@ class TestShake:
                 warnings.warn("Could not get wrapper example", stacklevel=0)
                 return
 
-            args = [
-                "test",
-                "wrapper",
-                "SHAKE",
-                "Python",
-                "SHAKE128",
-                "byte",
-                "--no-save",
-            ]
+            args = ["test", "wrapper", "SHAKE", "shake_wrapper_example.py", "--no-save"]
 
             result = runner.invoke(app, args)
             print(result.output)
