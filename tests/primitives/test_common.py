@@ -21,6 +21,7 @@ class TestConsole:
         console = Console()
         assert console.process_results(rd, None)
 
+
 def test_results_dict():
     """Tests that ResultsDict raises ValueError on duplicate keys."""
     rd1 = ResultsDict()
@@ -39,4 +40,3 @@ def test_results_dict():
 
     with pytest.raises(ValueError):
         rd1 |= rd2
-

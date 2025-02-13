@@ -456,8 +456,7 @@ def verify_file(
                 key, msg, sig = map(bytes.fromhex, (k, m, s))
             case _ as args:
                 info.error_msg = (
-                    f"Error parsing line {tid},"
-                    f" got {len(args)} arguments, expected 3"
+                    f"Error parsing line {tid}, got {len(args)} arguments, expected 3"
                 )
                 results.add(SigVerData(info, None, None, None))
                 continue

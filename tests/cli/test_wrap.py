@@ -28,9 +28,9 @@ def _get_wrappers():
     for primitive in PRIMITIVES_WITH_WRAP:
         prim_dir = wrappers_dir / str(primitive)
         assert prim_dir.is_dir(), f"Directory for {str(primitive)} is missing"
-        assert (
-            primitive.get_languages() is not None
-        ), f"{str(primitive)} has no wrapper languages defined"
+        assert primitive.get_languages() is not None, (
+            f"{str(primitive)} has no wrapper languages defined"
+        )
         wrappers.extend(
             [(str(primitive), str(lang)) for lang in primitive.get_languages()]
         )

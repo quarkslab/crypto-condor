@@ -361,8 +361,8 @@ class EncapsData:
         """Returns a string representation of the data."""
         return f"""pk = {self.pk.hex()}
 sk = {self.sk.hex()}
-returned ct = {self.ret_ct.hex() if self.ret_ct is not None else '<none>'}
-returned ss = {self.ret_ss.hex() if self.ret_ss is not None else '<none>'}
+returned ct = {self.ret_ct.hex() if self.ret_ct is not None else "<none>"}
+returned ss = {self.ret_ss.hex() if self.ret_ss is not None else "<none>"}
 """
 
 
@@ -387,7 +387,7 @@ class DecapsData:
         return f"""sk = {self.sk.hex()}
 ct = {self.ct.hex()}
 ss = {self.ss.hex()}
-returned ss = {self.ret_ss.hex() if self.ret_ss is not None else '<none>'}
+returned ss = {self.ret_ss.hex() if self.ret_ss is not None else "<none>"}
 """
 
 

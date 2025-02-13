@@ -71,9 +71,9 @@ def test_verify_file(curve: ECDSA.Curve, hash_function: ECDSA.Hash, tmp_path: Pa
 
     console.print_results(results)
     failed = results.valid.failed
-    assert failed == len(
-        invalid
-    ), f"Expected {len(invalid)} failed invalid tests, {failed} failed"
+    assert failed == len(invalid), (
+        f"Expected {len(invalid)} failed invalid tests, {failed} failed"
+    )
     assert results.valid.passed == 0, "There are passed invalid tests"
 
 

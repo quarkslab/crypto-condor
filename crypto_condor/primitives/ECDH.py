@@ -314,7 +314,7 @@ class EcdhNistData:
 pub_x = {self.px}
 pub_y = {self.py}
 expected shared = {self.shared.hex()}
-returned shared = {self.result.hex() if self.result else '<none>'}
+returned shared = {self.result.hex() if self.result else "<none>"}
 """
 
 
@@ -332,7 +332,7 @@ class EcdhWycheproofData:
         return f"""secret = {self.secret}
 pubkey = {self.public.hex()}
 expected shared = {self.shared.hex()}
-returned shared = {self.result.hex() if self.result else '<none>'}
+returned shared = {self.result.hex() if self.result else "<none>"}
 """
 
 
