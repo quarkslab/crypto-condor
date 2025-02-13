@@ -88,7 +88,7 @@ The example indicates what it is testing and how to run it. For example:
 
 ```bash
 crypto-condor-cli get-wrapper SHA --language Python --example 1
-crypto-condor-cli test wrapper SHA Python SHA-256
+crypto-condor-cli test wrapper SHA sha_wrapper.py SHA-256
 ```
 
 :::{hint}
