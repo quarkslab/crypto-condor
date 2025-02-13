@@ -107,7 +107,7 @@ class DecryptData:
         s += f"""key = {self.key.decode()}
 ciphertext = {self.ciphertext.hex()}
 expected plaintext = {self.plaintext.hex()}
-result = {self.result.hex() if self.result else '<empty>'}
+result = {self.result.hex() if self.result else "<empty>"}
 """
         if self.label is not None:
             s += f"label = {self.label.hex() if self.label else '<empty>'}\n"

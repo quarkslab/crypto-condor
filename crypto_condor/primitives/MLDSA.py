@@ -381,10 +381,10 @@ class SignData:
     def __str__(self) -> str:
         """Returns a string representation."""
         return f"""sk = {self.sk.hex()}
-msg = {self.msg.hex() if self.msg else '<empty>'}
-ctx = {self.ctx.hex() if self.ctx else '<empty>'}
+msg = {self.msg.hex() if self.msg else "<empty>"}
+ctx = {self.ctx.hex() if self.ctx else "<empty>"}
 sig = {self.ctx.hex()}
-ret_sig = {self.ret_sig.hex() if self.ret_sig is not None else '<none>'}
+ret_sig = {self.ret_sig.hex() if self.ret_sig is not None else "<none>"}
 """
 
 
@@ -406,9 +406,9 @@ class VerifyData:
     def __str__(self) -> str:
         """Returns a string representation."""
         return f"""pk = {self.pk.hex()}
-msg = {self.msg.hex() if self.msg else '<empty>'}
+msg = {self.msg.hex() if self.msg else "<empty>"}
 sig = {self.sig.hex()}
-ctx = {self.ctx.hex() if self.ctx is not None else '<empty>'}
+ctx = {self.ctx.hex() if self.ctx is not None else "<empty>"}
 """
 
 
