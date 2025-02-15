@@ -53,16 +53,16 @@ primitives.
 crypto-condor requires **Python 3.10+**. For information, it is developed using
 Python 3.12 on Fedora 39.
 
-The implementations of **AES, Kyber, Dilithium, and TestU01** are written in C
-and are compiled directly on the user's machine. As such, they require a C
-compiler and GNU Make. These primitives are only compiled when required, and not
-when installing the package:
+The implementations of **AES, ML-KEM, ML-DSA, and TestU01** are written in C and
+are compiled directly on the user's machine. As such, they require a C compiler
+and GNU Make. These primitives are only compiled when required, and not when
+installing the package:
 
 - AES: when testing the output of an implementation using classic modes of
 operation (not CCM or GCM).
-- Kyber: when testing the output of an implementation **or** when using test
-vectors on the `encapsulate` function.
-- Dilithium: when testing the output of an implementation.
+- ML-KEM: when testing the output of an implementation **or** when using test
+  vectors on the `encapsulate` function.
+- ML-DSA: when testing the output of an implementation.
 - TestU01: when used to test a file.
 
 ## Installation
