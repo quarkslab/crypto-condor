@@ -26,9 +26,9 @@ message CapPLACEHOLDERVectors{
 	bool compliance = 4;
 	// A dictionary of test flags and their description.
     map<string, string> notes = 5;
-
-	// FIXME: some parameter that categorizes the vectors.
-    string parameter = 6;
 	// The test vectors.
-	repeated CapPLACEHOLDERTest tests = 7;
+	repeated CapPLACEHOLDERTest tests = 6;
+
+	// FIXME: some parameter that categorize the vectors.
+    string parameter = 7;
 }
