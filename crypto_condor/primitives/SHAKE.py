@@ -448,15 +448,15 @@ def run_python_wrapper(wrapper: Path, compliance: bool, resilience: bool):
 def _test_lib_digest(
     ffi: cffi.FFI, lib, function: str, algorithm: Algorithm, orientation: Orientation
 ) -> ResultsDict:
-    """Tests a hooked digest.
+    """Tests a harness digest.
 
     Returns:
-        The dictionary of results returned by :func:`test`.
+        The dictionary of results returned by :func:`test_digest`.
     """
     logger.info("Testing harness function %s", function)
 
     ffi.cdef(
-        f"""void {function}(uint8_t *digest, size_t digest_size,
+        f"""int {function}(uint8_t *digest, size_t digest_size,
                         const uint8_t *input, size_t input_size);"""
     )
     shake = getattr(lib, function)
@@ -464,7 +464,9 @@ def _test_lib_digest(
     def _shake(data: bytes, output_length: int) -> bytes:
         _data = ffi.new(f"uint8_t[{len(data)}]", data)
         buf = ffi.new(f"uint8_t[{output_length}]")
-        shake(buf, output_length, _data, len(data))
+        retval = shake(buf, output_length, _data, len(data))
+        if retval != 0:
+            raise ValueError(f"{function} returned {retval}")
         return bytes(buf)
 
     return test_digest(_shake, algorithm, orientation)
