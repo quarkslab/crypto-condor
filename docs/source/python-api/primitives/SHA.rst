@@ -25,16 +25,12 @@ Test the output of an implementation
 
 .. autofunction:: verify_file
 
-Run a wrapper
--------------
+Test a wrapper
+--------------
 
-.. note::
+.. autofunction:: test_wrapper
 
-    Available wrappers are defined by :enum:`Wrapper`.
-
-.. autofunction:: run_wrapper
-
-.. autoenum:: Wrapper
+.. autofunction:: test_wrapper_python
 
 Protocols
 ---------

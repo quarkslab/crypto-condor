@@ -1,6 +1,7 @@
 """Module for the SHA-1, SHA-2, and SHA-3 primitives."""
 
 import importlib
+import inspect
 import json
 import logging
 import subprocess
@@ -43,12 +44,12 @@ def __dir__():  # pragma: no cover
         Wrapper.__name__,
         # Protocols
         HashFunction.__name__,
-        # Dataclasses
-        ShaData.__name__,
         # Functions
         test.__name__,
-        run_wrapper.__name__,
         verify_file.__name__,
+        # Wrapper
+        test_wrapper.__name__,
+        test_wrapper_python.__name__,
         # Imported
         Algorithm.__name__,
     ]
@@ -105,47 +106,19 @@ returned md = {self.ret_md.hex() if self.ret_md is not None else "<none>"}
 
 
 @attrs.define
-class ShaData:
-    """Debug data for SHA tests.
+class MonteCarloData:
+    """Debug data for Monte Carlo tests.
 
     Args:
-        info: Common debug info, see :class:`crypto_condor.primitives.common.DebugInfo`.
-        message: The message to hash.
-        expected: The expected digest.
-        digest: The resulting digest, None if an error occurred.
+        seed:
+            The initial seed.
     """
 
-    info: DebugInfo
-    message: bytes
-    expected: bytes
-    digest: bytes | None = None
-
-    def __str__(self) -> str:
-        """Printable representation of the test."""
-        s = str(self.info)
-        s += f"message = {self.message.hex()}\n"
-        s += f"expected = {self.expected.hex()}\n"
-        s += f"digest = {self.digest.hex() if self.digest else '<none>'}\n"
-        return s
-
-
-@attrs.define
-class ShaMcData:
-    """Debug data for Monte-Carlo tests.
-
-    Args:
-        info: Common debug info, see :class:`crypto_condor.primitives.common.DebugInfo`.
-        seed: The initial seed.
-    """
-
-    info: DebugInfo
     seed: bytes
 
     def __str__(self) -> str:
         """Returns a string representation."""
-        s = str(self.info)
-        s += f"seed = {self.seed.hex()}\n"
-        return s
+        return f"""seed = {self.seed.hex()}\n"""
 
 
 @attrs.define
@@ -307,6 +280,10 @@ def test(
         >>> results_dict = SHA.test(my_sha256, algorithm)
         [SHA-256] Test digest ...
         >>> assert results_dict.check()
+
+    .. versionchanged:: TODO(version)
+        Removed the ``Orientation`` argument, added the ``compliance`` and
+        ``resilience`` keywork arguments.
     """
     all_vectors = _load_vectors(hash_algorithm)
     rd = ResultsDict()
@@ -371,7 +348,7 @@ def test(
                         break
                 if md != vectors.mc_test.checkpoints[j]:
                     is_test_ok = False
-            mc_data = ShaMcData(info, vectors.mc_test.seed)
+            mc_data = MonteCarloData(vectors.mc_test.seed)
             if is_test_ok:
                 info.ok(mc_data)
             else:
@@ -413,7 +390,7 @@ def test(
                 if mdj != vectors.mc_test.checkpoints[j]:
                     is_test_ok = False
 
-            mc_data = ShaMcData(info, seed)
+            mc_data = MonteCarloData(seed)
             if is_test_ok:
                 info.ok(mc_data)
             elif not info.error_msg:
@@ -423,33 +400,90 @@ def test(
     return rd
 
 
-def _run_sha_python_wrapper(wrapper: Path, algorithm: Algorithm) -> ResultsDict:
-    """Runs the Python SHA wrapper.
+# --------------------------- Wrappers ------------------------------------------------
+
+
+def test_wrapper_python(
+    wrapper: Path, compliance: bool, resilience: bool
+) -> ResultsDict:
+    """Tests a Python SHA wrapper.
 
     Args:
         wrapper:
-            The wrapper to test.
-        algorithm:
-            The SHA algorithm to test.
+            A path to the wrapper to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+
+    .. versionadded:: TODO(version)
     """
-    logger.info("Python SHA wrapper: %s", str(wrapper.name))
+    logger.info("Running Python SHA wrapper: '%s'", str(wrapper.name))
     sys.path.insert(0, str(wrapper.parent.absolute()))
     already_imported = wrapper.stem in sys.modules.keys()
     try:
         sha_wrapper = importlib.import_module(wrapper.stem)
     except ModuleNotFoundError as error:
-        logger.error("Can't import wrapper: %s", str(error))
+        logger.error("Can't import wrapper: '%s'", str(error))
         raise
     if already_imported:
-        logger.debug("Reloading SHA wrapper module %s", wrapper.stem)
+        logger.debug("Reloading SHA wrapper: '%s'", wrapper.stem)
         sha_wrapper = importlib.reload(sha_wrapper)
 
-    results_dict = test(sha_wrapper.sha, algorithm)
+    rd = ResultsDict()
 
-    # To de-clutter the path, remove the CWD.
-    sys.path.remove(str(Path.cwd()))
+    for func, _ in inspect.getmembers(sha_wrapper, inspect.isfunction):
+        match func.split("_"):
+            case ["CC", "SHA", *_algo, "digest"]:
+                logger.info("Found CC_SHA function %s", func)
+                try:
+                    algo = Algorithm.from_wrapper(_algo)
+                except ValueError:
+                    logger.error("Invalid algorithm %s for SHA, skipped", _algo)
+                    continue
+                rd |= test(
+                    getattr(sha_wrapper, func),
+                    algo,
+                    compliance=compliance,
+                    resilience=resilience,
+                )
+            case ["CC", "SHA", *_]:
+                logger.warning("Ignored unknown CC_SHA function %s", func)
+                continue
+            case _:
+                pass
 
-    return results_dict
+    return rd
+
+
+def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDict:
+    """Tests a SHA wrapper.
+
+    Calls the corresponding ``test_wrapper`` function based on the wrapper's extension.
+
+    Args:
+        wrapper:
+            A path to the wrapper to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+
+    Raises:
+        FileNotFoundError:
+            If the wrapper is not found.
+
+    .. versionadded:: TODO(version)
+        Replaces ``run_wrapper``.
+    """
+    if not wrapper.is_file():
+        raise FileNotFoundError(f"Wrapper {str(wrapper)} not found")
+
+    match wrapper.suffix:
+        case ".py":
+            return test_wrapper_python(wrapper, compliance, resilience)
+        case _:
+            raise ValueError(f"No runner for '{wrapper.suffix}' wrappers")
 
 
 def _run_sha_c_wrapper(wrapper: Path, algorithm: Algorithm) -> ResultsDict:
@@ -486,33 +520,6 @@ def _run_sha_c_wrapper(wrapper: Path, algorithm: Algorithm) -> ResultsDict:
         return digest
 
     return test(sha, algorithm)
-
-
-def run_wrapper(
-    wrapper: Path,
-    # language: Wrapper,
-    hash_algorithm: Algorithm,
-) -> ResultsDict:
-    """Runs the corresponding wrapper.
-
-    Args:
-        wrapper: The wrapper to test.
-        language: The language of the wrapper to run.
-        hash_algorithm: The hash algorithm to test.
-        orientation: The orientation of the implementation, either bit- or
-            byte-oriented.
-
-    Returns:
-        A :class:`ResultsDict` containing the results of short message (``short``), long
-        message (``long``), and Monte-Carlo (``monte-carlo``) tests.
-    """
-    if not wrapper.is_file():
-        raise FileNotFoundError(f"SHA wrapper not found: {str(wrapper)}")
-
-    if wrapper.suffix == ".py":
-        return _run_sha_python_wrapper(wrapper, hash_algorithm)
-    else:
-        return _run_sha_c_wrapper(wrapper, hash_algorithm)
 
 
 def verify_file(filename: str, hash_algorithm: Algorithm) -> Results:

@@ -9,5 +9,6 @@ protocol.
 :::{toctree}
 :maxdepth: 1
 
+SHA <SHA>
 SHAKE <SHAKE>
 :::

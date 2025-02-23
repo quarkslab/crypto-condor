@@ -339,12 +339,8 @@ _sha_help = "Run a SHA wrapper."
 @app.command(name="sha", no_args_is_help=True, help=_sha_help, hidden=True)
 def sha(
     wrapper: Annotated[str, typer.Argument(metavar="FILE")],
-    algorithm: Annotated[
-        SHA.Algorithm,
-        typer.Argument(
-            help="The SHA algorithm to test.", case_sensitive=False, show_default=False
-        ),
-    ],
+    compliance: Annotated[bool, _compliance] = True,
+    resilience: Annotated[bool, _resilience] = False,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
     debug: Annotated[Optional[bool], _debug] = None,
@@ -354,10 +350,12 @@ def sha(
     Args:
         wrapper:
             The wrapper to test.
-        algorithm:
-            The SHA algorithm to test.
 
     Keyword Args:
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
         filename:
             Name of the file to save results.
         no_save:
@@ -366,7 +364,7 @@ def sha(
             When saving the results to a file, whether to add the debug data.
     """
     try:
-        results = SHA.run_wrapper(Path(wrapper), algorithm)
+        results = SHA.test_wrapper(Path(wrapper), compliance, resilience)
     except ValueError as error:
         logger.error(error)
         raise typer.Exit(1) from error

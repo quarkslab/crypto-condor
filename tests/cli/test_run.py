@@ -280,8 +280,8 @@ class TestSha:
     """Tests for SHA module."""
 
     # TODO: add example for C wrapper.
-    @pytest.mark.parametrize(("lang", "ex", "algo"), [("Python", "1", "SHA-256")])
-    def test_examples(self, lang: str, ex: str, algo: str):
+    @pytest.mark.parametrize(("lang", "ex"), [("Python", "1")])
+    def test_examples(self, lang: str, ex: str):
         """Tests the SHA wrapper examples."""
         with runner.isolated_filesystem():
             wrap_result = runner.invoke(
@@ -293,8 +293,7 @@ class TestSha:
                 "test",
                 "wrapper",
                 "SHA",
-                "sha_wrapper.py",
-                algo,
+                "sha_wrapper_example.py",
                 "--no-save",
             ]
             result = runner.invoke(app, args)

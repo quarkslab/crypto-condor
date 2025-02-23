@@ -39,6 +39,18 @@ class Algorithm(strenum.StrEnum):
         """True if the algorithm is a SHA-3 algorithm."""
         return self._value_ in {"SHA3-224", "SHA3-256", "SHA3-384", "SHA3-512"}
 
+    @classmethod
+    def from_wrapper(cls, parts: list[str]):
+        """Returns an instance from a partial wrapper name."""
+        if len(parts) == 1:
+            return cls(f"SHA-{parts[0]}")
+        elif parts[0] == "3":
+            return cls(f"SHA3-{parts[1]}")
+        elif parts[0] == "512":
+            return cls(f"SHA-512/{parts[1]}")
+        else:
+            raise ValueError(f"Invalid algorithm name {parts}")
+
     SHA_1 = "SHA-1"
     SHA_224 = "SHA-224"
     SHA_256 = "SHA-256"
