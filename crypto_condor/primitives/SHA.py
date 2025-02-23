@@ -319,14 +319,14 @@ def test(
                 res.add(info)
                 continue
 
-        data.ret_md = md
-        if len(md) * 8 != hash_algorithm.digest_size:
-            info.fail(f"Wrong digest size ({len(md) * 8})", data)
-        elif md != test.md:
-            info.fail("Wrong digest", data)
-        else:
-            info.ok(data)
-        res.add(info)
+            data.ret_md = md
+            if len(md) * 8 != hash_algorithm.digest_size:
+                info.fail(f"Wrong digest size ({len(md) * 8})", data)
+            elif md != test.md:
+                info.fail("Wrong digest", data)
+            else:
+                info.ok(data)
+            res.add(info)
 
         # Check if vectors contain a Monte Carlo test, skip otherwise.
         if not vectors.HasField("mc_test"):
