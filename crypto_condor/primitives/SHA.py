@@ -50,6 +50,8 @@ def __dir__():  # pragma: no cover
         # Wrapper
         test_wrapper.__name__,
         test_wrapper_python.__name__,
+        # Harness
+        test_lib.__name__,
         # Imported
         Algorithm.__name__,
     ]
@@ -611,19 +613,6 @@ def verify_file(filename: str, hash_algorithm: Algorithm) -> Results:
 
 
 # --------------------------- Lib hook functions --------------------------------------
-SHA_DIGEST_ALGORITHMS = {
-    "SHA_1": Algorithm.SHA_1,
-    "SHA_224": Algorithm.SHA_224,
-    "SHA_256": Algorithm.SHA_256,
-    "SHA_384": Algorithm.SHA_384,
-    "SHA_512": Algorithm.SHA_512,
-    "SHA_512_224": Algorithm.SHA_512_224,
-    "SHA_512_256": Algorithm.SHA_512_256,
-    "SHA_3_224": Algorithm.SHA3_224,
-    "SHA_3_256": Algorithm.SHA3_256,
-    "SHA_3_384": Algorithm.SHA3_384,
-    "SHA_3_512": Algorithm.SHA3_512,
-}
 
 
 def _test_lib_digest(
@@ -635,17 +624,22 @@ def _test_lib_digest(
     logger.info("Testing harness function %s", function)
 
     ffi.cdef(
-        f"void {function}(uint8_t *digest, const uint8_t *input, size_t input_size);"
+        f"""int {function}(uint8_t *digest, const size_t digest_size,
+                            const uint8_t *input, size_t input_size);
+        """
     )
     sha = getattr(lib, function)
 
     # The output size is fixed for a given algorithm so create the buffer in advance.
-    buffer = ffi.new(f"uint8_t[{algorithm.digest_size // 8}]")
+    c_md_len = algorithm.digest_size // 8
+    c_buffer = ffi.new(f"uint8_t[{c_md_len}]")
 
     def _sha(data: bytes) -> bytes:
-        _data = ffi.new(f"uint8_t[{len(data)}]", data)
-        sha(buffer, _data, len(data))
-        return bytes(buffer)
+        c_data = ffi.new(f"uint8_t[{len(data)}]", data)
+        ret_val = sha(c_buffer, c_md_len, c_data, len(data))
+        if ret_val != 1:
+            raise ValueError(f"{function} failed with code {ret_val}")
+        return bytes(c_buffer)
 
     return test(_sha, algorithm)
 
@@ -668,9 +662,12 @@ def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
     for function in functions:
         match function.split("_"):
             case ["CC", "SHA", *parts, "digest"]:
-                bits = "_".join(parts)
-                algorithm = SHA_DIGEST_ALGORITHMS[f"SHA_{bits}"]
-                results |= _test_lib_digest(ffi, lib, function, algorithm)
+                try:
+                    algo = Algorithm.from_wrapper(parts)
+                except ValueError:
+                    logger.error("Invalid algorithm SHA_%s", "_".join(parts))
+                    continue
+                results |= _test_lib_digest(ffi, lib, function, algo)
             case _:
                 logger.debug("Ignoring unknown CC_SHA function %s", function)
 

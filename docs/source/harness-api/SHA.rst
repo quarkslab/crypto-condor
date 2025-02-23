@@ -1,58 +1,62 @@
 SHA
----
+===
 
 Digest
-^^^^^^
+------
 
-To test a function that generates SHA digests, the function must be called:
+``digest`` is a single operation, equivalent to the following pseudo-code:
+
+.. code:: python
+
+   h = sha.init()
+   h.update(data)
+   h.digest()
+
+Naming convention
+^^^^^^^^^^^^^^^^^
 
 .. code::
-   
-   CC_<algorithm>_digest_[bit]
-   
-* ``algorithm`` is a **required** parameter. Valid values are:
-   * ``SHA_1``
-   * ``SHA_224``, ``SHA_256``, ``SHA_384``, ``SHA_512``.
-      * ``SHA_512_224`` and ``SHA_512_256``.
-   * ``SHA_3_224``, ``SHA_3_256``, ``SHA_3_384``, ``SHA_3_512``.
-* ``_bit`` is an **optional** suffix. If present, the implementation is considered to be bit-oriented. By default it is considered byte-oriented.
+
+   CC_<algorithm>_digest
+
+Where ``algorithm`` is one of:
+
+* ``SHA_1``
+* ``SHA_224``, ``SHA_256``, ``SHA_384``, ``SHA_512``.
+    * ``SHA_512_224`` and ``SHA_512_256``.
+* ``SHA_3_224``, ``SHA_3_256``, ``SHA_3_384``, ``SHA_3_512``.
+
+Function signature
+^^^^^^^^^^^^^^^^^^
 
 The function must have the following signature:
 
-.. c:function:: void SHA_digest(uint8_t *digest, const uint8_t *input, size_t input_size)
+.. c:function:: int SHA_digest(uint8_t *digest, const size_t digest_size, const uint8_t *input, const size_t input_size)
 
-   :param digest: **[Out]** A buffer to store the resulting hash. Its size is inferred from the SHA function used.
+   :param digest: **[Out]** An allocated buffer to return the resulting digest.
+   :param digest_size: **[In]** The size of the ``digest`` buffer.
    :param input: **[In]** The input data.
    :param input_size: **[In]** The size of the input data in bytes.
+   :returns: A status value, following OpenSSL's convention.
+   :retval 1: OK.
+   :retval 0: Digest failed.
 
-Examples:
+Example
+^^^^^^^
 
-* SHA-1:
+To test that the harness integration is working correctly, we use the following OpenSSL harness:
 
-.. code:: c
+.. literalinclude:: ../../../tests/harness/SHA.harness.c
+   :language: c
 
-   void CC_SHA_1_digest(uint8_t *digest, const uint8_t *input, size_t input_size);
+Compile the shared library with the ``-lssl -lcrypto`` options.
 
-* SHA-256:
+.. code:: bash
 
-.. code:: c
+   gcc -fPIC -shared sha_harness.c -o sha.so -lssl -lcrypto
 
-   void CC_SHA_256_digest(uint8_t *digest, const uint8_t *input, size_t input_size);
+Then test the harness.
 
-* SHA-512/224:
+.. code:: bash
 
-.. code:: c
-
-   void CC_SHA_512_224_digest(uint8_t *digest, const uint8_t *input, size_t input_size);
-
-* SHA3-512:
-
-.. code:: c
-
-   void CC_SHA_3_512_digest(uint8_t *digest, const uint8_t *input, size_t input_size);
-
-* Bit-oriented SHA3-512:
-
-.. code:: c
-
-   void CC_SHA_3_512_digest_bit(uint8_t *digest, const uint8_t *input, size_t input_size);
+   crypto-condor-cli test harness sha.so
