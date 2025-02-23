@@ -376,9 +376,9 @@ def test(
                                 % (hash_algorithm.digest_size, len(mdi) * 8)
                             )
                     except Exception as error:
-                        info.error_msg = (
-                            f"Error running hash function before checkpoint {j}:"
-                            f" {str(error)}"
+                        info.fail(
+                            f"Exception caught before checkpoint {j}: {str(error)}",
+                            data,
                         )
                         logger.debug("Error running hash function", exc_info=True)
                         is_test_ok = False
@@ -393,7 +393,10 @@ def test(
             mc_data = MonteCarloData(seed)
             if is_test_ok:
                 info.ok(mc_data)
-            elif not info.error_msg:
+            elif info.err_msg is not None:
+                # We already marked the test as failed because of an exception.
+                pass
+            else:
                 info.fail(f"Failed at checkpoint {j}", mc_data)
             res.add(info)
 
