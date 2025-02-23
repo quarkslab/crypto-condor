@@ -14,7 +14,6 @@ from typer.testing import CliRunner
 from crypto_condor.cli.main import app
 from crypto_condor.constants import SUPPORTED_MODES, Primitive
 from crypto_condor.primitives import AES, ECDSA, SHA, ChaCha20
-from crypto_condor.vectors.SHA import ShaVectors
 
 runner = CliRunner()
 
@@ -445,22 +444,17 @@ class TestSha:
         data = list()
 
         try:
-            vectors = ShaVectors.load(algo, SHA.Orientation.BYTE)
+            all_vectors = SHA._load_vectors(algo)
         except ValueError:
             raise
 
-        for vector in vectors.short_msg.tests:
-            if failed > 0:
-                digest = SHA._sha(algo, random.randbytes(256)).hex()
-            else:
-                digest = vector.md.hex()
-            data.append(f"{vector.msg.hex()}/{digest}")
-        for vector in vectors.long_msg.tests:
-            if failed > 0:
-                digest = SHA._sha(algo, random.randbytes(256)).hex()
-            else:
-                digest = vector.md.hex()
-            data.append(f"{vector.msg.hex()}/{digest}")
+        for vectors in all_vectors:
+            for test in vectors.tests:
+                if failed > 0:
+                    md = SHA._sha(algo, random.randbytes(256)).hex()
+                else:
+                    md = test.md.hex()
+                data.append(f"{test.msg.hex()}/{md}")
 
         out.write_text("\n".join(data))
         return len(data)

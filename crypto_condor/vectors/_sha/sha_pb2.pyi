@@ -13,58 +13,57 @@ import typing
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
 @typing.final
-class ShaNistTest(google.protobuf.message.Message):
-    """A single SHA test vector."""
+class ShaTest(google.protobuf.message.Message):
+    """A single SHA test vector.
+
+    ``msg`` can be empty but ``md`` is required.
+    """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    LEN_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    COMMENT_FIELD_NUMBER: builtins.int
+    FLAGS_FIELD_NUMBER: builtins.int
     MSG_FIELD_NUMBER: builtins.int
     MD_FIELD_NUMBER: builtins.int
-    len: builtins.int
-    """The length of the message in bits."""
+    id: builtins.int
+    """The test ID, unique in its set of vectors."""
+    type: builtins.str
+    """The type of test. One of: valid, invalid, acceptable."""
+    comment: builtins.str
+    """A comment on the test."""
     msg: builtins.bytes
-    """The message to hash."""
+    """The input message."""
     md: builtins.bytes
     """The resulting digest."""
+    @property
+    def flags(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Flags that categorize this test."""
+
     def __init__(
         self,
         *,
-        len: builtins.int = ...,
+        id: builtins.int = ...,
+        type: builtins.str = ...,
+        comment: builtins.str = ...,
+        flags: collections.abc.Iterable[builtins.str] | None = ...,
         msg: builtins.bytes = ...,
         md: builtins.bytes = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["len", b"len", "md", b"md", "msg", b"msg"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["comment", b"comment", "flags", b"flags", "id", b"id", "md", b"md", "msg", b"msg", "type", b"type"]) -> None: ...
 
-global___ShaNistTest = ShaNistTest
-
-@typing.final
-class ShaNistVectors(google.protobuf.message.Message):
-    """A file of NIST SHA vectors."""
-
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    FILENAME_FIELD_NUMBER: builtins.int
-    TESTS_FIELD_NUMBER: builtins.int
-    filename: builtins.str
-    """The name of the source file."""
-    @property
-    def tests(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ShaNistTest]:
-        """The test vectors."""
-
-    def __init__(
-        self,
-        *,
-        filename: builtins.str = ...,
-        tests: collections.abc.Iterable[global___ShaNistTest] | None = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["filename", b"filename", "tests", b"tests"]) -> None: ...
-
-global___ShaNistVectors = ShaNistVectors
+global___ShaTest = ShaTest
 
 @typing.final
-class ShaMonteCarloNistVectors(google.protobuf.message.Message):
-    """A file of NIST Monte-Carlo SHA vectors. Consists of one seed and several checkpoints."""
+class ShaMcTest(google.protobuf.message.Message):
+    """A Monte Carlo test.
+
+    ``seed`` and ``checkpoints`` are required.
+
+    Refer to SHAVS from CAVP for usage instructions:
+    https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/Secure-Hashing#shavs
+    """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -84,26 +83,116 @@ class ShaMonteCarloNistVectors(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
-    FILENAME_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    COMMENT_FIELD_NUMBER: builtins.int
+    FLAGS_FIELD_NUMBER: builtins.int
     SEED_FIELD_NUMBER: builtins.int
     CHECKPOINTS_FIELD_NUMBER: builtins.int
-    filename: builtins.str
-    """The name of the source file."""
+    id: builtins.int
+    """The test ID, unique in its set of vectors."""
+    type: builtins.str
+    """The type of test. One of: valid, invalid, acceptable."""
+    comment: builtins.str
+    """A comment on the test."""
     seed: builtins.bytes
-    """The seed"""
+    """The initial message."""
+    @property
+    def flags(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Flags that categorize this test."""
+
     @property
     def checkpoints(self) -> google.protobuf.internal.containers.ScalarMap[builtins.int, builtins.bytes]:
-        """A dictionary of checkpoints: the indexes are the keys, the checkpoints are the
-        values.
+        """A dictionary of checkpoints: the indexes are the keys, the checkpoints
+        are the values.
         """
 
     def __init__(
         self,
         *,
-        filename: builtins.str = ...,
+        id: builtins.int = ...,
+        type: builtins.str = ...,
+        comment: builtins.str = ...,
+        flags: collections.abc.Iterable[builtins.str] | None = ...,
         seed: builtins.bytes = ...,
         checkpoints: collections.abc.Mapping[builtins.int, builtins.bytes] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["checkpoints", b"checkpoints", "filename", b"filename", "seed", b"seed"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["checkpoints", b"checkpoints", "comment", b"comment", "flags", b"flags", "id", b"id", "seed", b"seed", "type", b"type"]) -> None: ...
 
-global___ShaMonteCarloNistVectors = ShaMonteCarloNistVectors
+global___ShaMcTest = ShaMcTest
+
+@typing.final
+class ShaVectors(google.protobuf.message.Message):
+    """A set of SHA test vectors.
+
+    Requires the ``algorithm`` field. ``mc_test`` is not required, users of these
+    vectors should test this.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class NotesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    SOURCE_FIELD_NUMBER: builtins.int
+    SOURCE_DESC_FIELD_NUMBER: builtins.int
+    SOURCE_URL_FIELD_NUMBER: builtins.int
+    COMPLIANCE_FIELD_NUMBER: builtins.int
+    NOTES_FIELD_NUMBER: builtins.int
+    TESTS_FIELD_NUMBER: builtins.int
+    MC_TEST_FIELD_NUMBER: builtins.int
+    ALGORITHM_FIELD_NUMBER: builtins.int
+    source: builtins.str
+    """The source of the test vectors."""
+    source_desc: builtins.str
+    """Description of the source."""
+    source_url: builtins.str
+    """The URL of the source."""
+    compliance: builtins.bool
+    """Whether these are compliance test vectors or not."""
+    algorithm: builtins.str
+    """The SHA algorithm."""
+    @property
+    def notes(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """A dictionary of test flags and their description."""
+
+    @property
+    def tests(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ShaTest]:
+        """The test vectors."""
+
+    @property
+    def mc_test(self) -> global___ShaMcTest:
+        """A Monte Carlo test. This field is mainly used for NIST CAVP test vectors:
+        as such, it is not required but can be used by other sources. Users of
+        this class are expected to check the presence of this field.
+        """
+
+    def __init__(
+        self,
+        *,
+        source: builtins.str = ...,
+        source_desc: builtins.str = ...,
+        source_url: builtins.str = ...,
+        compliance: builtins.bool = ...,
+        notes: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        tests: collections.abc.Iterable[global___ShaTest] | None = ...,
+        mc_test: global___ShaMcTest | None = ...,
+        algorithm: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["mc_test", b"mc_test"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["algorithm", b"algorithm", "compliance", b"compliance", "mc_test", b"mc_test", "notes", b"notes", "source", b"source", "source_desc", b"source_desc", "source_url", b"source_url", "tests", b"tests"]) -> None: ...
+
+global___ShaVectors = ShaVectors

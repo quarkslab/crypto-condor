@@ -3,31 +3,70 @@ syntax = "proto3";
 package crypto_condor;
 
 // A single SHA test vector.
-message ShaNistTest {
-    // The length of the message in bits.
-    int32 len = 1;
-    // The message to hash.
-    bytes msg = 2;
-    // The resulting digest.
-    bytes md = 3;
+//
+// ``msg`` can be empty but ``md`` is required.
+message ShaTest {
+	// The test ID, unique in its set of vectors.
+	int32 id = 1;
+	// The type of test. One of: valid, invalid, acceptable.
+	string type = 2;
+	// A comment on the test.
+	string comment = 3;
+	// Flags that categorize this test.
+	repeated string flags = 4;
+
+	// The input message.
+	bytes msg = 5;
+	// The resulting digest.
+	bytes md = 6;
 }
 
-// A file of NIST SHA vectors.
-message ShaNistVectors {
-    // The name of the source file.
-    string filename = 1;
-    // The test vectors.
-    repeated ShaNistTest tests = 2;
+// A Monte Carlo test.
+//
+// ``seed`` and ``checkpoints`` are required.
+//
+// Refer to SHAVS from CAVP for usage instructions:
+// https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/Secure-Hashing#shavs
+message ShaMcTest {
+	// The test ID, unique in its set of vectors.
+	int32 id = 1;
+	// The type of test. One of: valid, invalid, acceptable.
+	string type = 2;
+	// A comment on the test.
+	string comment = 3;
+	// Flags that categorize this test.
+	repeated string flags = 4;
+
+	// The initial message.
+	bytes seed = 5;
+	// A dictionary of checkpoints: the indexes are the keys, the checkpoints
+	// are the values.
+	map<int32, bytes> checkpoints = 6;
 }
 
-// A file of NIST Monte-Carlo SHA vectors. Consists of one seed and several checkpoints.
-message ShaMonteCarloNistVectors {
-    // The name of the source file.
-    string filename = 1;
-    // The seed 
-    bytes seed = 2;
-    // A dictionary of checkpoints: the indexes are the keys, the checkpoints are the
-    // values.
-    map<int32, bytes> checkpoints = 3;
+// A set of SHA test vectors.
+//
+// Requires the ``algorithm`` field. ``mc_test`` is not required, users of these
+// vectors should test this.
+message ShaVectors {
+	// The source of the test vectors.
+	string source = 1;
+	// Description of the source.
+	string source_desc = 2;
+	// The URL of the source.
+	string source_url = 3;
+	// Whether these are compliance test vectors or not.
+	bool compliance = 4;
+	// A dictionary of test flags and their description.
+    map<string, string> notes = 5;
+	// The test vectors.
+	repeated ShaTest tests = 6;
+	// A Monte Carlo test. This field is mainly used for NIST CAVP test vectors:
+	// as such, it is not required but can be used by other sources. Users of
+	// this class are expected to check the presence of this field.
+	ShaMcTest mc_test = 7;
+
+	// The SHA algorithm.
+    string algorithm = 8;
 }
 

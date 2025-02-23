@@ -1,0 +1,35 @@
+{
+  "SHA-1": [
+    "cavp_SHA-1.pb2"
+  ],
+  "SHA-224": [
+    "cavp_SHA-224.pb2"
+  ],
+  "SHA-256": [
+    "cavp_SHA-256.pb2"
+  ],
+  "SHA-384": [
+    "cavp_SHA-384.pb2"
+  ],
+  "SHA-512": [
+    "cavp_SHA-512.pb2"
+  ],
+  "SHA-512/224": [
+    "cavp_SHA-512-224.pb2"
+  ],
+  "SHA-512/256": [
+    "cavp_SHA-512-256.pb2"
+  ],
+  "SHA3-224": [
+    "cavp_SHA3-224.pb2"
+  ],
+  "SHA3-256": [
+    "cavp_SHA3-256.pb2"
+  ],
+  "SHA3-384": [
+    "cavp_SHA3-384.pb2"
+  ],
+  "SHA3-512": [
+    "cavp_SHA3-512.pb2"
+  ]
+}

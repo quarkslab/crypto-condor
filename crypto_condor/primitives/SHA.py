@@ -1,6 +1,7 @@
 """Module for the SHA-1, SHA-2, and SHA-3 primitives."""
 
 import importlib
+import json
 import logging
 import subprocess
 import sys
@@ -23,8 +24,15 @@ from Crypto.Hash import (
 )
 from rich.progress import track
 
-from crypto_condor.primitives.common import DebugInfo, Results, ResultsDict, TestType
-from crypto_condor.vectors.SHA import Algorithm, Orientation, ShaVectors
+from crypto_condor.primitives.common import (
+    DebugInfo,
+    Results,
+    ResultsDict,
+    TestInfo,
+    TestType,
+)
+from crypto_condor.vectors._sha.sha_pb2 import ShaTest, ShaVectors
+from crypto_condor.vectors.SHA import Algorithm, Orientation
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +87,22 @@ class HashFunction(Protocol):
 
 
 # --------------------------- Dataclasses ---------------------------------------------
+
+
+@attrs.define
+class DigestData:
+    """Debug data for :func:`test`."""
+
+    msg: bytes
+    md: bytes
+    ret_md: bytes | None = None
+
+    def __str__(self) -> str:
+        """Returns a string representation."""
+        return f"""msg = {self.msg.hex()}
+md = {self.md.hex()}
+returned md = {self.ret_md.hex() if self.ret_md is not None else "<none>"}
+"""
 
 
 @attrs.define
@@ -200,6 +224,37 @@ def _sha(algorithm: Algorithm, msg: bytes) -> bytes:
             raise ValueError("Unknown hash algorithm %s" % str(algorithm))
 
 
+def _load_vectors(algo: Algorithm) -> list[ShaVectors]:
+    """Loads SHA vectors.
+
+    Args:
+        algo:
+            The algorithm to load vectors of.
+
+    Returns:
+        A list of :class:`ShaVectors`.
+    """
+    vectors_dir = importlib.resources.files("crypto_condor") / "vectors/_sha"
+    vectors = list()
+
+    sources_file = vectors_dir / "sha.json"
+    with sources_file.open("r") as file:
+        sources = json.load(file)
+
+    for filename in sources[algo]:
+        vectors_file = vectors_dir / "pb2" / filename
+        _vec = ShaVectors()
+        logger.debug("Loading SHA vectors from %s", filename)
+        try:
+            _vec.ParseFromString(vectors_file.read_bytes())
+        except Exception:
+            logger.exception("Failed to load SHA vectors from %s", filename)
+            continue
+        vectors.append(_vec)
+
+    return vectors
+
+
 # --------------------------- Test functions ------------------------------------------
 
 
@@ -244,143 +299,117 @@ def test(
         And call :func:`test` on our function and selected parameters.
 
         >>> results_dict = SHA.test(my_sha256, algorithm, orientation)
-        [NIST] ...
+        [SHA-256] Test digest ...
         >>> assert results_dict.check()
     """
-    vectors = ShaVectors.load(hash_algorithm, orientation)
-    is_sha3 = str(hash_algorithm).startswith("SHA3-")
-
-    short_results = Results.new(
-        "NIST short message vectors", ["hash_algorithm", "orientation"]
-    )
-    long_results = Results.new(
-        "NIST short message vectors", ["hash_algorithm", "orientation"]
-    )
-    mc_results = Results.new(
-        "NIST short message vectors", ["hash_algorithm", "orientation"]
-    )
-
-    for tid, test in track(
-        enumerate(vectors.short_msg.tests, start=1), "[NIST] short message vectors"
-    ):
-        info = DebugInfo(tid, TestType.VALID, ["Compliance"])
-        try:
-            digest = hash_function(test.msg)
-            if len(digest) * 8 != hash_algorithm.digest_size:
-                raise ValueError(
-                    "Wrong digest size, expected %d, got %d"
-                    % (hash_algorithm.digest_size, len(digest) * 8)
-                )
-        except Exception as error:
-            info.error_msg = f"Error running hash function: {str(error)}"
-            logger.debug("Error running hash function", exc_info=True)
-            data = ShaData(info, test.msg, test.md, None)
-            short_results.add(data)
-            continue
-
-        if digest == test.md:
-            info.result = True
-        else:
-            info.error_msg = "Wrong digest"
-        data = ShaData(info, test.msg, test.md, digest)
-        short_results.add(data)
-
-    for tid, test in track(
-        enumerate(vectors.long_msg.tests, start=1), "[NIST] long message vectors"
-    ):
-        info = DebugInfo(tid, TestType.VALID, ["Compliance"])
-        try:
-            digest = hash_function(test.msg)
-            if len(digest) * 8 != hash_algorithm.digest_size:
-                raise ValueError(
-                    "Wrong digest size, expected %d, got %d"
-                    % (hash_algorithm.digest_size, len(digest) * 8)
-                )
-        except Exception as error:
-            info.error_msg = f"Error running hash function: {str(error)}"
-            logger.debug("Error running hash function", exc_info=True)
-            data = ShaData(info, test.msg, test.md, None)
-            long_results.add(data)
-            continue
-        if digest == test.md:
-            info.result = True
-        else:
-            info.error_msg = "Wrong digest"
-        data = ShaData(info, test.msg, test.md, digest)
-        long_results.add(data)
-
-    # The Monte-Carlo tests are not built the same way for SHA-2 and SHA-3.
-    if is_sha3:
-        # The specification of the test is in section 6.2.3 of
-        # https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha3vs.pdf
-        info = DebugInfo(1, TestType.VALID, ["Compliance"])
-        res = True
-        mc_vectors = vectors.montecarlo
-        md = mc_vectors.seed
-        for j in track(range(0, 100), "[NIST] Monte-Carlo vectors"):
-            if not res:
-                break
-            for _ in range(1, 1001):
-                msg = md
-                try:
-                    md = hash_function(msg)
-                except Exception as error:
-                    logger.debug("Error running user-defined function: %s", str(error))
-                    res = False
-                    break
-            if md != mc_vectors.checkpoints[j]:
-                res = False
-        if res:
-            info.result = True
-        else:
-            info.error_msg = f"Failed at checkpoint {j}"
-        mc_data = ShaMcData(info, mc_vectors.seed)
-        mc_results.add(mc_data)
-    else:
-        # The specification of this test is in section 6.4 of
-        # https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/SHAVS.pdf
-        info = DebugInfo(1, TestType.VALID, ["Compliance"])
-        res = True
-        mc_vectors = vectors.montecarlo
-        seed = mc_vectors.seed
-        for j in track(range(0, 100), "[NIST] Monte-Carlo vectors"):
-            if not res:
-                break
-            md0 = md1 = md2 = seed
-            for _ in range(3, 1003):
-                mi = md0 + md1 + md2
-                try:
-                    mdi = hash_function(mi)
-                    if len(digest) * 8 != hash_algorithm.digest_size:
-                        raise ValueError(
-                            "Wrong digest size, expected %d, got %d"
-                            % (hash_algorithm.digest_size, len(digest) * 8)
-                        )
-                except Exception as error:
-                    info.error_msg = (
-                        f"Error running hash function before checkpoint {j}:"
-                        f" {str(error)}"
-                    )
-                    logger.debug("Error running hash function", exc_info=True)
-                    res = False
-                    break
-                md0, md1, md2 = md1, md2, mdi
-            if not res:
-                break
-            mdj = seed = mdi
-            if mdj != mc_vectors.checkpoints[j]:
-                res = False
-        if res:
-            info.result = True
-        elif not info.error_msg:
-            info.error_msg = f"Failed at checkpoint {j}"
-        mc_data = ShaMcData(info, seed)
-        mc_results.add(mc_data)
-
+    if orientation == Orientation.BIT:
+        raise ValueError("Bit-oriented implementations are not supported")
+    all_vectors = _load_vectors(hash_algorithm)
     rd = ResultsDict()
-    rd.add(short_results, extra_values=["short"])
-    rd.add(long_results, extra_values=["long"])
-    rd.add(mc_results, extra_values=["monte-carlo"])
+
+    test: ShaTest
+    for vectors in all_vectors:
+        res = Results.new(f"Test {str(hash_algorithm)} digest", ["hash_algorithm"])
+        rd.add(res)
+        for test in track(vectors.tests, rf"\[{hash_algorithm}] Test digest"):
+            info = TestInfo.new_from_test(test, vectors.compliance)
+            data = DigestData(test.msg, test.md)
+            try:
+                md = hash_function(test.msg)
+            except NotImplementedError:
+                logger.warning("%s digest not implemented, skipped", hash_algorithm)
+                return rd
+            except Exception as error:
+                info.fail(f"Exception caught: {str(error)}", data)
+                res.add(info)
+                continue
+
+        data.ret_md = md
+        if len(md) * 8 != hash_algorithm.digest_size:
+            info.fail(f"Wrong digest size ({len(md) * 8})", data)
+        elif md != test.md:
+            info.fail("Wrong digest", data)
+        else:
+            info.ok(data)
+        res.add(info)
+
+        # Check if vectors contain a Monte Carlo test, skip otherwise.
+        if not vectors.HasField("mc_test"):
+            continue
+
+        # The Monte-Carlo tests are not built the same way for SHA-2 and SHA-3.
+        if hash_algorithm.sha3:
+            # The specification of the test is in section 6.2.3 of
+            # https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha3vs.pdf
+            info = TestInfo.new_from_test(vectors.mc_test, vectors.compliance)
+            is_test_ok = True
+            md = vectors.mc_test.seed
+            for j in track(
+                range(0, 100), rf"\[{str(hash_algorithm)}] Monte-Carlo test"
+            ):
+                if not res:
+                    break
+                for _ in range(1, 1001):
+                    msg = md
+                    try:
+                        md = hash_function(msg)
+                    except Exception as error:
+                        logger.debug(
+                            "Error running user-defined function: %s", str(error)
+                        )
+                        is_test_ok = False
+                        break
+                if md != vectors.mc_test.checkpoints[j]:
+                    is_test_ok = False
+            mc_data = ShaMcData(info, vectors.mc_test.seed)
+            if is_test_ok:
+                info.ok(mc_data)
+            else:
+                info.fail(f"Failed at checkpoint {j}", mc_data)
+            res.add(info)
+        else:
+            # The specification of this test is in section 6.4 of
+            # https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/SHAVS.pdf
+            info = TestInfo.new_from_test(vectors.mc_test, vectors.compliance)
+            is_test_ok = True
+            seed = vectors.mc_test.seed
+            for j in track(
+                range(0, 100), rf"\[{str(hash_algorithm)}] Monte-Carlo test"
+            ):
+                if not is_test_ok:
+                    break
+                md0 = md1 = md2 = seed
+                for _ in range(3, 1003):
+                    mi = md0 + md1 + md2
+                    try:
+                        mdi = hash_function(mi)
+                        if len(mdi) * 8 != hash_algorithm.digest_size:
+                            raise ValueError(
+                                "Wrong digest size, expected %d, got %d"
+                                % (hash_algorithm.digest_size, len(mdi) * 8)
+                            )
+                    except Exception as error:
+                        info.error_msg = (
+                            f"Error running hash function before checkpoint {j}:"
+                            f" {str(error)}"
+                        )
+                        logger.debug("Error running hash function", exc_info=True)
+                        is_test_ok = False
+                        break
+                    md0, md1, md2 = md1, md2, mdi
+                if not is_test_ok:
+                    break
+                mdj = seed = mdi
+                if mdj != vectors.mc_test.checkpoints[j]:
+                    is_test_ok = False
+
+            mc_data = ShaMcData(info, seed)
+            if is_test_ok:
+                info.ok(mc_data)
+            elif not info.error_msg:
+                info.fail(f"Failed at checkpoint {j}", mc_data)
+            res.add(info)
+
     return rd
 
 
