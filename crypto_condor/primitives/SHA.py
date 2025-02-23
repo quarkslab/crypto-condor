@@ -260,6 +260,9 @@ def _load_vectors(algo: Algorithm) -> list[ShaVectors]:
 def test(
     hash_function: HashFunction,
     hash_algorithm: Algorithm,
+    *,
+    compliance: bool = True,
+    resilience: bool = False,
 ) -> ResultsDict:
     """Tests a SHA implementation.
 
@@ -271,6 +274,12 @@ def test(
             The implementation to test.
         hash_algorithm:
             The hash algorithm implemented by :attr:`hash_function`.
+
+    Keyword Args:
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
 
     Returns:
         A :class:`ResultsDict` containing the results of short message (``short``), long
@@ -304,8 +313,14 @@ def test(
 
     test: ShaTest
     for vectors in all_vectors:
+        if not compliance and vectors.compliance:
+            continue
+        if not resilience and not vectors.compliance:
+            continue
+
         res = Results.new(f"Test {str(hash_algorithm)} digest", ["hash_algorithm"])
         rd.add(res)
+
         for test in track(vectors.tests, rf"\[{hash_algorithm}] Test digest"):
             info = TestInfo.new_from_test(test, vectors.compliance)
             data = DigestData(test.msg, test.md)
