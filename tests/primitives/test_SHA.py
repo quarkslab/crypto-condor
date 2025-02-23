@@ -44,8 +44,7 @@ def test_sha(hash_algo: SHA.Algorithm):
         return digest.finalize()
 
     hash_algorithm = SHA.Algorithm(hash_algo)
-    # cryptography's implementation is byte-oriented
-    results_dict = SHA.test(_hash, hash_algorithm, SHA.Orientation.BYTE)
+    results_dict = SHA.test(_hash, hash_algorithm)
 
     for results in results_dict.values():
         assert results.check(empty_as_fail=True)

@@ -13,12 +13,7 @@ Supported parameters
 
 The supported algorithms are defined by the :enum:`Algorithm` enum.
 
-Implementations can be either bit- or byte-oriented. To select an orientation use the
-:enum:`Orientation` enum.
-
 .. autoenum:: Algorithm
-
-.. autoenum:: Orientation
 
 Test an implementation directly
 -------------------------------

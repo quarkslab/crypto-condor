@@ -295,7 +295,6 @@ class TestSha:
                 "SHA",
                 "sha_wrapper.py",
                 algo,
-                "byte",
                 "--no-save",
             ]
             result = runner.invoke(app, args)

@@ -9,5 +9,4 @@ Enums
 -----
 
 .. autoenum:: Algorithm
-.. autoenum:: Orientation
 

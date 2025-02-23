@@ -32,7 +32,7 @@ from crypto_condor.primitives.common import (
     TestType,
 )
 from crypto_condor.vectors._sha.sha_pb2 import ShaTest, ShaVectors
-from crypto_condor.vectors.SHA import Algorithm, Orientation
+from crypto_condor.vectors.SHA import Algorithm
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,6 @@ def __dir__():  # pragma: no cover
         verify_file.__name__,
         # Imported
         Algorithm.__name__,
-        Orientation.__name__,
     ]
 
 
@@ -261,7 +260,6 @@ def _load_vectors(algo: Algorithm) -> list[ShaVectors]:
 def test(
     hash_function: HashFunction,
     hash_algorithm: Algorithm,
-    orientation: Orientation = Orientation.BYTE,
 ) -> ResultsDict:
     """Tests a SHA implementation.
 
@@ -269,10 +267,10 @@ def test(
     the :protocol:`HashFunction` protocol.
 
     Args:
-        hash_function: The implementation to test.
-        hash_algorithm: The hash algorithm implemented by :attr:`hash_function`.
-        orientation: The orientation of the implementation, either bit- or
-            byte-oriented.
+        hash_function:
+            The implementation to test.
+        hash_algorithm:
+            The hash algorithm implemented by :attr:`hash_function`.
 
     Returns:
         A :class:`ResultsDict` containing the results of short message (``short``), long
@@ -294,16 +292,13 @@ def test(
         We define the parameters to test.
 
         >>> algorithm = SHA.Algorithm.SHA_256
-        >>> orientation = SHA.Orientation.BYTE
 
         And call :func:`test` on our function and selected parameters.
 
-        >>> results_dict = SHA.test(my_sha256, algorithm, orientation)
+        >>> results_dict = SHA.test(my_sha256, algorithm)
         [SHA-256] Test digest ...
         >>> assert results_dict.check()
     """
-    if orientation == Orientation.BIT:
-        raise ValueError("Bit-oriented implementations are not supported")
     all_vectors = _load_vectors(hash_algorithm)
     rd = ResultsDict()
 
@@ -413,16 +408,14 @@ def test(
     return rd
 
 
-def _run_sha_python_wrapper(
-    wrapper: Path, algorithm: Algorithm, orientation: Orientation
-) -> ResultsDict:
+def _run_sha_python_wrapper(wrapper: Path, algorithm: Algorithm) -> ResultsDict:
     """Runs the Python SHA wrapper.
 
     Args:
-        wrapper: The wrapper to test.
-        algorithm: The SHA algorithm to test.
-        orientation: The orientation of the implementation, either bit- or
-            byte-oriented.
+        wrapper:
+            The wrapper to test.
+        algorithm:
+            The SHA algorithm to test.
     """
     logger.info("Python SHA wrapper: %s", str(wrapper.name))
     sys.path.insert(0, str(wrapper.parent.absolute()))
@@ -436,7 +429,7 @@ def _run_sha_python_wrapper(
         logger.debug("Reloading SHA wrapper module %s", wrapper.stem)
         sha_wrapper = importlib.reload(sha_wrapper)
 
-    results_dict = test(sha_wrapper.sha, algorithm, orientation)
+    results_dict = test(sha_wrapper.sha, algorithm)
 
     # To de-clutter the path, remove the CWD.
     sys.path.remove(str(Path.cwd()))
@@ -444,16 +437,14 @@ def _run_sha_python_wrapper(
     return results_dict
 
 
-def _run_sha_c_wrapper(
-    wrapper: Path, algorithm: Algorithm, orientation: Orientation
-) -> ResultsDict:
+def _run_sha_c_wrapper(wrapper: Path, algorithm: Algorithm) -> ResultsDict:
     """Runs the C SHA wrapper.
 
     Args:
-        wrapper: The executable wrapper to test.
-        algorithm: The SHA algorithm to test.
-        orientation: The orientation of the implementation, either bit- or
-            byte-oriented.
+        wrapper:
+            The executable wrapper to test.
+        algorithm:
+            The SHA algorithm to test.
     """
 
     def sha(data: bytes) -> bytes:
@@ -479,14 +470,13 @@ def _run_sha_c_wrapper(
         digest = bytes.fromhex(r.stdout.rstrip())
         return digest
 
-    return test(sha, algorithm, orientation)
+    return test(sha, algorithm)
 
 
 def run_wrapper(
     wrapper: Path,
     # language: Wrapper,
     hash_algorithm: Algorithm,
-    orientation: Orientation,
 ) -> ResultsDict:
     """Runs the corresponding wrapper.
 
@@ -505,9 +495,9 @@ def run_wrapper(
         raise FileNotFoundError(f"SHA wrapper not found: {str(wrapper)}")
 
     if wrapper.suffix == ".py":
-        return _run_sha_python_wrapper(wrapper, hash_algorithm, orientation)
+        return _run_sha_python_wrapper(wrapper, hash_algorithm)
     else:
-        return _run_sha_c_wrapper(wrapper, hash_algorithm, orientation)
+        return _run_sha_c_wrapper(wrapper, hash_algorithm)
 
 
 def verify_file(filename: str, hash_algorithm: Algorithm) -> Results:
@@ -616,7 +606,6 @@ def _test_lib_digest(
     lib,
     function: str,
     algorithm: Algorithm,
-    orientation: Orientation,
 ) -> ResultsDict:
     logger.info("Testing harness function %s", function)
 
@@ -633,16 +622,19 @@ def _test_lib_digest(
         sha(buffer, _data, len(data))
         return bytes(buffer)
 
-    return test(_sha, algorithm, orientation)
+    return test(_sha, algorithm)
 
 
 def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
     """Tests functions from a shared library.
 
     Args:
-        ffi: The FFI instance.
-        lib: The dlopen'd library.
-        functions: A list of CC_SHA functions to test.
+        ffi:
+            The FFI instance.
+        lib:
+            The dlopen'd library.
+        functions:
+            A list of CC_SHA functions to test.
     """
     logger.info("Found harness functions %s", ", ".join(functions))
 
@@ -653,15 +645,7 @@ def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
             case ["CC", "SHA", *parts, "digest"]:
                 bits = "_".join(parts)
                 algorithm = SHA_DIGEST_ALGORITHMS[f"SHA_{bits}"]
-                results |= _test_lib_digest(
-                    ffi, lib, function, algorithm, Orientation.BYTE
-                )
-            case ["CC", "SHA", *parts, "digest", "bit"]:
-                bits = "_".join(parts)
-                algorithm = SHA_DIGEST_ALGORITHMS[f"SHA_{bits}"]
-                results |= _test_lib_digest(
-                    ffi, lib, function, algorithm, Orientation.BIT
-                )
+                results |= _test_lib_digest(ffi, lib, function, algorithm)
             case _:
                 logger.debug("Ignoring unknown CC_SHA function %s", function)
 

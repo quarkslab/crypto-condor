@@ -50,10 +50,3 @@ class Algorithm(strenum.StrEnum):
     SHA3_256 = "SHA3-256"
     SHA3_384 = "SHA3-384"
     SHA3_512 = "SHA3-512"
-
-
-class Orientation(strenum.StrEnum):
-    """Orientation of the implementation."""
-
-    BIT = "bit"
-    BYTE = "byte"

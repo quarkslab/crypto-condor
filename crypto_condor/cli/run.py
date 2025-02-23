@@ -345,13 +345,6 @@ def sha(
             help="The SHA algorithm to test.", case_sensitive=False, show_default=False
         ),
     ],
-    orientation: Annotated[
-        SHA.Orientation,
-        typer.Argument(
-            help="The orientation of the implementation, either bit- or byte-oriented.",
-            case_sensitive=False,
-        ),
-    ] = SHA.Orientation.BYTE,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
     debug: Annotated[Optional[bool], _debug] = None,
@@ -359,16 +352,21 @@ def sha(
     """Runs a SHA wrapper.
 
     Args:
-        wrapper: The wrapper to test.
-        algorithm: The SHA algorithm to test.
-        orientation: The orientation of the implementation, either bit- or
-            byte-oriented.
-        filename: Name of the file to save results.
-        no_save: Do not save results or prompt the user.
-        debug: When saving the results to a file, whether to add the debug data.
+        wrapper:
+            The wrapper to test.
+        algorithm:
+            The SHA algorithm to test.
+
+    Keyword Args:
+        filename:
+            Name of the file to save results.
+        no_save:
+            Do not save results or prompt the user.
+        debug:
+            When saving the results to a file, whether to add the debug data.
     """
     try:
-        results = SHA.run_wrapper(Path(wrapper), algorithm, orientation)
+        results = SHA.run_wrapper(Path(wrapper), algorithm)
     except ValueError as error:
         logger.error(error)
         raise typer.Exit(1) from error
