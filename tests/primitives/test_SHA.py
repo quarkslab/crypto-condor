@@ -44,7 +44,7 @@ def test_sha(hash_algo: SHA.Algorithm):
         return digest.finalize()
 
     hash_algorithm = SHA.Algorithm(hash_algo)
-    results_dict = SHA.test(_hash, hash_algorithm)
+    results_dict = SHA.test_digest(_hash, hash_algorithm)
 
     for results in results_dict.values():
         assert results.check(empty_as_fail=True)

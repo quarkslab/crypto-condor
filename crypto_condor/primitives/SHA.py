@@ -6,6 +6,7 @@ import json
 import logging
 import subprocess
 import sys
+import warnings
 from pathlib import Path
 from typing import Protocol
 
@@ -45,7 +46,7 @@ def __dir__():  # pragma: no cover
         # Protocols
         HashFunction.__name__,
         # Functions
-        test.__name__,
+        test_digest.__name__,
         verify_file.__name__,
         # Wrapper
         test_wrapper.__name__,
@@ -257,8 +258,47 @@ def test(
             Whether to use resilience test vectors.
 
     Returns:
-        A :class:`ResultsDict` containing the results of short message (``short``), long
-        message (``long``), and Monte-Carlo (``monte-carlo``) tests.
+        A dictionary of results.
+
+    .. versionchanged:: TODO(version)
+        Removed the ``Orientation`` argument, added the ``compliance`` and
+        ``resilience`` keywork arguments.
+
+    .. deprecated:: TODO(version)
+        Will be removed in a future version, use :func:`test_digest` instead.
+    """
+    warnings.warn("Use test_digest instead", DeprecationWarning, stacklevel=1)
+    return test_digest(
+        hash_function, hash_algorithm, compliance=compliance, resilience=resilience
+    )
+
+
+def test_digest(
+    digest: HashFunction,
+    algorithm: Algorithm,
+    *,
+    compliance: bool = True,
+    resilience: bool = False,
+) -> ResultsDict:
+    """Tests a SHA implementation.
+
+    Runs NIST test vectors on the given function. The function to test must conform to
+    the :protocol:`HashFunction` protocol.
+
+    Args:
+        digest:
+            The implementation to test.
+        algorithm:
+            The hash algorithm implemented by :attr:`digest`.
+
+    Keyword Args:
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+
+    Returns:
+        A dictionary of results.
 
     Example:
         First import the SHA module.
@@ -279,15 +319,14 @@ def test(
 
         And call :func:`test` on our function and selected parameters.
 
-        >>> results_dict = SHA.test(my_sha256, algorithm)
+        >>> results_dict = SHA.test_digest(my_sha256, algorithm)
         [SHA-256] Test digest ...
         >>> assert results_dict.check()
 
-    .. versionchanged:: TODO(version)
-        Removed the ``Orientation`` argument, added the ``compliance`` and
-        ``resilience`` keywork arguments.
+    .. versionadded:: TODO(version)
+        Replaces the ``test`` function.
     """
-    all_vectors = _load_vectors(hash_algorithm)
+    all_vectors = _load_vectors(algorithm)
     rd = ResultsDict()
 
     test: ShaTest
@@ -297,16 +336,16 @@ def test(
         if not resilience and not vectors.compliance:
             continue
 
-        res = Results.new(f"Test {str(hash_algorithm)} digest", ["hash_algorithm"])
+        res = Results.new(f"Test {str(algorithm)} digest", ["algorithm"])
         rd.add(res)
 
-        for test in track(vectors.tests, rf"\[{hash_algorithm}] Test digest"):
+        for test in track(vectors.tests, rf"\[{algorithm}] Test digest"):
             info = TestInfo.new_from_test(test, vectors.compliance)
             data = DigestData(test.msg, test.md)
             try:
-                md = hash_function(test.msg)
+                md = digest(test.msg)
             except NotImplementedError:
-                logger.warning("%s digest not implemented, skipped", hash_algorithm)
+                logger.warning("%s digest not implemented, skipped", algorithm)
                 return rd
             except Exception as error:
                 info.fail(f"Exception caught: {str(error)}", data)
@@ -314,7 +353,7 @@ def test(
                 continue
 
             data.ret_md = md
-            if len(md) * 8 != hash_algorithm.digest_size:
+            if len(md) * 8 != algorithm.digest_size:
                 info.fail(f"Wrong digest size ({len(md) * 8})", data)
             elif md != test.md:
                 info.fail("Wrong digest", data)
@@ -327,21 +366,19 @@ def test(
             continue
 
         # The Monte-Carlo tests are not built the same way for SHA-2 and SHA-3.
-        if hash_algorithm.sha3:
+        if algorithm.sha3:
             # The specification of the test is in section 6.2.3 of
             # https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha3vs.pdf
             info = TestInfo.new_from_test(vectors.mc_test, vectors.compliance)
             is_test_ok = True
             md = vectors.mc_test.seed
-            for j in track(
-                range(0, 100), rf"\[{str(hash_algorithm)}] Monte-Carlo test"
-            ):
+            for j in track(range(0, 100), rf"\[{str(algorithm)}] Monte-Carlo test"):
                 if not res:
                     break
                 for _ in range(1, 1001):
                     msg = md
                     try:
-                        md = hash_function(msg)
+                        md = digest(msg)
                     except Exception as error:
                         logger.debug(
                             "Error running user-defined function: %s", str(error)
@@ -362,20 +399,18 @@ def test(
             info = TestInfo.new_from_test(vectors.mc_test, vectors.compliance)
             is_test_ok = True
             seed = vectors.mc_test.seed
-            for j in track(
-                range(0, 100), rf"\[{str(hash_algorithm)}] Monte-Carlo test"
-            ):
+            for j in track(range(0, 100), rf"\[{str(algorithm)}] Monte-Carlo test"):
                 if not is_test_ok:
                     break
                 md0 = md1 = md2 = seed
                 for _ in range(3, 1003):
                     mi = md0 + md1 + md2
                     try:
-                        mdi = hash_function(mi)
-                        if len(mdi) * 8 != hash_algorithm.digest_size:
+                        mdi = digest(mi)
+                        if len(mdi) * 8 != algorithm.digest_size:
                             raise ValueError(
                                 "Wrong digest size, expected %d, got %d"
-                                % (hash_algorithm.digest_size, len(mdi) * 8)
+                                % (algorithm.digest_size, len(mdi) * 8)
                             )
                     except Exception as error:
                         info.fail(
@@ -446,7 +481,7 @@ def test_wrapper_python(
                 except ValueError:
                     logger.error("Invalid algorithm %s for SHA, skipped", _algo)
                     continue
-                rd |= test(
+                rd |= test_digest(
                     getattr(sha_wrapper, func),
                     algo,
                     compliance=compliance,
@@ -641,7 +676,7 @@ def _test_lib_digest(
             raise ValueError(f"{function} failed with code {ret_val}")
         return bytes(c_buffer)
 
-    return test(_sha, algorithm)
+    return test_digest(_sha, algorithm)
 
 
 def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
