@@ -27,7 +27,6 @@ from Crypto.Hash import (
 from rich.progress import track
 
 from crypto_condor.primitives.common import (
-    DebugInfo,
     Results,
     ResultsDict,
     TestInfo,
@@ -47,7 +46,7 @@ def __dir__():  # pragma: no cover
         HashFunction.__name__,
         # Functions
         test_digest.__name__,
-        verify_file.__name__,
+        test_output_digest.__name__,
         # Wrapper
         test_wrapper.__name__,
         test_wrapper_python.__name__,
@@ -94,7 +93,18 @@ class HashFunction(Protocol):
 
 @attrs.define
 class DigestData:
-    """Debug data for :func:`test`."""
+    """Debug data for :func:`test`.
+
+    Args:
+        msg:
+            The input message.
+        md:
+            The expected digest.
+
+    Keyword Args:
+        ret_md:
+            The digest returned by the implementation.
+    """
 
     msg: bytes
     md: bytes
@@ -125,35 +135,28 @@ class MonteCarloData:
 
 
 @attrs.define
-class ShaVerifyData:
-    """Debug data for :func:`verify_file`.
-
-    The difference between this class and :class:`ShaData` is that the arguments of this
-    class can all (except for info) can be None. This can happen when the line being
-    verified could not be parsed, so not even the message can be recovered.
+class VerifyData:
+    """Debug data for :func:`test_output_digest`.
 
     Args:
-        info: Common debug info, see :class:`crypto_condor.primitives.common.DebugInfo`.
-        message: The message to hash.
-        expected: The expected digest.
-        digest: The resulting digest.
+        msg:
+            The input message.
+        md:
+            The digest returned by the implementation.
+        ref_md:
+            The digest returned by the reference implementation.
     """
 
-    info: DebugInfo
-    message: bytes | None = None
-    expected: bytes | None = None
-    digest: bytes | None = None
+    msg: bytes
+    md: bytes
+    ref_md: bytes
 
     def __str__(self) -> str:
-        """Printable representation of the test."""
-        s = str(self.info)
-        if self.message is not None:
-            s += f"message = {self.message.hex()}\n"
-        if self.expected is not None:
-            s += f"expected = {self.expected.hex()}\n"
-        if self.digest is not None:
-            s += f"digest = {self.digest.hex()}\n"
-        return s
+        """Returns a string representation."""
+        return f"""msg = {self.msg.hex()}
+md = {self.md.hex()}
+reference md = {self.ref_md.hex()}
+"""
 
 
 # --------------------------- Internal ------------------------------------------------
@@ -562,7 +565,7 @@ def _run_sha_c_wrapper(wrapper: Path, algorithm: Algorithm) -> ResultsDict:
     return test(sha, algorithm)
 
 
-def verify_file(filename: str, hash_algorithm: Algorithm) -> Results:
+def verify_file(filename: str, hash_algorithm: Algorithm) -> ResultsDict:
     r"""Verifies SHA hashes.
 
     Tests hashes from a file. The file must follow the format described below.
@@ -583,8 +586,46 @@ def verify_file(filename: str, hash_algorithm: Algorithm) -> Results:
         hash_algorithm: Hash algorithm used to generate the hashes.
 
     Returns:
-        The results of hashing the message with the internal implementation and
-        comparing with the expected output.
+        A dictionary of results.
+
+    .. versionchanged:: TODO(version)
+        Returns a :class:`ResultsDict` instead of :class:`Results`.
+
+    .. deprecated:: TODO(version)
+        Will be removed in a future version, use :func:`test_output_digest` instead.
+    """
+    warnings.warn("Use test_output_digest instead", DeprecationWarning, stacklevel=1)
+    return test_output_digest(filename, hash_algorithm)
+
+
+def test_output_digest(filename: str, algorithm: Algorithm) -> ResultsDict:
+    r"""Tests a file of SHA hashes.
+
+    The messages and the corresponding hashes are read from the file. The messages are
+    hashed with a reference implementation and compared to those in the file. The test
+    passes if the hashes match. Parsing errors count as failures.
+
+    The file must follow the format described below.
+
+    Format:
+        - One set of arguments per line.
+        - Lines are separated by newlines (``\n``).
+        - Lines that start with '#' are counted as comments and ignored.
+        - Arguments are written in hexadecimal and separated by slashes.
+        - The order of arguments is:
+
+        .. code::
+
+            message/hash
+
+    Args:
+        filename:
+            Name of the file to test.
+        algorithm:
+            Hash algorithm used to generate the hashes.
+
+    Returns:
+        A dictionary of results.
 
     Example:
         First import the SHA module.
@@ -605,7 +646,7 @@ def verify_file(filename: str, hash_algorithm: Algorithm) -> Results:
 
         We call :func:`verify_file` on our test file.
 
-        >>> results = SHA.verify_file(filename, algorithm)
+        >>> results = SHA.test_output_digest(filename, algorithm)
         Testing ...
         >>> assert results.check()
     """
@@ -616,35 +657,27 @@ def verify_file(filename: str, hash_algorithm: Algorithm) -> Results:
         logger.exception("Could not open %s", filename)
         raise
 
-    results = Results(
-        "SHA",
-        "verify_file_sha",
-        "Verifies the output of an implementation",
-        {"filename": filename, "hash_algorithm": hash_algorithm},
-    )
+    res = Results.new(f"Tests a file of {algorithm} hashes", ["filename", "algorithm"])
 
     for tid, line in track(enumerate(lines, start=1), "Testing hashes"):
         if line.startswith("#"):
             continue
-        info = DebugInfo(
-            tid, TestType.VALID, ["UserInput"], comment=f"Line number {tid}"
-        )
+        info = TestInfo.new(tid, TestType.VALID, ["UserInput"], f"Line number {tid}")
         match line.rstrip().split("/"):
-            case (msg, md):
-                message, digest = map(bytes.fromhex, (msg, md))
+            case (_msg, _md):
+                msg, md = map(bytes.fromhex, (_msg, _md))
             case _ as args:
-                info.error_msg = f"Parsing error, expected 2 arguments got {len(args)}"
-                data = ShaVerifyData(info)
+                info.fail(f"Failed to parse line {tid}, got {len(args)} arguments")
                 continue
-        expected = _sha(hash_algorithm, message)
-        if digest == expected:
-            info.result = True
+        ref_md = _sha(algorithm, msg)
+        data = VerifyData(msg, md, ref_md)
+        if md == ref_md:
+            info.ok(data)
         else:
-            info.error_msg = "Wrong digest"
-        data = ShaVerifyData(info, message, expected, digest)
-        results.add(data)
+            info.fail("Wrong digest", data)
+        res.add(info)
 
-    return results
+    return res
 
 
 # --------------------------- Lib hook functions --------------------------------------

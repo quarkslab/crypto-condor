@@ -196,9 +196,13 @@ _sha_help = """Tests a file of SHA hashes.
 
 The format of the file is:
 
-- One input per line.
-- The message and the resulting hash in hexadecimal.
-- Separated by a slash.
+- One set of arguments per line.
+- Lines are separated by newlines (``\n``).
+- Lines that start with '#' are counted as comments and ignored.
+- Arguments are written in hexadecimal and separated by slashes.
+- The order of arguments is:
+
+    message/hash
 """
 
 
@@ -229,13 +233,17 @@ def sha(
     """Tests SHA hashes.
 
     Args:
-        input_file: The input file.
-        algorithm: The hash algorithm used.
-        filename: Name of the file to save results.
-        no_save: Do not save results or prompt the user.
+        input_file:
+            The input file.
+        algorithm:
+            The hash algorithm used.
+        filename:
+            Name of the file to save results.
+        no_save:
+            Do not save results or prompt the user.
     """
     try:
-        results = SHA.verify_file(str(input_file), algorithm)
+        results = SHA.test_output_digest(str(input_file), algorithm)
     except ValueError as error:
         console.print(error)
         raise typer.Exit(1) from error

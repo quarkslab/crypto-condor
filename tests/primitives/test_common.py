@@ -17,7 +17,7 @@ class TestConsole:
 
         The expected behaviour is that the user is not prompted for a filename.
         """
-        rd = SHA.test(lambda msg: sha256(msg).digest(), SHA.Algorithm.SHA_256)
+        rd = SHA.test_digest(lambda msg: sha256(msg).digest(), SHA.Algorithm.SHA_256)
         console = Console()
         assert console.process_results(rd, None)
 
