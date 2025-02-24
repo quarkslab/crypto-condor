@@ -1,0 +1,141 @@
+{
+  "B-163": {
+    "point": [
+      "ecdh_cavp_B-163_point.pb2"
+    ]
+  },
+  "B-233": {
+    "point": [
+      "ecdh_cavp_B-233_point.pb2"
+    ]
+  },
+  "B-283": {
+    "point": [
+      "ecdh_cavp_B-283_point.pb2"
+    ],
+    "x509": [
+      "ecdh_wycheproof_B-283_x509.pb2"
+    ]
+  },
+  "B-409": {
+    "point": [
+      "ecdh_cavp_B-409_point.pb2"
+    ],
+    "x509": [
+      "ecdh_wycheproof_B-409_x509.pb2"
+    ]
+  },
+  "B-571": {
+    "point": [
+      "ecdh_cavp_B-571_point.pb2"
+    ],
+    "x509": [
+      "ecdh_wycheproof_B-571_x509.pb2"
+    ]
+  },
+  "K-163": {
+    "point": [
+      "ecdh_cavp_K-163_point.pb2"
+    ]
+  },
+  "K-233": {
+    "point": [
+      "ecdh_cavp_K-233_point.pb2"
+    ]
+  },
+  "K-283": {
+    "point": [
+      "ecdh_cavp_K-283_point.pb2"
+    ],
+    "x509": [
+      "ecdh_wycheproof_K-283_x509.pb2"
+    ]
+  },
+  "K-409": {
+    "point": [
+      "ecdh_cavp_K-409_point.pb2"
+    ],
+    "x509": [
+      "ecdh_wycheproof_K-409_x509.pb2"
+    ]
+  },
+  "K-571": {
+    "point": [
+      "ecdh_cavp_K-571_point.pb2"
+    ],
+    "x509": [
+      "ecdh_wycheproof_K-571_x509.pb2"
+    ]
+  },
+  "P-192": {
+    "point": [
+      "ecdh_cavp_P-192_point.pb2"
+    ]
+  },
+  "P-224": {
+    "point": [
+      "ecdh_cavp_P-224_point.pb2",
+      "ecdh_wycheproof_P-224_point.pb2"
+    ],
+    "x509": [
+      "ecdh_wycheproof_P-224_x509.pb2"
+    ]
+  },
+  "P-256": {
+    "point": [
+      "ecdh_cavp_P-256_point.pb2",
+      "ecdh_wycheproof_P-256_point.pb2"
+    ],
+    "x509": [
+      "ecdh_wycheproof_P-256_x509.pb2"
+    ]
+  },
+  "P-384": {
+    "point": [
+      "ecdh_cavp_P-384_point.pb2",
+      "ecdh_wycheproof_P-384_point.pb2"
+    ],
+    "x509": [
+      "ecdh_wycheproof_P-384_x509.pb2"
+    ]
+  },
+  "P-521": {
+    "point": [
+      "ecdh_cavp_P-521_point.pb2",
+      "ecdh_wycheproof_P-521_point.pb2"
+    ],
+    "x509": [
+      "ecdh_wycheproof_P-521_x509.pb2"
+    ]
+  },
+  "brainpoolP224r1": {
+    "x509": [
+      "ecdh_wycheproof_brainpoolP224r1_x509.pb2"
+    ]
+  },
+  "brainpoolP256r1": {
+    "x509": [
+      "ecdh_wycheproof_brainpoolP256r1_x509.pb2"
+    ]
+  },
+  "brainpoolP320r1": {
+    "x509": [
+      "ecdh_wycheproof_brainpoolP320r1_x509.pb2"
+    ]
+  },
+  "brainpoolP384r1": {
+    "x509": [
+      "ecdh_wycheproof_brainpoolP384r1_x509.pb2"
+    ]
+  },
+  "brainpoolP512r1": {
+    "x509": [
+      "ecdh_wycheproof_brainpoolP512r1_x509.pb2"
+    ]
+  },
+  "secp256k1": {
+    "x509": [
+      "ecdh_wycheproof_secp256k1_x509.pb2"
+    ]
+  }
+}

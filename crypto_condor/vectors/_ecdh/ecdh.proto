@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single ECDH test.
+//
+// A test for a single key exchange with the private key derived from the private value
+// ``d`` and the public key. The public key can be either a X.509 SubjectPublicKeyInfo
+// or the uncompressed coordinates of the point.
+//
+// The ``ss`` and ``d`` fields are required. One of ``peer_point`` and ``peer_x509`` are
+// also required.
+message EcdhTest {
+	// The test ID, unique in its set of vectors.
+	int32 id = 1;
+	// The type of test. One of: valid, invalid, acceptable.
+	string type = 2;
+	// A comment on the test.
+	string comment = 3;
+	// Flags that categorize this test.
+	repeated string flags = 4;
+
+	// The resulting shared secret.
+	bytes ss = 5;
+	// The private value of party A.
+	bytes d = 6;
+
+	oneof oneof_pk {
+		// The peer's public key point.
+		bytes peer_point = 7;
+		// The peer's public X509 key.
+		bytes peer_x509 = 8;
+
+	}
+}
+
+// A set of ECDH test vectors.
+//
+// It is categorized by its `curve` and `public_type` fields.
+message EcdhVectors {
+	// The source of the test vectors.
+	string source = 1;
+	// Description of the source.
+	string source_desc = 2;
+	// The URL of the source.
+	string source_url = 3;
+	// Whether these are compliance test vectors or not.
+	bool compliance = 4;
+	// A dictionary of test flags and their description.
+    map<string, string> notes = 5;
+	// The test vectors.
+	repeated EcdhTest tests = 6;
+
+	// The elliptic curve used for these vectors.
+    string curve = 7;
+	// The type of public key available. One of: "x509", "point".
+	string public_type = 8;
+}
+
