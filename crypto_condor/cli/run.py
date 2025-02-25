@@ -11,7 +11,6 @@ from rich.prompt import Prompt
 
 from crypto_condor.primitives import (
     AES,
-    ECDH,
     ECDSA,
     MLDSA,
     MLKEM,
@@ -630,31 +629,9 @@ _ecdh_help = "Run an ECDH wrapper."
 @app.command(name="ECDH", no_args_is_help=True, help=_ecdh_help)
 @app.command(name="ecdh", no_args_is_help=True, help=_ecdh_help, hidden=True)
 def ecdh(
-    lang: Annotated[
-        ECDH.Wrapper,
-        typer.Argument(
-            metavar="LANG",
-            help=(
-                "The language of the wrapper. Possible values are: "
-                f"{', '.join([str(lang) for lang in ECDH.Wrapper])}."
-            ),
-            show_default=False,
-            case_sensitive=False,
-        ),
+    wrapper: Annotated[
+        Path, typer.Argument(metavar="FILE", help="The wrapper to test.")
     ],
-    curve: Annotated[
-        ECDH.Curve,
-        typer.Argument(
-            metavar="CURVE",
-            help=(
-                "The elliptic curve to use. Possible values are: "
-                f"{', '.join([str(c) for c in ECDH.Curve])}."
-            ),
-            show_default=False,
-            case_sensitive=False,
-        ),
-    ],
-    wrapper: Annotated[str, typer.Argument(metavar="FILE")] = "ECDH_wrapper.py",
     compliance: Annotated[bool, _compliance] = True,
     resilience: Annotated[bool, _resilience] = False,
     filename: Annotated[str, _filename] = "",
@@ -673,8 +650,10 @@ def ecdh(
         no_save: Do not save results or prompt the user.
         debug: When saving the results to a file, whether to add the debug data.
     """
+    from crypto_condor.primitives import ECDH
+
     try:
-        results = ECDH.run_wrapper(Path(wrapper), lang, curve, compliance, resilience)
+        results = ECDH.test_wrapper(wrapper, compliance, resilience)
     except (FileNotFoundError, ModuleNotFoundError) as error:
         raise typer.Exit(1) from error
     if console.process_results(results, filename, no_save, debug):

@@ -9,6 +9,7 @@ protocol.
 :::{toctree}
 :maxdepth: 1
 
+ECDH <ECDH>
 HMAC <HMAC>
 SHA <SHA>
 SHAKE <SHAKE>

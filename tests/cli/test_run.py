@@ -435,18 +435,13 @@ class TestHmac:
 class TestECDH:
     """Tests ECDH wrappers."""
 
-    @pytest.mark.parametrize(
-        ("lang", "example", "curve"),
-        [("Python", "1", "P-256"), ("Python", "2", "P-192")],
-    )
-    def test_examples(self, lang: str, example: str, curve: str, tmp_path: Path):
-        """Tests ECDH examples."""
+    def test_example(self, tmp_path: Path):
+        """Tests ECDH wrapper example."""
         with runner.isolated_filesystem(tmp_path):
-            wrap_result = runner.invoke(
-                app, ["get-wrapper", "ECDH", "--language", lang, "--example", example]
-            )
+            args = "get-wrapper ECDH --language Python --example 1"
+            wrap_result = runner.invoke(app, args)
             assert wrap_result.exit_code == 0, "Could not get ECDH wrapper"
-            args = ["test", "wrapper", "ECDH", lang, curve, "--resilience", "--no-save"]
+            args = "test wrapper ECDH ecdh_wrapper_example.py --resilience --no-save"
             result = runner.invoke(app, args)
             print(result.output)
             assert result.exit_code == 0, "Wrapper failed"

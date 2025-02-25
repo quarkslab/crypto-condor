@@ -5,6 +5,7 @@ The :mod:`crypto_condor.primitives.ECDH` module can test implementations of the
 """
 
 import importlib
+import inspect
 import json
 import logging
 import sys
@@ -29,18 +30,13 @@ def __dir__():  # pragma: no cover
     return [
         # Enums
         Curve.__name__,
-        Wrapper.__name__,
         # Protocols
-        ECDH.__name__,
-        # Tests
-        test_exchange.__name__,
-        # Internal tests
-        test_exchange_nist.__name__,
-        test_exchange_wycheproof.__name__,
-        # Vectors
-        EcdhVectors.__name__,
-        # Runners
-        run_wrapper.__name__,
+        ExchangePoint.__name__,
+        ExchangeX509.__name__,
+        # Test functions
+        test_exchange_point.__name__,
+        test_exchange_x509.__name__,
+        test_wrapper.__name__,
     ]
 
 
@@ -440,6 +436,7 @@ def test_exchange_nist(ecdh: ECDH, curve: Curve) -> ResultsDict:
 
     return rd
 
+
 def test_exchange_x509(
     exchange: ExchangeX509,
     curve: Curve,
@@ -672,27 +669,28 @@ def test_exchange(
 # --------------------------- Runners -------------------------------------------------
 
 
-def run_wrapper_python(
-    wrapper: Path, curve: Curve, compliance: bool, resilience: bool
+def test_wrapper_python(
+    wrapper: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
     """Runs a Python wrapper of ECDH.
 
-    Imports the wrapper script and searches for a class named CC_ECDH. If found, it is
-    passed to :func:`test_exchange` with the corresponding options.
-
     Args:
-        wrapper: The wrapper to test. The path must be valid.
-        curve: The elliptic curve to use.
-        compliance: Whether to use NIST vectors.
-        resilience: Whether to use Wycheproof vectors.
+        wrapper:
+            The wrapper to test. The path must be valid.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
 
     Returns:
-        The results returned by :func:`test_exchange`.
+        The results of :func:`test_exchange_point` and :func:`test_exchange_x509` in a
+        single dictionary.
 
     Raises:
-        ModuleNotFoundError: If the module could not be loaded.
+        ModuleNotFoundError:
+            If the wrapper could not be loaded.
     """
-    logger.info("Python ECDH wrapper: %s", str(wrapper.name))
+    logger.info("Testing Python ECDH wrapper: %s", str(wrapper.name))
     sys.path.insert(0, str(wrapper.parent.absolute()))
     already_imported = wrapper.stem in sys.modules.keys()
     try:
@@ -703,45 +701,98 @@ def run_wrapper_python(
     if already_imported:
         logger.debug("Reloading ECDH wrapper module %s", wrapper.stem)
         ecdh_wrapper = importlib.reload(ecdh_wrapper)
-    ecdh = ecdh_wrapper.CC_ECDH()
-    return test_exchange(ecdh, curve, compliance=compliance, resilience=resilience)
+
+    rd = ResultsDict()
+
+    for function, _ in inspect.getmembers(ecdh_wrapper, inspect.isfunction):
+        match function.split("_"):
+            case ["CC", "ECDH", "exchange", "point", _curve]:
+                logger.info("Found CC_ECDH function %s", function)
+                try:
+                    curve = Curve.from_name(_curve)
+                except ValueError as error:
+                    logger.error("%s, test skipped", str(error))
+                    continue
+                rd |= test_exchange_point(
+                    getattr(ecdh_wrapper, function),
+                    curve,
+                    compliance=compliance,
+                    resilience=resilience,
+                )
+            case ["CC", "ECDH", "exchange", "x509", _curve]:
+                logger.info("Found CC_ECDH function %s", function)
+                try:
+                    curve = Curve.from_name(_curve)
+                except ValueError as error:
+                    logger.error("%s, test skipped", str(error))
+                    continue
+                rd |= test_exchange_x509(
+                    getattr(ecdh_wrapper, function),
+                    curve,
+                    compliance=compliance,
+                    resilience=resilience,
+                )
+            case ["CC", "ECDH", *_]:
+                logger.warning("Ignored invalid CC_ECDH function %s", function)
+                continue
+            case _:
+                pass
+
+    # NOTE: We no longer get the curve from the CLI arguments and there is no way of
+    # inferring it. We could add the curve to the name of the class, updating its
+    # interface, but since it's already deprecated it does not make sense to do so.
+    # Instead, we still check for the presence of the class in the wrapper and warn
+    # about its usage.
+    # TODO: remove this when removing the CC_ECDH protocol.
+
+    def _has_cc_ecdh(item) -> bool:
+        name, _ = item
+        return name == "CC_ECDH"
+
+    classes = inspect.getmembers(ecdh_wrapper, inspect.isclass)
+
+    if filter(_has_cc_ecdh, classes):
+        logger.error("The CC_ECDH class can no longer be tested with a wrapper")
+        logger.warning(
+            "A new wrapper interface was added for ECDH. It is still possible to test"
+            " the class through the Python API. Please refer to the documentation for"
+            " the wrapper interface for an example of both."
+        )
+
+    return rd
 
 
-def run_wrapper(
+def test_wrapper(
     wrapper: Path,
-    lang: Wrapper,
-    curve: Curve,
-    compliance: bool = True,
-    resilience: bool = False,
+    compliance: bool,
+    resilience: bool,
 ) -> ResultsDict:
     """Runs a ECDH wrapper.
 
     Args:
-        wrapper: The wrapper to test.
-        lang: The language of the wrapper.
-        curve: The elliptic curve to use.
-        compliance: Whether to use NIST vectors.
-        resilience: Whether to use Wycheproof vectors.
+        wrapper:
+            The wrapper to test.
+        compliance:
+            Whether to use NIST vectors.
+        resilience:
+            Whether to use Wycheproof vectors.
 
     Returns:
-        The results of :func:`test_exchange`.
+        The results of :func:`test_exchange_point` and :func:`test_exchange_x509` in a
+        single dictionary.
 
     Raises:
-        FileNotFoundError: If the wrapper could not be found.
-        ValueError: If lang or curve are not valid values.
-
-    Example:
-        >>> from crypto_condor.primitives import ECDH
-        >>> from pathlib import Path
-        >>> my_wrapper = Path("my_wrapper.py")
-        >>> lang = ECDH.Wrapper.PYTHON
-        >>> curve = ECDH.Curve.P192
-        >>> rdict = ECDH.run_wrapper(my_wrapper, lang, curve)  # doctest: +SKIP
+        FileNotFoundError:
+            If the wrapper could not be found.
+        ModuleNotFoundError:
+            If the wrapper could not be loaded.
     """
     if not wrapper.is_file():
         raise FileNotFoundError(f"ECDH wrapper not found: {str(wrapper)}")
-    match lang:
-        case Wrapper.PYTHON:
-            return run_wrapper_python(wrapper, curve, compliance, resilience)
+    match wrapper.suffix:
+        case ".py":
+            return test_wrapper_python(wrapper, compliance, resilience)
         case _:
-            raise ValueError("There is no runner defined for the %s wrapper" % lang)
+            raise ValueError(
+                f"There is no runner defined for '{wrapper.suffix}' wrappers"
+            )
