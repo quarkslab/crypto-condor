@@ -60,16 +60,8 @@ Python classes.
    ``.proto`` file to show the different fields each class has. IDEs should be able to
    use the included ``.pyi`` files to provide auto-completion and type checking.
 
-.. currentmodule:: crypto_condor.vectors._ECDH.ECDH_pb2
+.. currentmodule:: crypto_condor.vectors._ecdh.ecdh_pb2
 
-.. class:: EcdhNistVectors
-
-   Protobuf class that stores NIST test vectors. See the description below.
-
-.. class:: EcdhWycheproofVectors
-
-   Protobuf class that stores Wycheproof test vectors. See the description below.
-
-.. literalinclude:: ../../../../crypto_condor/vectors/_ECDH/ECDH.proto
+.. literalinclude:: ../../../../crypto_condor/vectors/_ecdh/ecdh.proto
    :language: proto
 
