@@ -34,8 +34,13 @@ domain parameters to use.
 "$h$", "The cofactor."
 :::
 
-Once the domain parameters have been agreed upon, both parties, hereby called
-Alice and Bob, proceed as follows:
+These parameters are usually already defined by a *named curve* such as P-256. A good
+resource for finding the parameters of a named curve is
+[neuromancer.sk/std](https://neuromancer.sk/std/): for example, here is the page for
+[P-256](https://neuromancer.sk/std/nist/P-256).
+
+Once the domain parameters have been agreed upon, both parties, hereby
+called Alice and Bob, proceed as follows:
 
 1. Alice picks $d_A$ randomly.
 2. Bob picks $d_B$ randomly.
