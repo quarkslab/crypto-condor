@@ -111,8 +111,51 @@ def _load_vectors(curve: Curve, pub_type: PubKeyType) -> list[EcdhVectors]:
 # NOTE: The protocols are called `exchange` following cryptography's naming.
 # PyCryptodome uses `key_agreement` and OpenSSL uses `derive` (e.g. `EVP_PKEY_derive`).
 
-# The methods are called `exchange` following cryptography's naming. PyCryptodome use
-# `key_agreement` and OpenSSL uses `derive` e.g `EVP_PKEY_derive`.
+
+class ExchangePoint(Protocol):
+    """Represents a function that performs ECDH using an uncompresed point.
+
+    The function must behave live :meth:`__call__` to be tested with
+    :func:`test_exchange_point`.
+    """
+
+    def __call__(self, secret: bytes, pub_point: bytes) -> bytes:
+        """Performs ECDH key exchange using the peer's uncompresed point.
+
+        Args:
+            secret:
+                Party A's secret value.
+            pub_point:
+                Party B's public key as an uncompressed point.
+
+        Returns:
+            The shared secret.
+        """
+        ...
+
+
+class ExchangeX509(Protocol):
+    """Represents a function that performs ECDH using public coordinates.
+
+    The function must behave live :meth:`__call__` to be tested with
+    :func:`test_exchange_x509`.
+    """
+
+    def __call__(self, secret: bytes, pub_key: bytes) -> bytes:
+        """Performs ECDH key exchange using the peer's X509 public key.
+
+        Args:
+            secret:
+                Party A's secret value.
+            pub_key:
+                Party B's public X509 key.
+
+        Returns:
+            The shared secret.
+        """
+        ...
+
+
 class ECDH(Protocol):
     """Class that implements ECDH.
 
@@ -234,6 +277,106 @@ returned ss = {self.ret_ss.hex() if self.ret_ss is not None else "<none>"}
 # --------------------------- Test functions ------------------------------------------
 
 
+def test_exchange_point(
+    exchange: ExchangePoint,
+    curve: Curve,
+    *,
+    compliance: bool = True,
+    resilience: bool = False,
+) -> ResultsDict:
+    """Tests ECDH exchange with the peer's public key as an uncompressed point.
+
+    Args:
+        exchange:
+            The implementation of the :protocol:`ExchangeCoord` protocol to test.
+        curve:
+            The elliptic curve to use.
+
+    Keyword Args:
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+
+    Returns:
+        A dictionary of results.
+
+    Example:
+        Let's test PyCryptodome over P-256. We need the ``ECC`` module to construct the
+        keys and the ``DH`` module to actually perform the key exchange.
+
+        >>> from Crypto.Protocol import DH
+        >>> from Crypto.PublicKey import ECC
+
+        From |cc| we import the primitive.
+
+        >>> from crypto_condor.primitives import ECDH
+
+        We wrap the exchange in our function to match the :protocol:`ExchangePoint`
+        protocol.
+
+        >>> def exchange_point(secret: bytes, pub_point: bytes) -> bytes:
+        ...     pk = ECC.import_key(pub_point, curve_name="P-256")
+        ...     d = int.from_bytes(secret)
+        ...     sk = ECC.construct(curve="P-256", d=d)
+        ...     return DH.key_agreement(static_priv=sk, static_pub=pk, kdf=lambda x: x)
+
+        Then we call :func:`test_exchange_point`.
+
+        >>> curve = ECDH.Curve.P256
+        >>> rd = ECDH.test_exchange_point(exchange_point, curve)
+        [P-256][NIST CAVP] Testing ExchangePoint ...
+        >>> assert rd.check()
+
+    .. versionadded:: TODO(version)
+        This function roughly replaces ``test_exchange_nist``.
+    """
+    all_vectors = _load_vectors(curve, PubKeyType.POINT)
+    rd = ResultsDict()
+
+    test: EcdhTest
+    for vectors in all_vectors:
+        if not compliance and vectors.compliance:
+            continue
+        if not resilience and not vectors.compliance:
+            continue
+
+        res = Results.new("Tests ECDH exchange with peer point", ["curve"])
+        rd.add(res, extra_values=[vectors.source])
+
+        for test in track(
+            vectors.tests, rf"\[{curve}]\[{vectors.source}] Testing ExchangePoint"
+        ):
+            info = TestInfo.new_from_test(test, vectors.compliance)
+            data = PointData(test.d, test.peer_point, test.ss)
+            try:
+                ret_ss = exchange(test.d, test.peer_point)
+            except NotImplementedError:
+                logger.warning(
+                    f"ECDH.ExchangePoint for {str(curve)} not implemented, skipped"
+                )
+                return rd
+            except Exception as error:
+                # FIXME: overly permissive.
+                if test.type == "invalid":
+                    info.ok(data)
+                else:
+                    info.fail(
+                        f"Failed ECDH exchange with exception: {str(error)}", data
+                    )
+                res.add(info)
+                logger.debug("Exception caught", exc_info=True)
+                continue
+            data.ret_ss = ret_ss
+            if ret_ss == test.ss:
+                info.ok(data)
+            else:
+                info.fail("Wrong shared secret", data)
+            res.add(info)
+
+    return rd
+
+
 def test_exchange_nist(ecdh: ECDH, curve: Curve) -> ResultsDict:
     """Tests ECDH exchange with NIST vectors.
 
@@ -296,6 +439,103 @@ def test_exchange_nist(ecdh: ECDH, curve: Curve) -> ResultsDict:
             res.add(info)
 
     return rd
+
+def test_exchange_x509(
+    exchange: ExchangeX509,
+    curve: Curve,
+    *,
+    compliance: bool = True,
+    resilience: bool = False,
+) -> ResultsDict:
+    """Tests ECDH exchange with the peer's public X509 key.
+
+    Args:
+        exchange:
+            The implementation of the :protocol:`ExchangeX509` protocol to test.
+        curve:
+            The elliptic curve to use.
+
+    Keyword Args:
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+
+    Returns:
+        A dictionary of results.
+
+    Example:
+        Let's test PyCryptodome over P-256. We need the ``ECC`` module to construct the
+        keys and the ``DH`` module to actually perform the key exchange.
+
+        >>> from Crypto.Protocol import DH
+        >>> from Crypto.PublicKey import ECC
+
+        From |cc| we import the primitive.
+
+        >>> from crypto_condor.primitives import ECDH
+
+        We wrap the exchange in our function to match the :protocol:`ExchangeX509`
+        protocol.
+
+        >>> def exchange_x509(secret: bytes, pub_point: bytes) -> bytes:
+        ...     pk = ECC.import_key(pub_point)
+        ...     d = int.from_bytes(secret)
+        ...     sk = ECC.construct(curve="P-256", d=d)
+        ...     return DH.key_agreement(static_priv=sk, static_pub=pk, kdf=lambda x: x)
+
+        Then we call :func:`test_exchange_x509`. There are no NIST test vectors for this
+        test so we use the ``resilience`` option.
+
+        >>> curve = ECDH.Curve.P256
+        >>> rd = ECDH.test_exchange_x509(exchange_x509, curve, resilience=True)
+        [P-256][Wycheproof] Testing ExchangeX509 ...
+        >>> assert rd.check()
+    """
+    all_vectors = _load_vectors(curve, PubKeyType.X509)
+    rd = ResultsDict()
+
+    test: EcdhTest
+    for vectors in all_vectors:
+        if not compliance and vectors.compliance:
+            continue
+        if not resilience and not vectors.compliance:
+            continue
+
+        res = Results.new("Tests ECDH exchange with peer public key", ["curve"])
+        rd.add(res, extra_values=[vectors.source])
+
+        for test in track(
+            vectors.tests, rf"\[{curve}]\[{vectors.source}] Testing ExchangeX509"
+        ):
+            info = TestInfo.new_from_test(test, vectors.compliance)
+            data = X509Data(test.d, test.peer_x509, test.ss)
+            try:
+                ret_ss = exchange(test.d, test.peer_x509)
+            except NotImplementedError:
+                logger.warning(
+                    f"ECDH.ExchangeX509 for {str(curve)} not implemented, skipped"
+                )
+                return rd
+            except Exception as error:
+                if test.type == "invalid":
+                    info.ok(data)
+                else:
+                    info.fail(
+                        f"Failed ECDH exchange with exception: {str(error)}", data
+                    )
+                res.add(info)
+                logger.debug("Exception caught", exc_info=True)
+                continue
+            data.ret_ss = ret_ss
+            if ret_ss == test.ss:
+                info.ok(data)
+            else:
+                info.fail("Wrong shared secret", data)
+            res.add(info)
+
+    return rd
+
 
 def test_exchange_wycheproof(ecdh: ECDH, curve: Curve) -> ResultsDict:
     """Tests ECDH.exchange with Wycheproof vectors.

@@ -10,7 +10,20 @@ ECDH
 Test implementations
 --------------------
 
+There are two types of test vectors available: those that provide the peer's public key
+as the encoded coordinates of the point and those that provide it as a X.509
+`SubjectPublicKeyInfo` field. Since the function signature is different, there is one
+test for each type.
+
+.. autofunction:: test_exchange_point
+
+.. autofunction:: test_exchange_x509
+
 .. autofunction:: test_exchange
+
+.. autofunction:: test_exchange_nist
+
+.. autofunction:: test_exchange_wycheproof
 
 Parameters
 ----------
@@ -21,27 +34,11 @@ Parameters
 Protocols
 ---------
 
+.. autoprotocol:: ExchangePoint
+
+.. autoprotocol:: ExchangeX509
+
 .. autoprotocol:: ECDH
-
-Vectors
--------
-
-.. autoclass:: EcdhVectors
-   :members:
-
-Wrappers
---------
-
-.. autoenum:: Wrapper
-
-.. autofunction:: run_wrapper
-
-Internal tests
---------------
-
-.. autofunction:: test_exchange_nist
-
-.. autofunction:: test_exchange_wycheproof
 
 Internal runners
 ----------------
