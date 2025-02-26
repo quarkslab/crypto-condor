@@ -191,7 +191,7 @@ def test(
     Returns:
         A dictionary of results.
 
-    .. deprecated:: 2025.02.13
+    .. deprecated:: TODO(version)
         Will be removed in a future version, use :func:`test_digest` instead.
     """
     warnings.warn("Use test_digest instead", DeprecationWarning, stacklevel=1)
@@ -242,7 +242,7 @@ def test_digest(
         [SHAKE128][NIST CAVP] ...
         >>> assert res.check()
 
-    .. versionadded:: 2025.02.13
+    .. versionadded:: TODO(version)
     """
     all_vectors = _load_vectors(algorithm, orientation)
     rd = ResultsDict()
@@ -342,7 +342,7 @@ def test_output_digest(output: Path, algorithm: Algorithm) -> ResultsDict:
             - ``msg`` is the input message to hash.
             - ``out`` is the result.
 
-    .. versionadded:: 2025.02.13
+    .. versionadded:: TODO(version)
     """
     if not output.is_file():
         raise FileNotFoundError(f"No output file {(str(output))} found")
