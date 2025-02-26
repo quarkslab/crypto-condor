@@ -722,9 +722,23 @@ class ResultsDict(dict):
 
         self[key] = res
 
-    def check(self) -> bool:
-        """Returns True if all results return True."""
-        return all([results.check() for results in self.values()])
+    def check(self, *, fail_if_empty: bool = False) -> bool:
+        """Checks if the :class:`Results` contained have test fails.
+
+        It checks by calling the :meth:`Results.check` method for all results.
+
+        Keyword Args:
+            fail_if_empty:
+                Check if the dictionary is empty and if the results are empty.
+
+        Returns:
+            True if **all** Results return True, False otherwise. Also returns False if
+            :attr:`fail_if_empty` is True and the dictionary contains no Results.
+        """
+        checks = [res.check(empty_as_fail=fail_if_empty) for res in self.values()]
+        if fail_if_empty and len(checks) == 0:
+            return False
+        return all(checks)
 
 
 class Console(RichConsole):

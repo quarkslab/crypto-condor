@@ -22,21 +22,37 @@ class TestConsole:
         assert console.process_results(rd, None)
 
 
-def test_results_dict():
-    """Tests that ResultsDict raises ValueError on duplicate keys."""
-    rd1 = ResultsDict()
-    rd2 = ResultsDict()
+class TestResultsDict:
+    """Tests for :class:`crypto_condor.primitives.common.ResultsDict`."""
 
-    res1 = Results("AES", "test", "description", {"mode": "ECB"})
-    res2 = Results("AES", "test", "description", {"mode": "ECB"})
+    def test_duplicate_keys(self):
+        """Tests that ResultsDict raises ValueError on duplicate keys."""
+        rd1 = ResultsDict()
+        rd2 = ResultsDict()
 
-    rd1.add(res1)
-    with pytest.raises(ValueError):
-        rd1.add(res2)
+        res1 = Results("AES", "test", "description", {"mode": "ECB"})
+        res2 = Results("AES", "test", "description", {"mode": "ECB"})
 
-    rd2.add(res1)
-    with pytest.raises(ValueError):
-        rd1.update(rd2)
+        rd1.add(res1)
+        with pytest.raises(ValueError):
+            rd1.add(res2)
 
-    with pytest.raises(ValueError):
-        rd1 |= rd2
+        rd2.add(res1)
+        with pytest.raises(ValueError):
+            rd1.update(rd2)
+
+        with pytest.raises(ValueError):
+            rd1 |= rd2
+
+    def test_fail_if_empty(self):
+        """Tests that ``fail_if_empty`` parameter works."""
+        res = Results.new("empty", [])
+        assert res.check()
+        assert not res.check(empty_as_fail=True)
+
+        rd = ResultsDict()
+        assert rd.check()
+
+        rd.add(res)
+        assert rd.check()
+        assert not rd.check(fail_if_empty=True)
