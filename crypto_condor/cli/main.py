@@ -141,7 +141,7 @@ def list_command():
 
     _yes = "[green]Y[/]"
     _no = "-"
-    for primitive, modes in SUPPORTED_MODES.items():
+    for primitive, modes in sorted(SUPPORTED_MODES.items()):
         # a = "[green]Y" if value["audit"] else "[red]N"
         m = _yes if modes["method"] else _no
         o = _yes if modes["output"] else _no
