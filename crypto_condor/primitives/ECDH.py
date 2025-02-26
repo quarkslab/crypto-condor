@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import cffi
 import strenum
 from rich.progress import track
 
@@ -796,3 +797,122 @@ def test_wrapper(
             raise ValueError(
                 f"There is no runner defined for '{wrapper.suffix}' wrappers"
             )
+
+
+# --------------------------- Lib hook functions --------------------------------------
+
+
+def _test_harness_exchange_point(
+    ffi: cffi.FFI, lib, function: str, curve: Curve, compliance: bool, resilience: bool
+) -> ResultsDict:
+    logger.info("Testing harness function %s", function)
+
+    ffi.cdef(
+        f"""int {function}(uint8_t ss[512], size_t *ss_size,
+                const uint8_t *secret, const size_t secret_size,
+                const uint8_t *point, const size_t point_size);
+        """
+    )
+
+    exchange = getattr(lib, function)
+
+    # We use a buffer large enough for any shared secret to avoid allocation by the
+    # callee. The uint8_t pointer will be used to get the actual size of the shared
+    # secret.
+    c_ss = ffi.new("uint8_t[512]")
+    c_ss_size = ffi.new("size_t *")
+
+    def _exchange(secret: bytes, pub_point: bytes) -> bytes:
+        c_secret = ffi.new("uint8_t[]", secret)
+        c_secret_size = len(secret)
+        c_pub = ffi.new("uint8_t[]", pub_point)
+        c_pub_size = len(pub_point)
+        rc = exchange(c_ss, c_ss_size, c_secret, c_secret_size, c_pub, c_pub_size)
+        if rc != 1:
+            raise ValueError(f"{function} failed with code {rc}")
+        return bytes(c_ss)[: c_ss_size[0]]
+
+    return test_exchange_point(
+        _exchange, curve, compliance=compliance, resilience=resilience
+    )
+
+
+def _test_harness_exchange_x509(
+    ffi: cffi.FFI, lib, function: str, curve: Curve, compliance: bool, resilience: bool
+) -> ResultsDict:
+    logger.info("Testing harness function %s", function)
+
+    ffi.cdef(
+        f"""int {function}(uint8_t ss[512], size_t *ss_size,
+                const uint8_t *secret, const size_t secret_size,
+                const uint8_t *pub, const size_t pub_size);
+        """
+    )
+
+    exchange = getattr(lib, function)
+
+    # We use a buffer large enough for any shared secret to avoid allocation by the
+    # callee. The uint8_t pointer will be used to get the actual size of the shared
+    # secret.
+    c_ss = ffi.new("uint8_t[512]")
+    c_ss_size = ffi.new("size_t *")
+
+    def _exchange(secret: bytes, pub_key: bytes) -> bytes:
+        c_secret = ffi.new("uint8_t[]", secret)
+        c_secret_size = len(secret)
+        c_pub = ffi.new("uint8_t[]", pub_key)
+        c_pub_size = len(pub_key)
+        rc = exchange(c_ss, c_ss_size, c_secret, c_secret_size, c_pub, c_pub_size)
+        if rc != 1:
+            raise ValueError(f"{function} failed with code {rc}")
+        return bytes(c_ss)[: c_ss_size[0]]
+
+    return test_exchange_x509(
+        _exchange, curve, compliance=compliance, resilience=resilience
+    )
+
+
+def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
+    """Tests functions from a shared library.
+
+    Args:
+        ffi:
+            The FFI instance.
+        lib:
+            The dlopen'd library.
+        functions:
+            A list of functions to test.
+    """
+    logger.info("Found harness functions %s", ", ".join(functions))
+
+    rd = ResultsDict()
+
+    for function in functions:
+        match function.split("_"):
+            case ["CC", "ECDH", "exchange", "point", _curve]:
+                try:
+                    curve = Curve.from_name(_curve)
+                except ValueError:
+                    logger.error(
+                        "Invalid curve %s for ECDH, skipped %s", _curve, function
+                    )
+                    continue
+                rd |= _test_harness_exchange_point(
+                    ffi, lib, function, curve, True, True
+                )
+            case ["CC", "ECDH", "exchange", "x509", _curve]:
+                try:
+                    curve = Curve.from_name(_curve)
+                except ValueError:
+                    logger.error(
+                        "Invalid curve %s for ECDH, skipped %s", _curve, function
+                    )
+                    continue
+                rd |= _test_harness_exchange_x509(ffi, lib, function, curve, True, True)
+            case ["CC", "ECDH", *_]:
+                logger.warning("Invalid CC_ECDH function %s, skipped", function)
+                continue
+            case _:
+                pass
+
+    return rd

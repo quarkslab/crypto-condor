@@ -16,7 +16,18 @@ ROOT_DIR = Path("tests/harness")
 
 @pytest.mark.skipif(sys.platform != "linux", reason="dlopen's library in .local/share")
 @pytest.mark.parametrize(
-    "primitive", ["AES", "HMAC_digest", "HMAC_verify", "MLDSA", "MLKEM", "SHA", "SHAKE"]
+    "primitive",
+    [
+        "AES",
+        "ECDH_point",
+        "ECDH_x509",
+        "HMAC_digest",
+        "HMAC_verify",
+        "MLDSA",
+        "MLKEM",
+        "SHA",
+        "SHAKE",
+    ],
 )
 def test_harness(primitive: str):
     """Tests harnesses with :func:`crypto_condor.harness.test_harness`."""
