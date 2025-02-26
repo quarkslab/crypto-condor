@@ -21,10 +21,10 @@ def test_harness(primitive: str):
     # Compile the hook
     subprocess.run(["make", "-C", ROOT_DIR, f"{primitive}.harness.so"], check=True)
 
-    results = harness.test_harness(ROOT_DIR / f"{primitive}.harness.so")
+    rd = harness.test_harness(ROOT_DIR / f"{primitive}.harness.so")
 
     # Clean up
     subprocess.run(["make", "-C", ROOT_DIR, "clean"], check=True)
 
-    console.print_results(results)
-    assert results.check()
+    console.print_results(rd)
+    assert rd.check(fail_if_empty=True)
