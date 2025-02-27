@@ -42,36 +42,3 @@ Other functions
 
 .. autofunction:: is_hmac_iuf
 
-Vectors
--------
-
-.. automodule:: crypto_condor.vectors.HMAC
-
-.. autoclass:: crypto_condor.vectors.HMAC.HmacVectors
-   :members:
-
-Internal vectors
-----------------
-
-The following section describes the internal test vectors classes, which are protobuf
-Python classes.
-
-.. hint::
-
-   The autodoc extension can't properly document these clases so we include the
-   ``.proto`` file to show the different fields each class has. IDEs should be able to
-   use the included ``.pyi`` files to provide auto-completion and type checking.
-
-.. currentmodule:: crypto_condor.vectors._HMAC.HMAC_pb2
-
-.. class:: HmacNistVectors
-
-   Protobuf class to store NIST vectors, see below.
-
-.. class:: HmacWycheproofVectors
-
-   Protobuf class to store Wycheproofvectors, see below.
-
-.. literalinclude:: ../../../../crypto_condor/vectors/_HMAC/HMAC.proto
-   :language: proto
-

@@ -11,6 +11,7 @@ to select which the modes to test and test vectors to use.
 """
 
 import importlib
+import json
 import logging
 import sys
 from pathlib import Path
@@ -20,8 +21,14 @@ import attrs
 import strenum
 from rich.progress import track
 
-from crypto_condor.primitives.common import DebugInfo, Results, ResultsDict, TestType
-from crypto_condor.vectors.HMAC import Hash, HmacVectors
+from crypto_condor.primitives.common import (
+    Results,
+    ResultsDict,
+    TestInfo,
+    TestType,
+)
+from crypto_condor.vectors._hmac.hmac_pb2 import HmacTest, HmacVectors
+from crypto_condor.vectors.hmac import Hash
 
 # --------------------------- Module --------------------------------------------------
 logger = logging.getLogger(__name__)
@@ -149,7 +156,6 @@ class HMAC_IUF(Protocol):
 class HmacDigestData:
     """Debug data for HMAC tests."""
 
-    info: DebugInfo
     key: bytes
     msg: bytes
     mac: bytes
@@ -157,34 +163,61 @@ class HmacDigestData:
 
     def __str__(self):
         """Returns a string representation of the fields in use."""
-        s = f"""{str(self.info)}
-key = {self.key.hex()}
+        return f"""key = {self.key.hex()}
 msg = {self.msg.hex()}
 mac = {self.mac.hex()}
-res = {self.res.hex() if self.res else "<none>"}
+returned mac = {self.res.hex() if self.res else "<none>"}
 """
-        return s
 
 
 @attrs.define
 class HmacVerifyData:
     """Debug data for HMAC verify tests."""
 
-    info: DebugInfo
     key: bytes
     msg: bytes
     mac: bytes
-    res: bool | None
 
     def __str__(self):
         """Returns a string representation of the fields in use."""
-        s = f"""{str(self.info)}
-key = {self.key.hex()}
+        return f"""key = {self.key.hex()}
 msg = {self.msg.hex()}
 mac = {self.mac.hex()}
-res = {self.res}
 """
-        return s
+
+
+# --------------------------- Internals -----------------------------------------------
+
+
+def _load_vectors(algo: Hash) -> list[HmacVectors]:
+    """Loads HMAC vectors.
+
+    Args:
+        algo:
+            The hash algorithm to get vectors of.
+
+    Returns:
+        A list of vectors.
+    """
+    vectors_dir = importlib.resources.files("crypto_condor") / "vectors/_hmac"
+    vectors = list()
+
+    sources_file = vectors_dir / "hmac.json"
+    with sources_file.open("r") as file:
+        sources = json.load(file)
+
+    for filename in sources.get(algo, {}):
+        vectors_file = vectors_dir / "pb2" / filename
+        _vec = HmacVectors()
+        logger.debug("Loading HMAC vectors from %s", str(filename))
+        try:
+            _vec.ParseFromString(vectors_file.read_bytes())
+        except Exception:
+            logger.exception("Failed to load HMAC vectors from %s", str(filename))
+            continue
+        vectors.append(_vec)
+
+    return vectors
 
 
 # --------------------------- Test functions ------------------------------------------
@@ -223,192 +256,196 @@ def is_hmac_iuf(hmac: Any) -> bool | None:
             return None
 
 
-def test_digest_nist(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> Results | None:
+def test_digest_nist(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> ResultsDict:
     """Tests an implementation of HMAC digest with NIST test vectors.
 
     Args:
-        hmac: The implementation to test. Must conform to either the :protocol:`HMAC`
+        hmac:
+            The implementation to test. Must conform to either the :protocol:`HMAC`
             interface or the :protocol:`HMAC_IUF` interface.
-        hash_function: The hash function to use with HMAC.
+        hash_function:
+            The hash function to use with HMAC.
 
     Returns:
-        The results of testing the implementation, or None if there are no NIST vectors
-        for the given hash function.
+        A dictionary of results. Can be empty if there are no NIST test vectors for the
+        hash function selected.
 
     Notes:
-        Some NIST vectors have truncated MACs. To use them, we truncate the output of
-        the implementation to compare them.
-    """
-    vectors = HmacVectors.load(hash_function)
-    if vectors.nist is None:
-        logger.warning(
-            "Compliance vectors selected but there are no NIST vectors for HMAC-%s",
-            str(hash_function),
-        )
-        return None
+        Some NIST vectors have truncated MACs. The tag returned by the implementation is
+        compared up to the length of the test tag.
 
-    results = Results(
-        "HMAC",
-        test_digest_nist.__name__,
-        "Tests an implementation of HMAC.digest with NIST test vectors",
-        {"hash_function": hash_function},
-    )
-    logger.debug(
-        "Using NIST vectors %s for HMAC-%s", vectors.nist.filename, str(hash_function)
-    )
+    .. versionchanged:: TODO(version)
+        Returns :class:`ResultsDict` instead of :class:`Results`.
+    """
+    all_vectors = _load_vectors(hash_function)
+    rd = ResultsDict()
+
+    if not any(vectors.source == "NIST CAVP" for vectors in all_vectors):
+        logger.warning("There are no NIST vectors for HMAC-%s", str(hash_function))
+        return rd
 
     IUF_mode = is_hmac_iuf(hmac)
     if IUF_mode is None:
         logger.error("Could not determine interface, test skipped")
-        return None
+        return rd
     elif IUF_mode:
         hmac_iuf = cast(HMAC_IUF, hmac)
     else:
         hmac_s = cast(HMAC, hmac)
 
-    for test in track(
-        vectors.nist.tests, f"[NIST] Generating MACs with HMAC-{str(hash_function)}"
-    ):
-        info = DebugInfo(test.count, TestType.VALID, ["Compliance"])
-        try:
-            if IUF_mode:
-                h = hmac_iuf.init(test.key)
-                h.update(test.msg)
-                mac = h.final_digest()
-            else:
-                mac = hmac_s.digest(test.key, test.msg)
-        except Exception as error:
-            info.error_msg = f"Error running HMAC digest: {error}"
-            logger.debug("Error running HMAC digest", exc_info=True)
-            results.add(HmacDigestData(info, test.key, test.msg, test.mac))
+    test: HmacTest
+
+    for vectors in all_vectors:
+        if vectors.source != "NIST CAVP":
             continue
-        # Some test vectors have truncated MACs.
-        mac = mac[: test.tlen]
-        if mac == test.mac:
-            info.result = True
-        else:
-            info.error_msg = "Wrong MAC returned"
-        results.add(HmacDigestData(info, test.key, test.msg, test.mac, mac))
-    return results
+        res = Results.new("Test HMAC digest with NIST vectors", ["hash_function"])
+        rd.add(res, extra_values=[vectors.source])
+        for test in track(
+            vectors.tests,
+            rf"\[HMAC-{str(hash_function)}] Test digest with NIST vectors",
+        ):
+            info = TestInfo.new_from_test(test, vectors.compliance)
+            data = HmacDigestData(test.key, test.msg, test.mac)
+            try:
+                if IUF_mode:
+                    h = hmac_iuf.init(test.key)
+                    h.update(test.msg)
+                    ret_mac = h.final_digest()
+                else:
+                    ret_mac = hmac_s.digest(test.key, test.msg)
+            except Exception as error:
+                logger.debug("Exception caught while testing digest", exc_info=True)
+                # NIST vectors do not have invalid tests.
+                info.fail(f"Exception caught: {str(error)}", data)
+                res.add(info)
+                continue
+            data.res = ret_mac
+            if ret_mac[: len(test.mac)] == test.mac:
+                info.ok(data)
+            else:
+                info.fail("Wrong MAC", data)
+            res.add(info)
+
+    return rd
 
 
-def test_digest_wycheproof(
-    hmac: HMAC | HMAC_IUF, hash_function: Hash
-) -> Results | None:
+def test_digest_wycheproof(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> ResultsDict:
     """Tests an implementation of HMAC digest with Wycheproof test vectors.
 
     Args:
-        hmac: The implementation to test. Must conform to either the :protocol:`HMAC`
+        hmac:
+            The implementation to test. Must conform to either the :protocol:`HMAC`
             interface or the :protocol:`HMAC_IUF` interface.
-        hash_function: The hash function to use with HMAC.
+        hash_function:
+            The hash function to use with HMAC.
 
     Returns:
-        The results of testing the implementation, or None if there are no Wycheproof
-        vectors for the given hash function.
+        A dictionary of results. Can be empty if there are no Wycheproof test vectors
+        for the hash function selected.
 
     Notes:
-        Some Wycheproof vectors have truncated MACs. To use them, we truncate the output
-        of the implementation to compare them.
+        Some Wycheproof vectors have truncated MACs. The tag returned by the
+        implementation is compared up to the length of the test tag.
+
+    .. versionchanged:: TODO(version)
+        Returns :class:`ResultsDict` instead of :class:`Results`.
     """
-    vectors = HmacVectors.load(hash_function)
-    if vectors.wycheproof is None:
-        return None
+    all_vectors = _load_vectors(hash_function)
+    rd = ResultsDict()
 
-    results = Results(
-        "HMAC",
-        test_digest_wycheproof.__name__,
-        "Tests an implementation of HMAC.digest with Wycheproof test vectors",
-        {"hash_function": hash_function},
-        notes=vectors.wycheproof.notes,
-    )
-    logger.debug(
-        "Using Wycheproof vectors %s for HMAC-%s",
-        vectors.wycheproof.filename,
-        str(hash_function),
-    )
+    if not any(vectors.source == "Wycheproof" for vectors in all_vectors):
+        logger.warning(
+            "There are no Wycheproof vectors for HMAC-%s", str(hash_function)
+        )
+        return rd
 
-    is_iuf = is_hmac_iuf(hmac)
-    if is_iuf is None:
+    IUF_mode = is_hmac_iuf(hmac)
+    if IUF_mode is None:
         logger.error("Could not determine interface, test skipped")
-        return None
-    elif is_iuf:
-        IUF_mode = True
+        return rd
+    elif IUF_mode:
         hmac_iuf = cast(HMAC_IUF, hmac)
     else:
-        IUF_mode = False
         hmac_s = cast(HMAC, hmac)
 
-    for group in track(
-        vectors.wycheproof.groups,
-        f"[Wycheproof] Generating MACs with HMAC-{str(hash_function)}",
-    ):
-        for test in group.tests:
-            test_type = TestType(test.result)
-            info = DebugInfo(test.count, test_type, test.flags)
+    test: HmacTest
+
+    for vectors in all_vectors:
+        if vectors.source != "Wycheproof":
+            continue
+        res = Results.new("Test HMAC digest with Wycheproof vectors", ["hash_function"])
+        rd.add(res, extra_values=[vectors.source])
+        for test in track(
+            vectors.tests,
+            rf"\[HMAC-{str(hash_function)}] Test digest with Wycheproof vectors",
+        ):
+            info = TestInfo.new_from_test(test, vectors.compliance)
+            data = HmacDigestData(test.key, test.msg, test.mac)
             try:
                 if IUF_mode:
                     h = hmac_iuf.init(test.key)
                     h.update(test.msg)
-                    mac = h.final_digest()
+                    ret_mac = h.final_digest()
                 else:
-                    mac = hmac_s.digest(test.key, test.msg)
+                    ret_mac = hmac_s.digest(test.key, test.msg)
             except Exception as error:
-                if test_type == TestType.INVALID:
-                    info.result = True
-                else:
-                    info.error_msg = f"Error running HMAC digest: {error}"
-                    logger.debug("Error running HMAC digest", exc_info=True)
-                results.add(HmacDigestData(info, test.key, test.msg, test.mac))
+                logger.debug("Exception caught while testing digest", exc_info=True)
+                # Implementations should catch the errors.
+                info.fail(f"Exception caught: {str(error)}", data)
+                res.add(info)
                 continue
-            mac = mac[: len(test.mac)]
-            res = mac == test.mac
-            match (test_type, res):
-                case (TestType.VALID, True) | (TestType.INVALID, False):
-                    info.result = True
-                case (TestType.VALID, False) | (TestType.INVALID, True):
-                    info.error_msg = "Wrong MAC returned"
-            results.add(HmacDigestData(info, test.key, test.msg, test.mac, mac))
+            data.res = ret_mac
+            is_same_mac = ret_mac[: len(test.mac)] == test.mac
+            match (test.type, is_same_mac):
+                case (TestType.VALID, True):
+                    info.ok(data)
+                case (TestType.VALID, False):
+                    info.fail("Wrong MAC", data)
+                case (TestType.INVALID, True):
+                    info.fail("Returned MAC matches invalid MAC", data)
+                case (TestType.INVALID, False):
+                    info.ok(data)
+                case _:
+                    raise ValueError(
+                        f"Invalid test result ({test.type}, {is_same_mac})"
+                    )
+            res.add(info)
 
-    return results
+    return rd
 
 
-def test_verify_nist(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> Results | None:
+def test_verify_nist(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> ResultsDict:
     """Tests an implementation of HMAC verify with NIST vectors.
 
     Args:
-        hmac: The implementation to test. Must conform to either the :protocol:`HMAC`
+        hmac:
+            The implementation to test. Must conform to either the :protocol:`HMAC`
             interface or the :protocol:`HMAC_IUF` interface.
-        hash_function: The hash function to use with HMAC.
+        hash_function:
+            The hash function to use with HMAC.
 
     Returns:
-        The results or None if there are no NIST vectors for the given hash function.
+        A dictionary of results. Can be empty if there are no NIST test vectors for the
+        hash function selected.
 
     Notes:
-        Some NIST vectors have truncated MACs. As implementations usually expect the
-        entire tag for verification, we skip these vectors.
-    """
-    vectors = HmacVectors.load(hash_function)
-    if vectors.nist is None:
-        logger.warning(
-            "Compliance vectors selected but there are no NIST vectors for HMAC-%s",
-            str(hash_function),
-        )
-        return None
+        Some NIST vectors have truncated MACs. The tag returned by the implementation is
+        compared up to the length of the test tag.
 
-    results = Results(
-        "HMAC",
-        test_verify_nist.__name__,
-        "Tests an implementation of HMAC.verify with NIST test vectors",
-        {"hash_function": hash_function},
-    )
-    logger.debug(
-        "Using NIST vectors %s for HMAC-%s", vectors.nist.filename, str(hash_function)
-    )
+    .. versionchanged:: TODO(version)
+        Returns :class:`ResultsDict` instead of :class:`Results`.
+    """
+    all_vectors = _load_vectors(hash_function)
+    rd = ResultsDict()
+
+    if not any(vectors.source == "NIST CAVP" for vectors in all_vectors):
+        logger.warning("There are no NIST vectors for HMAC-%s", str(hash_function))
+        return rd
 
     is_iuf = is_hmac_iuf(hmac)
     if is_iuf is None:
         logger.error("Could not determine interface, test skipped")
-        return None
+        return rd
     elif is_iuf:
         IUF_mode = True
         hmac_iuf = cast(HMAC_IUF, hmac)
@@ -416,110 +453,117 @@ def test_verify_nist(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> Results | No
         IUF_mode = False
         hmac_s = cast(HMAC, hmac)
 
-    for test in track(
-        vectors.nist.tests, f"[NIST] Verifying MACs with HMAC-{str(hash_function)}"
-    ):
-        if test.tlen * 8 != hash_function.digest_size:
+    test: HmacTest
+    for vectors in all_vectors:
+        if vectors.source != "NIST CAVP":
             continue
-        info = DebugInfo(test.count, TestType.VALID, ["Compliance"])
-        try:
-            if IUF_mode:
-                h = hmac_iuf.init(test.key)
-                h.update(test.msg)
-                is_valid = h.final_verify(test.mac)
-            else:
-                is_valid = hmac_s.verify(test.key, test.msg, test.mac)
-        except Exception as error:
-            info.error_msg = f"Error running HMAC verify: {error}"
-            logger.debug("Error running HMAC verify", exc_info=True)
-            results.add(HmacVerifyData(info, test.key, test.msg, test.mac, None))
-            continue
-        if is_valid:
-            info.result = True
-        else:
-            info.error_msg = "Valid MAC considered invalid"
-        results.add(HmacVerifyData(info, test.key, test.msg, test.mac, is_valid))
-    return results
-
-
-def test_verify_wycheproof(
-    hmac: HMAC | HMAC_IUF, hash_function: Hash
-) -> Results | None:
-    """Tests an implementation of HMAC verify with Wycheproof test vectors.
-
-    Args:
-        hmac: The implementation to test. Must conform to either the :protocol:`HMAC`
-            interface or the :protocol:`HMAC_IUF` interface.
-        hash_function: The hash function to use with HMAC.
-
-    Returns:
-        The results of testing the implementation, or None if there are no Wycheproof
-        vectors for the given hash function.
-
-    Notes:
-        Some Wycheproof vectors have truncated MACs. As implementations usually expect
-        the entire tag for verification, we skip these vectors.
-    """
-    vectors = HmacVectors.load(hash_function)
-    if vectors.wycheproof is None:
-        return None
-
-    results = Results(
-        "HMAC",
-        test_verify_wycheproof.__name__,
-        "Tests an implementation of HMAC.verify with Wycheproof test vectors",
-        {"hash_function": hash_function},
-        notes=vectors.wycheproof.notes,
-    )
-    logger.debug(
-        "Using Wycheproof vectors %s for HMAC-%s",
-        vectors.wycheproof.filename,
-        str(hash_function),
-    )
-
-    is_iuf = is_hmac_iuf(hmac)
-    if is_iuf is None:
-        logger.error("Could not determine interface, test skipped")
-        return None
-    elif is_iuf:
-        IUF_mode = True
-        hmac_iuf = cast(HMAC_IUF, hmac)
-    else:
-        IUF_mode = False
-        hmac_s = cast(HMAC, hmac)
-
-    for group in track(
-        vectors.wycheproof.groups,
-        f"[Wycheproof] Generating MACs with HMAC-{str(hash_function)}",
-    ):
-        for test in group.tests:
-            if len(test.mac) * 8 != hash_function.digest_size:
-                continue
-            test_type = TestType(test.result)
-            info = DebugInfo(test.count, test_type, test.flags)
+        res = Results.new("Test HMAC verify with NIST vectors", ["hash_function"])
+        rd.add(res, extra_values=[vectors.source])
+        for test in track(
+            vectors.tests,
+            rf"\[HMAC-{str(hash_function)}] Test verify with NIST vectors",
+        ):
+            info = TestInfo.new_from_test(test, vectors.compliance)
+            data = HmacVerifyData(test.key, test.msg, test.mac)
             try:
                 if IUF_mode:
                     h = hmac_iuf.init(test.key)
                     h.update(test.msg)
-                    res = h.final_verify(test.mac)
+                    is_valid = h.final_verify(test.mac)
                 else:
-                    res = hmac_s.verify(test.key, test.msg, test.mac)
+                    is_valid = hmac_s.verify(test.key, test.msg, test.mac)
             except Exception as error:
-                if test_type == TestType.INVALID:
-                    info.result = True
-                else:
-                    info.error_msg = f"Error running HMAC verify: {error}"
-                    logger.debug("Error running HMAC verify", exc_info=True)
-                results.add(HmacVerifyData(info, test.key, test.msg, test.mac, None))
+                logger.debug("Exception caught while testing verify", exc_info=True)
+                # Errors should be caught by the implementation.
+                info.fail(f"Exception caught: {str(error)}", data)
+                res.add(info)
                 continue
-            match (test_type, res):
-                case (TestType.VALID, True) | (TestType.INVALID, False):
-                    info.result = True
-                case (TestType.VALID, False) | (TestType.INVALID, True):
-                    info.error_msg = "Wrong MAC returned"
-            results.add(HmacVerifyData(info, test.key, test.msg, test.mac, res))
+            # No invalid NIST vectors.
+            if is_valid:
+                info.ok(data)
+            else:
+                info.fail("Valid MAC rejected", data)
+            res.add(info)
+    return rd
 
-    return results
+
+def test_verify_wycheproof(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> ResultsDict:
+    """Tests an implementation of HMAC verify with Wycheproof test vectors.
+
+    Args:
+        hmac:
+            The implementation to test. Must conform to either the :protocol:`HMAC`
+            interface or the :protocol:`HMAC_IUF` interface.
+        hash_function:
+            The hash function to use with HMAC.
+
+    Returns:
+        A dictionary of results. Can be empty if there are no Wycheproof test vectors
+        for the hash function selected.
+
+    Notes:
+        Some Wycheproof vectors have truncated MACs. The tag returned by the
+        implementation is compared up to the length of the test tag.
+
+    .. versionchanged:: TODO(version)
+        Returns :class:`ResultsDict` instead of :class:`Results`.
+    """
+    all_vectors = _load_vectors(hash_function)
+    rd = ResultsDict()
+
+    if not any(vectors.source == "Wycheproof" for vectors in all_vectors):
+        logger.warning(
+            "There are no Wycheproof vectors for HMAC-%s", str(hash_function)
+        )
+        return rd
+
+    IUF_mode = is_hmac_iuf(hmac)
+    if IUF_mode is None:
+        logger.error("Could not determine interface, test skipped")
+        return rd
+    elif IUF_mode:
+        hmac_iuf = cast(HMAC_IUF, hmac)
+    else:
+        hmac_s = cast(HMAC, hmac)
+
+    test: HmacTest
+
+    for vectors in all_vectors:
+        if vectors.source != "Wycheproof":
+            continue
+        res = Results.new("Test HMAC verify with Wycheproof vectors", ["hash_function"])
+        rd.add(res, extra_values=[vectors.source])
+        for test in track(
+            vectors.tests,
+            rf"\[HMAC-{str(hash_function)}] Test verify with Wycheproof vectors",
+        ):
+            info = TestInfo.new_from_test(test, vectors.compliance)
+            data = HmacVerifyData(test.key, test.msg, test.mac)
+            try:
+                if IUF_mode:
+                    h = hmac_iuf.init(test.key)
+                    h.update(test.msg)
+                    is_valid = h.final_verify()
+                else:
+                    is_valid = hmac_s.verify(test.key, test.msg, test.mac)
+            except Exception as error:
+                logger.debug("Exception caught while testing verify", exc_info=True)
+                # Implementations should catch the errors.
+                info.fail(f"Exception caught: {str(error)}", data)
+                res.add(info)
+                continue
+            match (test.type, is_valid):
+                case (TestType.VALID, True) | (TestType.INVALID, False):
+                    info.ok(data)
+                case (TestType.VALID, False):
+                    info.fail("Valid MAC rejected", data)
+                case (TestType.INVALID, True):
+                    info.fail("Invalid MAC accepted", data)
+                case _:
+                    raise ValueError(f"Invalid result ({test.type}, {is_valid})")
+            res.add(info)
+
+    return rd
 
 
 def test_hmac(
@@ -530,81 +574,29 @@ def test_hmac(
     resilience: bool = False,
     skip_digest: bool = False,
     skip_verify: bool = False,
-):
+) -> ResultsDict:
     """Tests an implementation of HMAC using test vectors.
 
     Test vectors are selected with the ``compliance`` and ``resilience`` options. SHA-3
     functions are not covered by NIST vectors (see :class:`HmacVectors`).
 
     Args:
-        hmac: The implementation to test. Must conform to either the :protocol:`HMAC`
+        hmac:
+            The implementation to test. Must conform to either the :protocol:`HMAC`
             interface or the :protocol:`HMAC_IUF` interface.
-        hash_function: The hash function to use with this HMAC implementation.
+        hash_function:
+            The hash function to use with this HMAC implementation.
 
     Keyword Args:
-        compliance: Whether to use compliance test vectors.
-        resilience: Whether to use resilience test vectors.
-        skip_digest: If True, skip testing the digest function.
-        skip_verify: If True, skip testing the verify function.
-
-    Examples:
-        Let's test PyCryptodome's HMAC-SHA256 implementation.
-
-        >>> from Crypto.Hash import HMAC as pyHMAC
-        >>> from Crypto.Hash import SHA256
-
-        To test the implementation we have to create a class that conforms to either of
-        the two interfaces. We'll test the simple :protocol:`HMAC` interface first. For
-        this, we create two methods: ``digest`` and ``verify``.
-
-        >>> class MyHmac:
-        ...     def digest(self, key: bytes, message: bytes) -> bytes:
-        ...         h = pyHMAC.new(key, message, digestmod=SHA256)
-        ...         return h.digest()
-        ...     def verify(self, key: bytes, message: bytes, mac: bytes) -> bool:
-        ...         h = pyHMAC.new(key, message, digestmod=SHA256)
-        ...         try:
-        ...             h.verify(mac)
-        ...             return True
-        ...         except ValueError:
-        ...             return False
-
-        We pass an instance of this class to this function.
-
-        >>> from crypto_condor.primitives import HMAC
-        >>> hash_function = HMAC.Hash.SHA_256
-        >>> rd = HMAC.test_hmac(MyHmac(), hash_function)
-        [NIST] Generating MACs ...
-        >>> assert rd.check()
-
-        We can also test the more complex init/update/final interface.
-
-        >>> class MyHmacIuf:
-        ...     _obj: pyHMAC.HMAC
-        ...     @classmethod
-        ...     def init(cls, key: bytes):
-        ...         h = cls()
-        ...         h._obj = pyHMAC.new(key, digestmod=SHA256)
-        ...         return h
-        ...     def update(self, data: bytes):
-        ...         self._obj.update(data)
-        ...     def final_digest(self) -> bytes:
-        ...         return self._obj.digest()
-        ...     def final_verify(self, mac: bytes) -> bool:
-        ...         try:
-        ...             self._obj.verify(mac)
-        ...             return True
-        ...         except ValueError:
-        ...             return False
-
-        This time we enable Wycheproof vectors, for illustration purposes.
-
-        >>> rd = HMAC.test_hmac(MyHmacIuf(), hash_function, resilience=True)
-        [NIST] Generating MACs ...
-        >>> assert rd.check()
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+        skip_digest:
+            If True, skip testing the digest function.
+        skip_verify:
+            If True, skip testing the verify function.
     """
-    logger.info("Testing an HMAC implementation")
-
     rd = ResultsDict()
 
     if not compliance and not resilience:
@@ -614,8 +606,8 @@ def test_hmac(
         logger.warning("No methods to test (skip_digest and skip_verify are True)")
         return rd
 
-    # Log not compliance and not resilience so the user can easily see when some test
-    # vectors are not used.
+    # Log not compliance and not resilience so the user can see when some test vectors
+    # are not used.
     if not compliance:
         logger.debug("compliance is False, not using NIST vectors")
     if not resilience:
@@ -623,22 +615,14 @@ def test_hmac(
 
     if not skip_digest:
         if compliance:
-            r = test_digest_nist(hmac, hash_function)
-            if r is not None:
-                rd["HMAC/digest/nist"] = r
+            rd |= test_digest_nist(hmac, hash_function)
         if resilience:
-            r = test_digest_wycheproof(hmac, hash_function)
-            if r is not None:
-                rd["HMAC/digest/wycheproof"] = r
+            rd |= test_digest_wycheproof(hmac, hash_function)
     if not skip_verify:
         if compliance:
-            r = test_verify_nist(hmac, hash_function)
-            if r is not None:
-                rd["HMAC/verify/nist"] = r
+            rd |= test_verify_nist(hmac, hash_function)
         if resilience:
-            r = test_verify_wycheproof(hmac, hash_function)
-            if r is not None:
-                rd["HMAC/verify/wycheproof"] = r
+            rd |= test_verify_wycheproof(hmac, hash_function)
 
     return rd
 
@@ -650,7 +634,7 @@ def _run_python_wrapper(
     resilience: bool,
     skip_digest: bool,
     skip_verify: bool,
-):
+) -> ResultsDict:
     file = Path().cwd() / "HMAC_wrapper.py"
     if not file.exists():
         raise FileNotFoundError("Can't find HMAC_wrapper.py in the current directory")
@@ -665,6 +649,9 @@ def _run_python_wrapper(
     if imported:
         logger.debug("Reloading HMAC Python wrapper")
         wrapper = importlib.reload(wrapper)
+    if not hasattr(wrapper, "CC_HMAC"):
+        logger.warning("Class CC_HMAC not found, cannot test wrapper")
+        return ResultsDict()
     hmac = wrapper.CC_HMAC
     rd = test_hmac(
         hmac(),
@@ -684,7 +671,7 @@ def run_wrapper(
     resilience: bool,
     skip_digest: bool,
     skip_verify: bool,
-):
+) -> ResultsDict:
     """Runs a wrapper."""
     match language:
         case Wrapper.PYTHON:

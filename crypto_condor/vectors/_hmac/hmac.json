@@ -1,0 +1,34 @@
+{
+  "SHA-1": [
+    "hmac_cavp_SHA-1.pb2",
+    "hmac_wycheproof_SHA-1.pb2"
+  ],
+  "SHA-224": [
+    "hmac_cavp_SHA-224.pb2",
+    "hmac_wycheproof_SHA-224.pb2"
+  ],
+  "SHA-256": [
+    "hmac_cavp_SHA-256.pb2",
+    "hmac_wycheproof_SHA-256.pb2"
+  ],
+  "SHA-384": [
+    "hmac_cavp_SHA-384.pb2",
+    "hmac_wycheproof_SHA-384.pb2"
+  ],
+  "SHA-512": [
+    "hmac_cavp_SHA-512.pb2",
+    "hmac_wycheproof_SHA-512.pb2"
+  ],
+  "SHA3-224": [
+    "hmac_wycheproof_SHA3-224.pb2"
+  ],
+  "SHA3-256": [
+    "hmac_wycheproof_SHA3-256.pb2"
+  ],
+  "SHA3-384": [
+    "hmac_wycheproof_SHA3-384.pb2"
+  ],
+  "SHA3-512": [
+    "hmac_wycheproof_SHA3-512.pb2"
+  ]
+}

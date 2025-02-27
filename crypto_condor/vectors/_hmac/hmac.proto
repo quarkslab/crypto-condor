@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single HMAC test vector.
+message HmacTest{
+	// The test ID, unique in its set of vectors.
+	int32 id = 1;
+	// The type of test. One of: valid, invalid, acceptable.
+	string type = 2;
+	// A comment on the test.
+	string comment = 3;
+	// Flags that categorize this test.
+	repeated string flags = 4;
+
+	// The symmetric key.
+	bytes key = 5;
+	// The message to authenticate.
+	bytes msg = 6;
+	// The resulting MAC.
+	bytes mac = 7;
+}
+
+// A set of HMAC test vectors.
+message HmacVectors{
+	// The source of the test vectors.
+	string source = 1;
+	// Description of the source.
+	string source_desc = 2;
+	// The URL of the source.
+	string source_url = 3;
+	// Whether these are compliance test vectors or not.
+	bool compliance = 4;
+	// A dictionary of test flags and their description.
+    map<string, string> notes = 5;
+	// The test vectors.
+	repeated HmacTest tests = 6;
+
+	// The hash function used.
+    string hash = 7;
+}
