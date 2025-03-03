@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Protocol, cast
 
 import attrs
+import cffi
 import strenum
 from rich.progress import track
 
@@ -988,3 +989,101 @@ def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDi
             return test_wrapper_python(wrapper, compliance, resilience)
         case _:
             raise ValueError(f"No runner defined for {wrapper.suffix} wrappers")
+
+
+# --------------------------- Harness -------------------------------------------------
+
+
+def _test_harness_digest(ffi: cffi.FFI, lib, function: str, algo: Hash) -> ResultsDict:
+    """Tests a harness for digest."""
+    logger.info("Testing harness function %s", function)
+
+    ffi.cdef(
+        f"""int {function}(
+                uint8_t *mac, const size_t mac_size,
+                const uint8_t *key, const size_t key_size,
+                const uint8_t *msg, const size_t msg_size);
+        """
+    )
+    digest = getattr(lib, function)
+
+    mac_len = algo.digest_size // 8
+    c_mac = ffi.new(f"uint8_t[{mac_len}]")
+
+    def _digest(key: bytes, msg: bytes) -> bytes:
+        c_key = ffi.new("uint8_t[]", key)
+        c_msg = ffi.new("uint8_t[]", msg)
+        rc = digest(c_mac, mac_len, c_key, len(key), c_msg, len(msg))
+        if rc != 1:
+            raise ValueError(f"{function} failed with code {rc}")
+        return bytes(c_mac)
+
+    return test_digest(_digest, algo)
+
+
+def _test_harness_verify(ffi: cffi.FFI, lib, function: str, algo: Hash) -> ResultsDict:
+    """Tests a harness for verify."""
+    logger.info("Testing harness function %s", function)
+
+    ffi.cdef(
+        f"""int {function}(
+                const uint8_t *mac, const size_t mac_size,
+                const size_t md_size,
+                const uint8_t *key, const size_t key_size,
+                const uint8_t *msg, const size_t msg_size);
+        """
+    )
+    verify = getattr(lib, function)
+    c_md_size = algo.digest_size // 8
+
+    def _verify(key: bytes, msg: bytes, mac: bytes, mac_len: int) -> bool:
+        c_key = ffi.new("uint8_t[]", key)
+        c_msg = ffi.new("uint8_t[]", msg)
+        c_mac = ffi.new("uint8_t[]", mac)
+        rc = verify(c_mac, mac_len, c_md_size, c_key, len(key), c_msg, len(msg))
+        if rc == 1:
+            return True
+        elif rc == 0:
+            return False
+        else:
+            raise ValueError(f"{function} failed with code {rc}")
+
+    return test_verify(_verify, algo)
+
+
+def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
+    """Tests functions from a shared library.
+
+    Args:
+        ffi:
+            The FFI instance.
+        lib:
+            The dlopen'd library.
+        functions:
+            A list of functions to test.
+    """
+    logger.info("Found harness functions %s", ", ".join(functions))
+
+    rd = ResultsDict()
+
+    for func in functions:
+        match func.split("_"):
+            case ["CC", "HMAC", "digest", *parts]:
+                try:
+                    algo = Hash.from_funcname(parts)
+                except ValueError as error:
+                    logger.error(str(error))
+                    continue
+                rd |= _test_harness_digest(ffi, lib, func, algo)
+            case ["CC", "HMAC", "verify", *parts]:
+                try:
+                    algo = Hash.from_funcname(parts)
+                except ValueError as error:
+                    logger.error(str(error))
+                    continue
+                rd |= _test_harness_verify(ffi, lib, func, algo)
+            case _:
+                logger.debug("Skipped invalid CC_HMAC function %s", func)
+                continue
+
+    return rd
