@@ -13,7 +13,6 @@ from crypto_condor.primitives import (
     AES,
     ECDH,
     ECDSA,
-    HMAC,
     MLDSA,
     MLKEM,
     RSAES,
@@ -604,15 +603,7 @@ _hmac_help = """Run an HMAC wrapper."""
 @app.command(name="HMAC", no_args_is_help=True, help=_hmac_help)
 @app.command(name="hmac", no_args_is_help=True, help=_hmac_help, hidden=True)
 def hmac(
-    language: Annotated[HMAC.Wrapper, _language],
-    hash_function: Annotated[
-        HMAC.Hash,
-        typer.Argument(
-            help="The hash function to use with HMAC",
-            show_default=False,
-            case_sensitive=False,
-        ),
-    ],
+    wrapper: Annotated[str, typer.Argument(metavar="FILE")],
     compliance: Annotated[bool, _compliance] = True,
     resilience: Annotated[bool, _resilience] = False,
     filename: Annotated[str, _filename] = "",
@@ -620,14 +611,14 @@ def hmac(
     debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs an HMAC wrapper."""
+    from crypto_condor.primitives import HMAC
+
     try:
-        results = HMAC.run_wrapper(
-            language, hash_function, compliance, resilience, False, False
-        )
-    except Exception as error:
-        console.print(error)
+        rd = HMAC.test_wrapper(Path(wrapper), compliance, resilience)
+    except (FileNotFoundError, ValueError) as error:
+        console.print(str(error))
         raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save, debug):
+    if console.process_results(rd, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)

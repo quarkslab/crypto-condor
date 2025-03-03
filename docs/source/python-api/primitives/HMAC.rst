@@ -7,6 +7,16 @@ HMAC
 
 .. currentmodule:: crypto_condor.primitives.HMAC
 
+Test digest
+-----------
+
+.. autofunction:: test_digest
+
+Test tag verification
+---------------------
+
+.. autofunction:: test_verify
+
 Parameters
 ----------
 
@@ -15,30 +25,18 @@ Parameters
 Protocols
 ---------
 
+.. autoprotocol:: Digest
+
+.. autoprotocol:: Verify
+
+Deprecated API
+--------------
+
 .. autoprotocol:: HMAC
     :member-order: bysource
 
 .. autoprotocol:: HMAC_IUF
     :member-order: bysource
 
-Main test
----------
-
 .. autofunction:: test_hmac
-
-Specific tests
---------------
-
-.. autofunction:: test_digest_nist
-
-.. autofunction:: test_digest_wycheproof
-
-.. autofunction:: test_verify_nist
-
-.. autofunction:: test_verify_wycheproof
-
-Other functions
----------------
-
-.. autofunction:: is_hmac_iuf
 

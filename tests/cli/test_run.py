@@ -418,17 +418,15 @@ class TestRSAES:
 class TestHmac:
     """Tests HMAC wrapper."""
 
-    @pytest.mark.parametrize("example", ["1", "2"])
-    def test_examples(self, example: str, tmp_path: Path):
-        """Tests HMAC examples."""
+    def test_examples(self, tmp_path: Path):
+        """Tests HMAC wrapper example."""
         with runner.isolated_filesystem(tmp_path):
             wrap_result = runner.invoke(
-                app,
-                ["get-wrapper", "HMAC", "--language", "Python", "--example", example],
+                app, "get-wrapper HMAC --language Python --example 1"
             )
             assert wrap_result.exit_code == 0, "Could not get HMAC wrapper"
 
-            args = ["test", "wrapper", "HMAC", "Python", "SHA-256", "--no-save"]
+            args = "test wrapper HMAC hmac_wrapper_example.py --no-save"
             result = runner.invoke(app, args)
             print(result.output)
             assert result.exit_code == 0

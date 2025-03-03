@@ -11,6 +11,7 @@ to select which the modes to test and test vectors to use.
 """
 
 import importlib
+import inspect
 import json
 import logging
 import sys
@@ -66,6 +67,60 @@ class Wrapper(strenum.StrEnum):
 # --------------------------- Protocols -----------------------------------------------
 
 
+class Digest(Protocol):
+    """Represents the HMAC digest operation.
+
+    .. versionadded:: TODO(version)
+        Replaces :meth:`HMAC.digest`.
+    """
+
+    def __call__(self, key: bytes, msg: bytes) -> bytes:
+        """Generates a MAC using HMAC.
+
+        Args:
+            key:
+                The secret key.
+            msg:
+                The message to authenticate.
+
+        Returns:
+            The MAC, in bytes.
+        """
+        ...
+
+
+class Verify(Protocol):
+    """Represents the verification of an HMAC tag.
+
+    Some implementations may offer a ``verify`` method, while others expect the user to
+    generate a tag from the key and message, and compare it with the existing tag.
+
+    .. versionadded:: TODO(version)
+        Replaces :meth:`HMAC.verify`.
+    """
+
+    def __call__(self, key: bytes, msg: bytes, mac: bytes, mac_len: int) -> bool:
+        """Verifies a HMAC tag.
+
+        The size of the MAC is given to indicate that the tag may be truncated,
+        therefore shorter than the digest size.
+
+        Args:
+            key:
+                The secret key.
+            msg:
+                The message to authenticate.
+            mac:
+                The tag to verify.
+            mac_len:
+                The size of the MAC in bytes. Equal to len(mac).
+
+        Returns:
+            True if the tags match, False otherwise.
+        """
+        ...
+
+
 class HMAC(Protocol):
     """Class that implements HMAC methods.
 
@@ -74,6 +129,9 @@ class HMAC(Protocol):
 
     Raising ``NotImplementedError`` is allowed for methods you do not want to test but
     all methods should be present.
+
+    .. deprecated:: TODO(version)
+        Use :protocol:`Digest` and :protocol:`Verify` instead.
     """
 
     def digest(self, key: bytes, message: bytes) -> bytes:
@@ -112,6 +170,9 @@ class HMAC_IUF(Protocol):
 
     Raising ``NotImplementedError`` is allowed for (final) methods you do not want to
     test but all methods should be present.
+
+    .. deprecated:: TODO(version)
+        Use :protocol:`Digest` and :protocol:`Verify` instead.
     """
 
     @classmethod
@@ -152,6 +213,8 @@ class HMAC_IUF(Protocol):
 
 
 # --------------------------- Dataclasses----------------------------------------------
+
+
 @attrs.define
 class HmacDigestData:
     """Debug data for HMAC tests."""
@@ -221,6 +284,202 @@ def _load_vectors(algo: Hash) -> list[HmacVectors]:
 
 
 # --------------------------- Test functions ------------------------------------------
+
+
+def test_digest(
+    digest: Digest,
+    hash_function: Hash,
+    *,
+    compliance: bool = True,
+    resilience: bool = False,
+) -> ResultsDict:
+    """Tests an implementation of the HMAC digest operation.
+
+    The implementation is called to generate a tag for a given key and message. The
+    returned tag is compared to the test value. Some test values are *truncated*: in
+    that case, the comparison is performed up to the length of the truncated tag.
+
+    Args:
+        digest:
+            The implementation to test.
+        hash_function:
+            The hash function used by the implementation.
+
+    Keyword Args:
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+
+    Returns:
+        A dictionary of results.
+
+    Example:
+        Let's test the built-in HMAC implementation.
+
+        >>> import hmac
+
+        We also import the HMAC module from |cc|.
+
+        >>> from crypto_condor.primitives import HMAC
+
+        We create our function conforming to :protocol:`Digest` using SHA-256.
+
+        >>> def digest_sha256(key: bytes, msg: bytes) -> bytes:
+        ...     return hmac.digest(key, msg, "sha256")
+
+        Then we test it.
+
+        >>> rd = HMAC.test_digest(digest_sha256, HMAC.Hash.SHA_256)
+        [HMAC-SHA-256] Test digest ...
+        >>> assert rd.check()
+
+    .. versionadded:: TODO(version)
+        Replaces testing ``digest`` with :func:`test_hmac`.
+    """
+    all_vectors = _load_vectors(hash_function)
+    rd = ResultsDict()
+
+    test: HmacTest
+
+    for vectors in all_vectors:
+        if not compliance and vectors.compliance:
+            continue
+        if not resilience and not vectors.compliance:
+            continue
+
+        res = Results.new("Test HMAC digest", ["hash_function"])
+        rd.add(res, extra_values=[vectors.source])
+
+        for test in track(vectors.tests, rf"\[HMAC-{str(hash_function)}] Test digest"):
+            info = TestInfo.new_from_test(test, vectors.compliance)
+            data = HmacDigestData(test.key, test.msg, test.mac)
+            try:
+                ret_mac = digest(test.key, test.msg)
+            except NotImplementedError:
+                logger.warning(
+                    "HMAC-%s digest not implemented, test skipped", str(hash_function)
+                )
+                return rd
+            except Exception as error:
+                # Currently no invalid test should fail when calling digest.
+                info.fail(f"Exception caught: {str(error)}", data)
+                logger.debug("Exception caught when running HMAC.digest", exc_info=True)
+                res.add(info)
+                continue
+            data.res = ret_mac
+            # Some test vectors have truncated MACs.
+            is_same_mac = ret_mac[: len(test.mac)] == test.mac
+            match (test.type, is_same_mac):
+                case (TestType.VALID, True):
+                    info.ok(data)
+                case (TestType.VALID, False):
+                    info.fail("Wrong MAC", data)
+                case (TestType.INVALID, True):
+                    info.fail("Returned MAC matches invalid MAC", data)
+                case (TestType.INVALID, False):
+                    info.ok(data)
+                case _:
+                    # There are no acceptable test for now.
+                    raise ValueError(f"Invalid result ({test.type}, {is_same_mac})")
+            res.add(info)
+
+    return rd
+
+
+def test_verify(
+    verify: Verify,
+    hash_function: Hash,
+    *,
+    compliance: bool = True,
+    resilience: bool = False,
+) -> ResultsDict:
+    """Tests an implementation of HMAC tag verification.
+
+    Args:
+        verify:
+            The implementation to test.
+        hash_function:
+            The hash function used by the implementation.
+
+    Keyword Args:
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+
+    Returns:
+        A dictionary of results.
+
+    Example:
+        Let's test the built-in HMAC implementation.
+
+        >>> import hmac
+
+        We also import the HMAC module from |cc|.
+
+        >>> from crypto_condor.primitives import HMAC
+
+        We create our function conforming to :protocol:`Verify` using SHA-256.
+
+        >>> def verify_sha256(key: bytes, msg: bytes, mac: bytes, mac_len: int) -> bool:
+        ...     ref_mac = hmac.digest(key, msg, "sha256")
+        ...     return hmac.compare_digest(ref_mac[: mac_len], mac)
+
+        Then we test it.
+
+        >>> rd = HMAC.test_verify(verify_sha256, HMAC.Hash.SHA_256)
+        [HMAC-SHA-256] Test verify ...
+        >>> assert rd.check()
+
+    .. versionadded:: TODO(version)
+        Replaces testing ``verify`` with :func:`test_hmac`.
+    """
+    all_vectors = _load_vectors(hash_function)
+    rd = ResultsDict()
+
+    test: HmacTest
+
+    for vectors in all_vectors:
+        if not compliance and vectors.compliance:
+            continue
+        if not resilience and not vectors.compliance:
+            continue
+
+        res = Results.new("Test HMAC verify", ["hash_function"])
+        rd.add(res, extra_values=[vectors.source])
+
+        for test in track(vectors.tests, rf"\[HMAC-{str(hash_function)}] Test verify"):
+            info = TestInfo.new_from_test(test, vectors.compliance)
+            data = HmacVerifyData(test.key, test.msg, test.mac)
+            try:
+                ret_valid = verify(test.key, test.msg, test.mac, len(test.mac))
+            except NotImplementedError:
+                logger.warning(
+                    "HMAC-%s verify not implemented, test skipped", str(hash_function)
+                )
+                return rd
+            except Exception as error:
+                logger.debug("Exception caught when running HMAC.verify", exc_info=True)
+                # Errors should be caught by the implementation.
+                info.fail(f"Exception caught: {str(error)}", data)
+                res.add(info)
+                continue
+            match (test.type, ret_valid):
+                case (TestType.VALID, True) | (TestType.INVALID, False):
+                    info.ok(data)
+                case (TestType.VALID, False):
+                    info.fail("Valid MAC rejected", data)
+                case (TestType.INVALID, True):
+                    info.fail("Invalid MAC accepted", data)
+                case _:
+                    # There are no acceptable test for now.
+                    raise ValueError(f"Invalid result ({test.type}, {ret_valid})")
+            res.add(info)
+
+    return rd
+
+
 def is_hmac_iuf(hmac: Any) -> bool | None:
     """Checks if a class conforms to the :protocol:`HMAC_IUF` interface.
 
@@ -313,6 +572,8 @@ def test_digest_nist(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> ResultsDict:
                     ret_mac = h.final_digest()
                 else:
                     ret_mac = hmac_s.digest(test.key, test.msg)
+            except NotImplementedError:
+                return rd
             except Exception as error:
                 logger.debug("Exception caught while testing digest", exc_info=True)
                 # NIST vectors do not have invalid tests.
@@ -388,6 +649,8 @@ def test_digest_wycheproof(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> Result
                     ret_mac = h.final_digest()
                 else:
                     ret_mac = hmac_s.digest(test.key, test.msg)
+            except NotImplementedError:
+                return rd
             except Exception as error:
                 logger.debug("Exception caught while testing digest", exc_info=True)
                 # Implementations should catch the errors.
@@ -472,6 +735,8 @@ def test_verify_nist(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> ResultsDict:
                     is_valid = h.final_verify(test.mac)
                 else:
                     is_valid = hmac_s.verify(test.key, test.msg, test.mac)
+            except NotImplementedError:
+                return rd
             except Exception as error:
                 logger.debug("Exception caught while testing verify", exc_info=True)
                 # Errors should be caught by the implementation.
@@ -546,6 +811,8 @@ def test_verify_wycheproof(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> Result
                     is_valid = h.final_verify()
                 else:
                     is_valid = hmac_s.verify(test.key, test.msg, test.mac)
+            except NotImplementedError:
+                return rd
             except Exception as error:
                 logger.debug("Exception caught while testing verify", exc_info=True)
                 # Implementations should catch the errors.
@@ -596,6 +863,9 @@ def test_hmac(
             If True, skip testing the digest function.
         skip_verify:
             If True, skip testing the verify function.
+
+    .. deprecated:: TODO(version)
+        Use :func:`test_digest` and :func:`test_verify` instead.
     """
     rd = ResultsDict()
 
@@ -628,53 +898,93 @@ def test_hmac(
 
 
 # --------------------------- Runners -------------------------------------------------
-def _run_python_wrapper(
-    hash_function: Hash,
-    compliance: bool,
-    resilience: bool,
-    skip_digest: bool,
-    skip_verify: bool,
+
+
+def test_wrapper_python(
+    wrapper: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
-    file = Path().cwd() / "HMAC_wrapper.py"
-    if not file.exists():
-        raise FileNotFoundError("Can't find HMAC_wrapper.py in the current directory")
-    logger.info("Running HMAC Python wrapper")
-    sys.path.insert(0, str(Path.cwd()))
-    imported = "HMAC_wrapper" in sys.modules.keys()
+    """Tests a HMAC Python wrapper.
+
+    Args:
+        wrapper:
+            The path to the wrapper.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+    """
+    logger.info("Running Python HMAC wrapper: '%s'", str(wrapper.name))
+    sys.path.insert(0, str(wrapper.parent.absolute()))
+    already_imported = wrapper.stem in sys.modules.keys()
     try:
-        wrapper = importlib.import_module("HMAC_wrapper")
+        hmac_wrapper = importlib.import_module(wrapper.stem)
     except ModuleNotFoundError as error:
-        logger.error("Could not load wrapper: %s", str(error))
+        logger.error("Can't import wrapper: '%s'", str(error))
         raise
-    if imported:
-        logger.debug("Reloading HMAC Python wrapper")
-        wrapper = importlib.reload(wrapper)
-    if not hasattr(wrapper, "CC_HMAC"):
-        logger.warning("Class CC_HMAC not found, cannot test wrapper")
-        return ResultsDict()
-    hmac = wrapper.CC_HMAC
-    rd = test_hmac(
-        hmac(),
-        hash_function,
-        compliance=compliance,
-        resilience=resilience,
-        skip_digest=skip_digest,
-        skip_verify=skip_verify,
-    )
+    if already_imported:
+        logger.debug("Reloading HMAC wrapper: '%s'", wrapper.stem)
+        hmac_wrapper = importlib.reload(hmac_wrapper)
+
+    rd = ResultsDict()
+
+    for func, _ in inspect.getmembers(hmac_wrapper, inspect.isfunction):
+        match func.split("_"):
+            case ["CC", "HMAC", "digest", *parts]:
+                logger.info("Found CC_HMAC function %s", func)
+                try:
+                    algo = Hash.from_funcname(parts)
+                except ValueError:
+                    logger.error(
+                        "Invalid algorithm %s for HMAC, skipped", "_".join(parts)
+                    )
+                    continue
+                rd |= test_digest(
+                    getattr(hmac_wrapper, func),
+                    algo,
+                    compliance=compliance,
+                    resilience=resilience,
+                )
+            case ["CC", "HMAC", "verify", *parts]:
+                logger.info("Found CC_HMAC function %s", func)
+                try:
+                    algo = Hash.from_funcname(parts)
+                except ValueError:
+                    logger.error(
+                        "Invalid algorithm %s for HMAC, skipped", "_".join(parts)
+                    )
+                    continue
+                rd |= test_verify(
+                    getattr(hmac_wrapper, func),
+                    algo,
+                    compliance=compliance,
+                    resilience=resilience,
+                )
+            case ["CC", "HMAC", *_]:
+                logger.warning("Ignored unknown CC_HMAC function %s", func)
+                continue
+            case _:
+                pass
+
     return rd
 
 
-def run_wrapper(
-    language: Wrapper,
-    hash_function: Hash,
-    compliance: bool,
-    resilience: bool,
-    skip_digest: bool,
-    skip_verify: bool,
-) -> ResultsDict:
-    """Runs a wrapper."""
-    match language:
-        case Wrapper.PYTHON:
-            return _run_python_wrapper(
-                hash_function, compliance, resilience, skip_digest, skip_verify
-            )
+def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDict:
+    """Tests an HMAC wrapper.
+
+    Calls the corresponding runner depending on the file extension.
+
+    Args:
+        wrapper:
+            The path to the wrapper.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+    """
+    if not wrapper.is_file():
+        raise FileNotFoundError(f"No wrapper named {str(wrapper)} found")
+    match wrapper.suffix:
+        case ".py":
+            return test_wrapper_python(wrapper, compliance, resilience)
+        case _:
+            raise ValueError(f"No runner defined for {wrapper.suffix} wrappers")
