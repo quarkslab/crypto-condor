@@ -1,8 +1,7 @@
-"""Example 1: PyCryptodome with GCM.
+"""AES wrapper example with PyCryptodome.
 
-An example of how to wrap an AES implementation.
-
-See the documentation for detailed examples.
+Usage:
+    crypto-condor-cli test wrapper AES aes_wrapper_example.py
 """
 
 from Crypto.Cipher import AES
