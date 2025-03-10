@@ -74,7 +74,7 @@ Where `length` is one of `128`, `192`, or `256`.
 ### Protocol
 
 ```{eval-rst}
-.. autoprotocol:: Encrypt
+.. autoprotocol:: Decrypt
     :noindex:
 ```
 

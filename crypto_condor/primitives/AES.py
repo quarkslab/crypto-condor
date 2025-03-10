@@ -1235,24 +1235,26 @@ def _test_output_enc(line: str, mode: Mode):
     match line.rstrip().split("/"):
         case [_k, _p, _c]:
             if mode != Mode.ECB:
-                raise ParsingError("")
+                raise ParsingError("Got 3 values but the mode is not ECB")
             key, pt, ct = map(bytes.fromhex, (_k, _p, _c))
             ref_ct = _encrypt(mode, key, pt)
             return EncData(key, pt, ct, None, None, None, ref_ct, None)
         case [_k, _p, _c, _i]:
             if mode == Mode.ECB or mode == Mode.CCM or mode == Mode.GCM:
-                raise ParsingError("")
+                raise ParsingError(f"Got 4 values but the mode is {str(mode)}")
             key, pt, ct, iv = map(bytes.fromhex, (_k, _p, _c, _i))
             ref_ct = _encrypt(mode, key, pt, iv=iv)
             return EncData(key, pt, ct, iv, None, None, ref_ct, None)
         case [_k, _p, _c, _i, _a, _t]:
             if mode != Mode.CCM and mode != Mode.GCM:
-                raise ParsingError("")
+                raise ParsingError("Got 6 values but the mode is not GCM or CCM")
             key, pt, ct, iv, aad, tag = map(bytes.fromhex, (_k, _p, _c, _i, _a, _t))
             ref_ct, ref_tag = _encrypt(mode, key, pt, iv=iv, aad=aad, mac_len=len(tag))
             return EncData(key, pt, ct, iv, aad, tag, ref_ct, ref_tag)
         case _:
-            raise ParsingError("")
+            raise ParsingError(
+                f"Got {len(line.split('/'))} values, expected 3, 4, or 6"
+            )
 
 
 def test_output_encrypt(filename: str, mode: Mode) -> ResultsDict:
@@ -1297,8 +1299,10 @@ def test_output_encrypt(filename: str, mode: Mode) -> ResultsDict:
             - ``mac`` is the MAC tag generated when encrypting.
 
     Args:
-        filename: The name of the file to test.
-        mode: The mode of operation used.
+        filename:
+            The name of the file to test.
+        mode:
+            The mode of operation used.
 
     Returns:
         A dictionary of Results, containing a single instance.
@@ -1322,20 +1326,26 @@ def test_output_encrypt(filename: str, mode: Mode) -> ResultsDict:
 
         try:
             data = _test_output_enc(line, mode)
-        except ValueError:
-            pass
+        except ValueError as error:
+            info.fail(f"Caught ValueError: {str(error)}")
+            res.add(info)
+            continue
+        except ParsingError as error:
+            info.fail(f"Failed to parse line {line_number}: {str(error)}")
+            res.add(info)
+            continue
 
         if mode in Mode.classic_modes():
-            if data.ref_ct == data.ct:
+            if data.ret_ct == data.ct:
                 info.ok(data)
             else:
                 info.fail("Wrong ciphertext", data)
         else:
-            if data.ref_ct != data.ct and data.ref_tag != data.tag:
+            if data.ret_ct != data.ct and data.ret_tag != data.tag:
                 info.fail("Wrong ciphertext and tag", data)
-            elif data.ref_ct != data.ct:
+            elif data.ret_ct != data.ct:
                 info.fail("Wrong ciphertext", data)
-            elif data.ref_tag != data.tag:
+            elif data.ret_tag != data.tag:
                 info.fail("Wrong tag", data)
             else:
                 info.ok(data)
@@ -1350,24 +1360,28 @@ def _test_output_dec(line: str, mode: Mode):
     match line.rstrip().split("/"):
         case [_k, _c, _p]:
             if mode != Mode.ECB:
-                raise ParsingError("")
+                raise ParsingError("Got 3 values but the mode is not ECB")
             key, ct, pt = map(bytes.fromhex, (_k, _c, _p))
             ref_pt = _decrypt(mode, key, ct)
             return DecData(key, ct, pt, None, None, None, ref_pt, None)
         case [_k, _c, _p, _i]:
             if mode == Mode.ECB or mode == Mode.CCM or mode == Mode.GCM:
-                raise ParsingError("")
+                raise ParsingError(f"Got 4 values but the mode is {str(mode)}")
             key, ct, pt, iv = map(bytes.fromhex, (_k, _c, _p, _i))
             ref_pt = _decrypt(mode, key, ct, iv=iv)
             return DecData(key, ct, pt, iv, None, None, ref_pt, None)
         case [_k, _c, _p, _i, _a, _t]:
             if mode != Mode.CCM and mode != Mode.GCM:
-                raise ParsingError("")
+                raise ParsingError("Got 6 values but the mode is not GCM or CCM")
             key, ct, pt, iv, aad, tag = map(bytes.fromhex, (_k, _c, _p, _i, _a, _t))
-            ref_pt_aead, ref_status = _decrypt(mode, key, ct, iv=iv, aad=aad, mac=tag)
+            ref_pt_aead, ref_status = _decrypt(
+                mode, key, ct, iv=iv, aad=aad, mac=tag, mac_len=len(tag)
+            )
             return DecData(key, ct, pt, iv, aad, tag, ref_pt_aead, ref_status)
         case _:
-            raise ParsingError("")
+            raise ParsingError(
+                f"Got {len(line.split('/'))} values, expected 3, 4, or 6"
+            )
 
 
 def test_output_decrypt(filename: str, mode: Mode) -> ResultsDict:
@@ -1412,8 +1426,10 @@ def test_output_decrypt(filename: str, mode: Mode) -> ResultsDict:
             - ``mac`` is the MAC tag generated when encrypting.
 
     Args:
-        filename: The name of the file to test.
-        mode: The mode of operation used.
+        filename:
+            The name of the file to test.
+        mode:
+            The mode of operation used.
 
     Returns:
         A dictionary of Results, containing a single instance.
@@ -1437,18 +1453,24 @@ def test_output_decrypt(filename: str, mode: Mode) -> ResultsDict:
 
         try:
             data = _test_output_dec(line, mode)
-        except ValueError:
-            pass
+        except ValueError as error:
+            info.fail(f"Caught ValueError: {str(error)}")
+            res.add(info)
+            continue
+        except ParsingError as error:
+            info.fail(f"Failed to parse line {line_number}: {str(error)}")
+            res.add(info)
+            continue
 
         if mode in Mode.classic_modes():
-            if data.ref_pt == data.pt:
+            if data.ret_pt == data.pt:
                 info.ok(data)
             else:
                 info.fail("Wrong plaintext", data)
         else:
             if not data.ret_valid_tag:
                 info.fail("Tag verification failed", data)
-            elif data.ref_pt != data.pt:
+            elif data.ret_pt != data.pt:
                 info.fail("Wrong plaintext", data)
             else:
                 info.ok(data)

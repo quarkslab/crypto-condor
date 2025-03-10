@@ -114,6 +114,162 @@ def parse_cavp(mode: str, keylen: int, files: list[str]):
     out_dec.write_bytes(dec_vectors.SerializeToString())
 
 
+def parse_cavp_ccm(keylen: int, files: list[str]) -> None:
+    """Parses NIST CAVP test vectors for AES-CCM."""
+    vectors = AesVectors(
+        source="NIST CAVP",
+        source_desc="Combines the VADT, VPT, VNT, and VTT files for a single key length",  # noqa: E501
+        source_url="https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/CAVP-TESTING-BLOCK-CIPHER-MODES#CCM",
+        compliance=True,
+        mode="CCM",
+        keylen=keylen,
+    )
+
+    tid = 0
+
+    for filename in files:
+        file = VECTORS_DIR / "cavp" / filename
+        lines = file.read_text().split("\n")
+
+        alen, plen = -1, -1
+        key, nonce, aad, pt, ct = b"", b"", b"", b"", b""
+
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+
+            if line.startswith("["):
+                line = line.lstrip("[").rstrip("]")
+                k, val = line.split(" = ")
+                if k == "Alen":
+                    alen = int(val)
+                if k == "Plen":
+                    plen = int(val)
+                continue
+
+            k, val = line.split(" = ")
+            match k:
+                case "Plen" | "Nlen" | "Tlen" | "Alen" | "Count":
+                    continue
+                case "Key":
+                    key = bytes.fromhex(val)
+                case "Nonce":
+                    nonce = bytes.fromhex(val)
+                case "Adata":
+                    aad = bytes.fromhex(val) if alen != 0 else b""
+                case "Payload":
+                    pt = bytes.fromhex(val) if plen != 0 else b""
+                case "CT":
+                    ct_and_tag = bytes.fromhex(val)
+                    ct = ct_and_tag[: len(pt)]
+                    tag = ct_and_tag[len(pt) :]
+                    tid += 1
+                    vectors.tests.add(
+                        id=tid,
+                        type="valid",
+                        key=key,
+                        pt=pt,
+                        ct=ct,
+                        iv=nonce,
+                        aad=aad,
+                        tag=tag,
+                    )
+
+    out = VECTORS_DIR / "pb2" / f"aes_cavp_ccm_{vectors.keylen}.pb2"
+    out.write_bytes(vectors.SerializeToString())
+
+
+def parse_cavp_ccm_dvpt(keylen: int, filename: str) -> None:
+    """Parses NIST CAVP DVPT files for CCM.
+
+    Due to their exotic format, it is simpler to have a separate function.
+    """
+    vectors = AesVectors(
+        source="NIST CAVP",
+        source_desc=f"From the {filename} file",
+        source_url="https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/CAVP-TESTING-BLOCK-CIPHER-MODES#CCM",
+        compliance=True,
+        mode="CCM",
+        keylen=keylen,
+        encrypt=False,
+        decrypt=True,
+    )
+
+    tid = 0
+    file = VECTORS_DIR / "cavp" / filename
+    lines = file.read_text().split("\n")
+
+    alen, plen = -1, -1
+    key, nonce, aad, pt, ct = b"", b"", b"", b"", b""
+
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        if line.startswith("["):
+            line = line.lstrip("[").rstrip("]")
+            params = line.split(", ")
+            for kv in params:
+                k, v = kv.split(" = ")
+                # Alen and Plen can be 0, meaning that the value is b"".
+                if k == "Alen":
+                    alen = int(v)
+                if k == "Plen":
+                    plen = int(v)
+            continue
+
+        k, v = line.split(" = ")
+        match k:
+            case "Key":
+                key = bytes.fromhex(v)
+            case "Count":
+                continue
+            case "Nonce":
+                nonce = bytes.fromhex(v)
+            case "Adata":
+                aad = bytes.fromhex(v) if alen != 0 else b""
+            case "CT":
+                b_ct = bytes.fromhex(v)
+                ct = b_ct[:plen]
+                tag = b_ct[plen:]
+            case "Result":
+                if v.startswith("Pass"):
+                    continue
+                # If the test is invalid, there is no payload afterwards so we can
+                # directly add the test.
+                tid += 1
+                vectors.tests.add(
+                    id=tid,
+                    type="invalid",
+                    # Comment is in the form 'Fail (2 - CT changed)'
+                    comment=v.split(" - ")[1].rstrip(")"),
+                    key=key,
+                    ct=ct,
+                    iv=nonce,
+                    aad=aad,
+                    tag=tag,
+                )
+            case "Payload":
+                pt = bytes.fromhex(v) if plen != 0 else b""
+                # If the result is Pass, the last field is Payload.
+                tid += 1
+                vectors.tests.add(
+                    id=tid,
+                    type="valid",
+                    key=key,
+                    pt=pt,
+                    ct=ct,
+                    iv=nonce,
+                    aad=aad,
+                    tag=tag,
+                )
+
+    out = VECTORS_DIR / "pb2" / f"aes_cavp_ccm_{str(keylen)}_dvpt.pb2"
+    out.write_bytes(vectors.SerializeToString())
+
+
 def parse_wycheproof(filename: str):
     """Parses Wycheproof test vectors."""
     pb2_dir = VECTORS_DIR / "pb2"
@@ -203,7 +359,7 @@ def generate_json() -> None:
 
     out = VECTORS_DIR / "aes.json"
     with out.open("w") as fp:
-        json.dump(vectors, fp, indent=2)
+        json.dump(vectors, fp, indent=2, sort_keys=True)
 
 
 if __name__ == "__main__":
@@ -214,6 +370,18 @@ if __name__ == "__main__":
     for k, files in cavp_files.items():
         mode, keylen = k
         parse_cavp(mode, keylen, files)
+
+    ccm_prefixes = ["VADT", "VPT", "VNT", "VTT"]
+    ccm_files = [
+        (klen, [f"{prefix}{str(klen)}.rsp" for prefix in ccm_prefixes])
+        for klen in {128, 192, 256}
+    ]
+    for klen, files in ccm_files:
+        parse_cavp_ccm(klen, files)
+
+    ccm_dvpt_files = [(klen, f"DVPT{str(klen)}.txt") for klen in {128, 192, 256}]
+    for klen, filename in ccm_dvpt_files:
+        parse_cavp_ccm_dvpt(klen, filename)
 
     wp_files = ["aes_cbc_pkcs5_test.json", "aes_ccm_test.json", "aes_gcm_test.json"]
     for filename in wp_files:

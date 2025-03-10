@@ -12,12 +12,18 @@ Test encryption
 
 .. autofunction:: test_encrypt
 
-.. autofunction:: test_output_encrypt
-
 Test decryption
 ---------------
 
 .. autofunction:: test_decrypt
+
+Test the output of encryption
+-----------------------------
+
+.. autofunction:: test_output_encrypt
+
+Test the output of decryption
+-----------------------------
 
 .. autofunction:: test_output_decrypt
 

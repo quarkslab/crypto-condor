@@ -1,18 +1,4 @@
 {
-  "ECB": {
-    "128": [
-      "cavp-ECB-128-enc.pb2",
-      "cavp-ECB-128-dec.pb2"
-    ],
-    "192": [
-      "cavp-ECB-192-enc.pb2",
-      "cavp-ECB-192-dec.pb2"
-    ],
-    "256": [
-      "cavp-ECB-256-enc.pb2",
-      "cavp-ECB-256-dec.pb2"
-    ]
-  },
   "CBC": {
     "128": [
       "cavp-CBC-128-enc.pb2",
@@ -25,6 +11,34 @@
     "256": [
       "cavp-CBC-256-enc.pb2",
       "cavp-CBC-256-dec.pb2"
+    ]
+  },
+  "CBC-PKCS7": {
+    "128": [
+      "wycheproof-CBC-PKCS7-128.pb2"
+    ],
+    "192": [
+      "wycheproof-CBC-PKCS7-192.pb2"
+    ],
+    "256": [
+      "wycheproof-CBC-PKCS7-256.pb2"
+    ]
+  },
+  "CCM": {
+    "128": [
+      "aes_cavp_ccm_128.pb2",
+      "wycheproof-CCM-128.pb2",
+      "aes_cavp_ccm_128_dvpt.pb2"
+    ],
+    "192": [
+      "aes_cavp_ccm_192.pb2",
+      "wycheproof-CCM-192.pb2",
+      "aes_cavp_ccm_192_dvpt.pb2"
+    ],
+    "256": [
+      "aes_cavp_ccm_256.pb2",
+      "aes_cavp_ccm_256_dvpt.pb2",
+      "wycheproof-CCM-256.pb2"
     ]
   },
   "CFB128": {
@@ -69,6 +83,20 @@
       "cavp-CTR-256-dec.pb2"
     ]
   },
+  "ECB": {
+    "128": [
+      "cavp-ECB-128-enc.pb2",
+      "cavp-ECB-128-dec.pb2"
+    ],
+    "192": [
+      "cavp-ECB-192-enc.pb2",
+      "cavp-ECB-192-dec.pb2"
+    ],
+    "256": [
+      "cavp-ECB-256-enc.pb2",
+      "cavp-ECB-256-dec.pb2"
+    ]
+  },
   "GCM": {
     "128": [
       "cavp-GCM-128-enc.pb2",
@@ -84,28 +112,6 @@
       "cavp-GCM-256-enc.pb2",
       "cavp-GCM-256-dec.pb2",
       "wycheproof-GCM-256.pb2"
-    ]
-  },
-  "CBC-PKCS7": {
-    "128": [
-      "wycheproof-CBC-PKCS7-128.pb2"
-    ],
-    "192": [
-      "wycheproof-CBC-PKCS7-192.pb2"
-    ],
-    "256": [
-      "wycheproof-CBC-PKCS7-256.pb2"
-    ]
-  },
-  "CCM": {
-    "128": [
-      "wycheproof-CCM-128.pb2"
-    ],
-    "192": [
-      "wycheproof-CCM-192.pb2"
-    ],
-    "256": [
-      "wycheproof-CCM-256.pb2"
     ]
   }
 }
