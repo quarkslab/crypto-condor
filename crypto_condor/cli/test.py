@@ -50,20 +50,30 @@ def test_harness(
     excluded: Annotated[
         Optional[list[str]], typer.Option("--exclude", "-e", help="Exclude a function.")
     ] = None,
+    no_save: Annotated[
+        bool, typer.Option("--no-save", help="Do not prompt to save results.")
+    ] = False,
 ):
     """Tests a shared library hook.
 
     Args:
-        lib: Unvalidated path of the shared library to test.
-        included: List of functions to include, allow-list style.
-        excluded: List of functions to exclude, deny-list style.
+        lib:
+            Unvalidated path of the shared library to test.
+
+    Keyword Args:
+        included:
+            List of functions to include, allow-list style.
+        excluded:
+            List of functions to exclude, deny-list style.
+        no_save:
+            If True, no results are saved and the user is not prompted.
     """
     if included and excluded:
         console.print("Using both --include and --exclude is not allowed")
         raise typer.Exit(1)
 
     results = harness.test_harness(Path(lib), included, excluded)
-    if console.process_results(results):
+    if console.process_results(results, no_save=no_save):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
