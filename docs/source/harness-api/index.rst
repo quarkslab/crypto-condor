@@ -31,7 +31,7 @@ Supported primitives
 .. toctree::
     :maxdepth: 1
 
-    AES
+    AES <AES>
     ChaCha20
     ECDH <ECDH>
     HMAC <HMAC>

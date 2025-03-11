@@ -1027,6 +1027,7 @@ def test_encrypt(
                     info.ok(data)
                 else:
                     info.fail(f"Exception raised: {str(error)}", data)
+                    print("fail", len(test.iv), str(error))
                 results.add(info)
                 continue
 
@@ -1674,23 +1675,35 @@ def _test_lib_enc(
     """Tests CC_AES_encrypt.
 
     Returns:
-        The dictionary of results returned by :func:`test`.
+        The dictionary of results returned by :func:`test_encrypt`.
     """
     logger.info("Testing harness function %s", function)
 
     ffi.cdef(
-        f"""void {function}(uint8_t *buffer, size_t buffer_size,
-                       const uint8_t *key, size_t key,
-                       const uint8_t *iv, size_t iv_size);"""
+        f"""int {function}(uint8_t *ciphertext, size_t ciphertext_size,
+                const uint8_t *plaintext, size_t plaintext_size,
+                const uint8_t *key, size_t key_size,
+                const uint8_t *iv, size_t iv_size);"""
     )
     enc = getattr(lib, function)
 
     def _enc(key: bytes, plaintext: bytes, iv: bytes = b"") -> bytes:
-        _key = ffi.new(f"uint8_t[{len(key)}]", key)
-        buf = ffi.new(f"uint8_t[{len(plaintext)}]", plaintext)
-        _iv = ffi.new(f"uint8_t[{len(iv)}]", iv)
-        enc(buf, len(plaintext), _key, len(key), _iv, len(iv))
-        return bytes(buf)
+        c_key = ffi.new("uint8_t[]", key)
+        c_pt = ffi.new("uint8_t[]", plaintext)
+        c_iv = ffi.new("uint8_t[]", iv)
+        if mode == Mode.CBC_PKCS7:
+            pad_len = 16 - (len(plaintext) % 16)
+            ct_len = len(plaintext) + pad_len
+            c_ct = ffi.new(f"uint8_t[{ct_len}]")
+        else:
+            # ct_len = ((len(plaintext) + 15) // 16) * 16
+            ct_len = len(plaintext)
+            c_ct = ffi.new(f"uint8_t[{ct_len}]")
+        rc = enc(c_ct, ct_len, c_pt, len(plaintext), c_key, len(key), c_iv, len(iv))
+        if rc == 1:
+            return bytes(c_ct)
+        else:
+            raise ValueError(f"Encrypt function failed with code {rc}")
 
     return test_encrypt(_enc, mode, key_length)  # type: ignore
 
@@ -1701,23 +1714,30 @@ def _test_lib_dec(
     """Tests CC_AES_decrypt.
 
     Returns:
-        The dictionary of results returned by :func:`test`.
+        The dictionary of results returned by :func:`test_decrypt`.
     """
     logger.info("Testing harness function %s", function)
 
     ffi.cdef(
-        f"""void {function}(uint8_t *buffer, size_t buffer,
-                       const uint8_t *key, size_t key,
-                       const uint8_t *iv, size_t iv_size);"""
+        f"""int {function}(uint8_t *plaintext, size_t plaintext_size,
+                const uint8_t *ciphertext, size_t ciphertext_size,
+                const uint8_t *key, size_t key_size,
+                const uint8_t *iv, size_t iv_size);"""
     )
     dec = getattr(lib, function)
 
     def _dec(key: bytes, ciphertext: bytes, iv: bytes = b"") -> bytes:
-        _key = ffi.new(f"uint8_t[{len(key)}]", key)
-        buf = ffi.new(f"uint8_t[{len(ciphertext)}]", ciphertext)
-        _iv = ffi.new(f"uint8_t[{len(iv)}]", iv)
-        dec(buf, len(ciphertext), _key, len(key), _iv, len(iv))
-        return bytes(buf)
+        c_key = ffi.new("uint8_t[]", key)
+        c_ct = ffi.new("uint8_t[]", ciphertext)
+        c_iv = ffi.new("uint8_t[]", iv)
+        c_pt = ffi.new(f"uint8_t[{len(ciphertext)}]")
+        rc = dec(
+            c_pt, len(ciphertext), c_ct, len(ciphertext), c_key, len(key), c_iv, len(iv)
+        )
+        if rc == 1:
+            return bytes(c_pt)
+        else:
+            raise ValueError(f"Decrypt failed with code {rc}")
 
     return test_decrypt(_dec, mode, key_length)  # type: ignore
 
@@ -1733,43 +1753,50 @@ def _test_lib_enc_aead(
     logger.info("Testing harness function %s", function)
 
     ffi.cdef(
-        f"""void {function}(uint8_t *buffer, size_t buffer_size,
-                       uint8_t *mac, size_t mac_size,
-                       const uint8_t *key, size_t key,
-                       const uint8_t *nonce, size_t nonce,
-                       const uint8_t *aad, size_t aad);"""
+        f"""int {function}(uint8_t *ciphertext, size_t ciphertext_size,
+                uint8_t *mac, size_t mac_size,
+                const uint8_t *plaintext, size_t plaintext_size,
+                const uint8_t *key, size_t key_size,
+                const uint8_t *nonce, size_t nonce_size,
+                const uint8_t *aad, size_t aad_size);"""
     )
     enc = getattr(lib, function)
 
     def _enc(
         key: bytes, plaintext: bytes, iv: bytes, aad: bytes, mac_len: int
     ) -> CiphertextAndTag:
-        _key = ffi.new(f"uint8_t[{len(key)}]", key)
-        buf = ffi.new(f"uint8_t[{len(plaintext)}]", plaintext)
-        _nonce = ffi.new(f"uint8_t[{len(iv)}]", iv)
-        mac_buf = ffi.new(f"uint8_t[{mac_len}]")
+        c_key = ffi.new("uint8_t[]", key)
+        c_pt = ffi.new("uint8_t[]", plaintext)
+        c_ct = ffi.new(f"uint8_t[{len(plaintext)}]")
+        c_iv = ffi.new("uint8_t[]", iv)
+        c_mac = ffi.new(f"uint8_t[{mac_len}]")
 
-        _aad: Any
+        c_aad: Any
         if aad:
-            _aad_len = len(aad)
-            _aad = ffi.new(f"uint8_t[{_aad_len}]", aad)
+            aad_len = len(aad)
+            c_aad = ffi.new("uint8_t[]", aad)
         else:
-            _aad_len = 0
-            _aad = ffi.NULL
+            aad_len = 0
+            c_aad = ffi.NULL
 
-        enc(
-            buf,
+        rc = enc(
+            c_ct,
             len(plaintext),
-            mac_buf,
+            c_mac,
             mac_len,
-            _key,
+            c_pt,
+            len(plaintext),
+            c_key,
             len(key),
-            _nonce,
+            c_iv,
             len(iv),
-            _aad,
-            _aad_len,
+            c_aad,
+            aad_len,
         )
-        return (bytes(buf), bytes(mac_buf))
+        if rc == 1:
+            return bytes(c_ct), bytes(c_mac)
+        else:
+            raise ValueError(f"Encrypt failed with code {rc}")
 
     return test_encrypt(_enc, mode, key_length)  # type: ignore[arg-type]
 
@@ -1785,48 +1812,52 @@ def _test_lib_dec_aead(
     logger.info("Testing harness function %s", function)
 
     ffi.cdef(
-        f"""int {function}(uint8_t *buffer, size_t buffer_size,
-                           const uint8_t *key, size_t key,
-                           const uint8_t *nonce, size_t nonce,
-                           const uint8_t *aad, size_t aad,
-                           const uint8_t *mac, size_t mac);"""
+        f"""int {function}(uint8_t *plaintext, size_t plaintext_size,
+                const uint8_t *ciphertext, size_t ciphertext_size,
+                const uint8_t *mac, size_t mac_size,
+                const uint8_t *key, size_t key_size,
+                const uint8_t *iv, size_t iv_size,
+                const uint8_t *aad, size_t aad_size);"""
     )
     dec = getattr(lib, function)
 
     def _dec(
-        key: bytes, ciphertext: bytes, iv: bytes, aad: bytes, mac: bytes
+        key: bytes, ciphertext: bytes, iv: bytes, aad: bytes, mac: bytes, mac_len: int
     ) -> PlaintextAndBool:
-        _key = ffi.new(f"uint8_t[{len(key)}]", key)
-        buf = ffi.new(f"uint8_t[{len(ciphertext)}]", ciphertext)
-        _nonce = ffi.new(f"uint8_t[{len(iv)}]", iv)
-        _mac = ffi.new(f"uint8_t[{len(mac)}]", mac)
+        c_key = ffi.new("uint8_t[]", key)
+        c_ct = ffi.new("uint8_t[]", ciphertext)
+        c_pt = ffi.new(f"uint8_t[{len(ciphertext)}]")
+        c_iv = ffi.new("uint8_t[]", iv)
+        c_mac = ffi.new("uint8_t[]", mac)
 
-        _aad: Any
+        c_aad: Any
         if aad:
-            _aad_len = len(aad)
-            _aad = ffi.new(f"uint8_t[{_aad_len}]", aad)
+            aad_len = len(aad)
+            c_aad = ffi.new(f"uint8_t[{aad_len}]", aad)
         else:
-            _aad_len = 0
-            _aad = ffi.NULL
+            aad_len = 0
+            c_aad = ffi.NULL
 
         rc = dec(
-            buf,
+            c_pt,
             len(ciphertext),
-            _key,
+            c_ct,
+            len(ciphertext),
+            c_mac,
+            mac_len,
+            c_key,
             len(key),
-            _nonce,
+            c_iv,
             len(iv),
-            _aad,
-            _aad_len,
-            _mac,
-            len(mac),
+            c_aad,
+            aad_len,
         )
-        if rc == 0:
-            return (bytes(buf), True)
+        if rc == 1:
+            return (bytes(c_pt), True)
         elif rc == -1:
             return (None, False)
         else:
-            raise ValueError(f"Invalid returned value {rc} (expected 0 or -1)")
+            raise ValueError(f"Decrypt failed with code {rc}")
 
     return test_decrypt(_dec, mode, key_length)  # type: ignore[arg-type]
 

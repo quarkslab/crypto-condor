@@ -18,7 +18,10 @@ ROOT_DIR = Path("tests/harness")
 @pytest.mark.parametrize(
     "primitive",
     [
-        "AES",
+        "AES_openssl_encrypt",
+        "AES_openssl_decrypt",
+        "AES_openssl_encrypt_aead",
+        "AES_openssl_decrypt_aead",
         "ECDH_point",
         "ECDH_x509",
         "HMAC_digest",
