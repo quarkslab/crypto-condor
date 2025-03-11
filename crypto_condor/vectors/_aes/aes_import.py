@@ -14,6 +14,8 @@ from crypto_condor.vectors._aes.aes_pb2 import AesVectors
 
 VECTORS_DIR = Path("crypto_condor/vectors/_aes")
 
+KEY_LENGTHS = {128, 192, 256}
+
 
 def generate_cavp_files():
     """Returns a dictionary of NIST CAVP test vectors."""
@@ -28,12 +30,7 @@ def generate_cavp_files():
     }
 
     files.update({("CTR", klen): [f"CTR{klen}.rsp"] for klen in klens})
-    files.update(
-        {
-            ("GCM", klen): [f"gcmDecrypt{klen}.rsp", f"gcmEncryptExtIV{klen}.rsp"]
-            for klen in klens
-        }
-    )
+    files.update({("GCM", klen): [f"gcmEncryptExtIV{klen}.rsp"] for klen in klens})
 
     return files
 
@@ -108,10 +105,54 @@ def parse_cavp(mode: str, keylen: int, files: list[str]):
                     case _:
                         raise ValueError(f"Unexpected {key = }")
 
-    out_enc = VECTORS_DIR / "pb2" / f"cavp-{mode}-{keylen}-enc.pb2"
+    out_enc = VECTORS_DIR / "pb2" / f"aes_cavp_{mode}_{keylen}_enc.pb2"
     out_enc.write_bytes(enc_vectors.SerializeToString())
-    out_dec = VECTORS_DIR / "pb2" / f"cavp-{mode}-{keylen}-dec.pb2"
-    out_dec.write_bytes(dec_vectors.SerializeToString())
+    if mode != "GCM":
+        out_dec = VECTORS_DIR / "pb2" / f"aes_cavp_{mode}_{keylen}_dec.pb2"
+        out_dec.write_bytes(dec_vectors.SerializeToString())
+
+
+def parse_cavp_gcm_decrypt(keylen: int, filename: str) -> None:
+    """Parses CAVP GCM decryption test vectors.
+
+    The format is slightly different, with invalid tests marked with FAIL instead of
+    having a plaintext.
+    """
+    vectors = AesVectors(
+        source="NIST CAVP",
+        source_desc="Decryption test vectors for AES-GCM",
+        source_url="https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/CAVP-TESTING-BLOCK-CIPHER-MODES#GCMVS",
+        compliance=True,
+        mode="GCM",
+        keylen=keylen,
+        decrypt=True,
+    )
+
+    file = VECTORS_DIR / "cavp" / filename
+
+    tid = 0
+    blocks = file.read_text().split("\n\n")
+    for block in blocks:
+        if not block.strip() or block.startswith(("#", "[")):
+            continue
+        # We can set the test type to valid by default, then change it if needed.
+        test = vectors.tests.add(type="valid")
+        for line in block.split("\n"):
+            if line.strip() == "FAIL":
+                test.type = "invalid"
+                continue
+            k, v = line.split(" = ")
+            match k:
+                case "Count":
+                    tid += 1
+                    test.id = tid
+                case "Key" | "IV" | "Tag" | "CT" | "PT" | "AAD":
+                    setattr(test, k.lower(), bytes.fromhex(v))
+                case _:
+                    raise ValueError(f"Invalid key {k}")
+
+    out = VECTORS_DIR / "pb2" / f"aes_cavp_gcm_{keylen}_dec.pb2"
+    out.write_bytes(vectors.SerializeToString())
 
 
 def parse_cavp_ccm(keylen: int, files: list[str]) -> None:
@@ -123,6 +164,7 @@ def parse_cavp_ccm(keylen: int, files: list[str]) -> None:
         compliance=True,
         mode="CCM",
         keylen=keylen,
+        encrypt=True,
     )
 
     tid = 0
@@ -265,6 +307,8 @@ def parse_cavp_ccm_dvpt(keylen: int, filename: str) -> None:
                     aad=aad,
                     tag=tag,
                 )
+            case _:
+                raise ValueError(f"Invalid key {k}")
 
     out = VECTORS_DIR / "pb2" / f"aes_cavp_ccm_{str(keylen)}_dvpt.pb2"
     out.write_bytes(vectors.SerializeToString())
@@ -338,9 +382,9 @@ def parse_wycheproof(filename: str):
                 tag=tag,
             )
 
-    out128 = pb2_dir / f"wycheproof-{mode}-128.pb2"
-    out192 = pb2_dir / f"wycheproof-{mode}-192.pb2"
-    out256 = pb2_dir / f"wycheproof-{mode}-256.pb2"
+    out128 = pb2_dir / f"aes_wycheproof_{mode}_128.pb2"
+    out192 = pb2_dir / f"aes_wycheproof_{mode}_192.pb2"
+    out256 = pb2_dir / f"aes_wycheproof_{mode}_256.pb2"
 
     out128.write_bytes(v128.SerializeToString())
     out192.write_bytes(v192.SerializeToString())
@@ -371,15 +415,19 @@ if __name__ == "__main__":
         mode, keylen = k
         parse_cavp(mode, keylen, files)
 
+    gcm_decrypt_files = [(keylen, f"gcmDecrypt{keylen}.rsp") for keylen in KEY_LENGTHS]
+    for klen, filename in gcm_decrypt_files:
+        parse_cavp_gcm_decrypt(klen, filename)
+
     ccm_prefixes = ["VADT", "VPT", "VNT", "VTT"]
     ccm_files = [
         (klen, [f"{prefix}{str(klen)}.rsp" for prefix in ccm_prefixes])
-        for klen in {128, 192, 256}
+        for klen in KEY_LENGTHS
     ]
     for klen, files in ccm_files:
         parse_cavp_ccm(klen, files)
 
-    ccm_dvpt_files = [(klen, f"DVPT{str(klen)}.txt") for klen in {128, 192, 256}]
+    ccm_dvpt_files = [(klen, f"DVPT{str(klen)}.txt") for klen in KEY_LENGTHS]
     for klen, filename in ccm_dvpt_files:
         parse_cavp_ccm_dvpt(klen, filename)
 

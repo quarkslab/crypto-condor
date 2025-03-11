@@ -1,117 +1,117 @@
 {
   "CBC": {
     "128": [
-      "cavp-CBC-128-enc.pb2",
-      "cavp-CBC-128-dec.pb2"
+      "aes_cavp_CBC_128_enc.pb2",
+      "aes_cavp_CBC_128_dec.pb2"
     ],
     "192": [
-      "cavp-CBC-192-enc.pb2",
-      "cavp-CBC-192-dec.pb2"
+      "aes_cavp_CBC_192_enc.pb2",
+      "aes_cavp_CBC_192_dec.pb2"
     ],
     "256": [
-      "cavp-CBC-256-enc.pb2",
-      "cavp-CBC-256-dec.pb2"
+      "aes_cavp_CBC_256_enc.pb2",
+      "aes_cavp_CBC_256_dec.pb2"
     ]
   },
   "CBC-PKCS7": {
     "128": [
-      "wycheproof-CBC-PKCS7-128.pb2"
+      "aes_wycheproof_CBC-PKCS7_128.pb2"
     ],
     "192": [
-      "wycheproof-CBC-PKCS7-192.pb2"
+      "aes_wycheproof_CBC-PKCS7_192.pb2"
     ],
     "256": [
-      "wycheproof-CBC-PKCS7-256.pb2"
+      "aes_wycheproof_CBC-PKCS7_256.pb2"
     ]
   },
   "CCM": {
     "128": [
       "aes_cavp_ccm_128.pb2",
-      "wycheproof-CCM-128.pb2",
-      "aes_cavp_ccm_128_dvpt.pb2"
+      "aes_cavp_ccm_128_dvpt.pb2",
+      "aes_wycheproof_CCM_128.pb2"
     ],
     "192": [
       "aes_cavp_ccm_192.pb2",
-      "wycheproof-CCM-192.pb2",
-      "aes_cavp_ccm_192_dvpt.pb2"
+      "aes_cavp_ccm_192_dvpt.pb2",
+      "aes_wycheproof_CCM_192.pb2"
     ],
     "256": [
       "aes_cavp_ccm_256.pb2",
       "aes_cavp_ccm_256_dvpt.pb2",
-      "wycheproof-CCM-256.pb2"
+      "aes_wycheproof_CCM_256.pb2"
     ]
   },
   "CFB128": {
     "128": [
-      "cavp-CFB128-128-enc.pb2",
-      "cavp-CFB128-128-dec.pb2"
+      "aes_cavp_CFB128_128_enc.pb2",
+      "aes_cavp_CFB128_128_dec.pb2"
     ],
     "192": [
-      "cavp-CFB128-192-enc.pb2",
-      "cavp-CFB128-192-dec.pb2"
+      "aes_cavp_CFB128_192_enc.pb2",
+      "aes_cavp_CFB128_192_dec.pb2"
     ],
     "256": [
-      "cavp-CFB128-256-enc.pb2",
-      "cavp-CFB128-256-dec.pb2"
+      "aes_cavp_CFB128_256_enc.pb2",
+      "aes_cavp_CFB128_256_dec.pb2"
     ]
   },
   "CFB8": {
     "128": [
-      "cavp-CFB8-128-enc.pb2",
-      "cavp-CFB8-128-dec.pb2"
+      "aes_cavp_CFB8_128_enc.pb2",
+      "aes_cavp_CFB8_128_dec.pb2"
     ],
     "192": [
-      "cavp-CFB8-192-enc.pb2",
-      "cavp-CFB8-192-dec.pb2"
+      "aes_cavp_CFB8_192_enc.pb2",
+      "aes_cavp_CFB8_192_dec.pb2"
     ],
     "256": [
-      "cavp-CFB8-256-enc.pb2",
-      "cavp-CFB8-256-dec.pb2"
+      "aes_cavp_CFB8_256_enc.pb2",
+      "aes_cavp_CFB8_256_dec.pb2"
     ]
   },
   "CTR": {
     "128": [
-      "cavp-CTR-128-enc.pb2",
-      "cavp-CTR-128-dec.pb2"
+      "aes_cavp_CTR_128_enc.pb2",
+      "aes_cavp_CTR_128_dec.pb2"
     ],
     "192": [
-      "cavp-CTR-192-enc.pb2",
-      "cavp-CTR-192-dec.pb2"
+      "aes_cavp_CTR_192_enc.pb2",
+      "aes_cavp_CTR_192_dec.pb2"
     ],
     "256": [
-      "cavp-CTR-256-enc.pb2",
-      "cavp-CTR-256-dec.pb2"
+      "aes_cavp_CTR_256_enc.pb2",
+      "aes_cavp_CTR_256_dec.pb2"
     ]
   },
   "ECB": {
     "128": [
-      "cavp-ECB-128-enc.pb2",
-      "cavp-ECB-128-dec.pb2"
+      "aes_cavp_ECB_128_enc.pb2",
+      "aes_cavp_ECB_128_dec.pb2"
     ],
     "192": [
-      "cavp-ECB-192-enc.pb2",
-      "cavp-ECB-192-dec.pb2"
+      "aes_cavp_ECB_192_enc.pb2",
+      "aes_cavp_ECB_192_dec.pb2"
     ],
     "256": [
-      "cavp-ECB-256-enc.pb2",
-      "cavp-ECB-256-dec.pb2"
+      "aes_cavp_ECB_256_enc.pb2",
+      "aes_cavp_ECB_256_dec.pb2"
     ]
   },
   "GCM": {
     "128": [
-      "cavp-GCM-128-enc.pb2",
-      "cavp-GCM-128-dec.pb2",
-      "wycheproof-GCM-128.pb2"
+      "aes_cavp_GCM_128_enc.pb2",
+      "aes_cavp_gcm_128_dec.pb2",
+      "aes_wycheproof_GCM_128.pb2"
     ],
     "192": [
-      "cavp-GCM-192-enc.pb2",
-      "cavp-GCM-192-dec.pb2",
-      "wycheproof-GCM-192.pb2"
+      "aes_cavp_GCM_192_enc.pb2",
+      "aes_cavp_gcm_192_dec.pb2",
+      "aes_wycheproof_GCM_192.pb2"
     ],
     "256": [
-      "cavp-GCM-256-enc.pb2",
-      "cavp-GCM-256-dec.pb2",
-      "wycheproof-GCM-256.pb2"
+      "aes_cavp_GCM_256_enc.pb2",
+      "aes_cavp_gcm_256_dec.pb2",
+      "aes_wycheproof_GCM_256.pb2"
     ]
   }
 }
