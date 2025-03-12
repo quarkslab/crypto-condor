@@ -20,9 +20,9 @@ import attrs
 from rich.progress import Progress
 
 from crypto_condor.primitives.common import (
-    DebugInfo,
     Results,
     ResultsDict,
+    TestInfo,
     TestType,
     get_appdata_dir,
 )
@@ -39,21 +39,18 @@ class TestU01Data:
     """Stores test result data.
 
     Args:
-        info: Common debug info, see :class:`crypto_condor.primitives.common.DebugInfo`.
         name: The name of the test.
         pvalue: The resulting p-value.
     """
 
-    info: DebugInfo
     name: str
     pvalue: float
 
     def __str__(self):
         """Returns a user-friendly representation."""
-        s = str(self.info)
-        s += f"Name = {self.name}\n"
-        s += f"p-value = {self.pvalue}\n"
-        return s
+        return f"""Name = {self.name}
+p-value: {self.pvalue}
+"""
 
 
 # Internal functions
@@ -203,11 +200,22 @@ def test_file(filename: str, *, bit_count: int = 0) -> ResultsDict:
     #        3. 0.000000  1.2e-7
     #        4. 0.987654  0.999
 
-    for tid, line in enumerate(lines[13:]):
-        if line.startswith(" ---"):
+    tid = 0
+    start = False
+
+    for line in lines:
+        if start and line.startswith(" ---"):
             break
 
-        info = DebugInfo(tid, TestType.VALID, ["TestU01"])
+        if not start:
+            if line.startswith("     (PASS"):
+                start = True
+            continue
+
+        # TODO: parse warnings.
+
+        tid += 1
+        info = TestInfo.new(tid, TestType.VALID, ["TestU01"])
 
         # test_id = int(line[0:3].lstrip())
         test_name = line[5:55].rstrip()
@@ -216,9 +224,6 @@ def test_file(filename: str, *, bit_count: int = 0) -> ResultsDict:
             # Currently omitting NOT IMPLEMENTED tests from the results.
             # results.add(tid, True, TestType.VALID, comment=test_name, flag="TestU01")
             continue
-
-        if line[56:60] == "PASS":
-            info.result = True
 
         pvalue = line[61:].rstrip()
 
@@ -241,8 +246,14 @@ def test_file(filename: str, *, bit_count: int = 0) -> ResultsDict:
                 # Case 4, we take the left part as it may be more accurate.
                 test_pvalue = float(lp)
 
-        data = TestU01Data(info, test_name, test_pvalue)
-        res.add(data)
+        data = TestU01Data(test_name, test_pvalue)
+
+        if "PASS" in line:
+            info.ok(data)
+        else:
+            info.fail(data=data)
+
+        res.add(info)
 
     rd.add(res)
     return rd
