@@ -22,6 +22,7 @@ from rich.progress import Progress
 from crypto_condor.primitives.common import (
     DebugInfo,
     Results,
+    ResultsDict,
     TestType,
     get_appdata_dir,
 )
@@ -113,44 +114,54 @@ def install_testu01(*, debug: bool = False):
             progress.update(task, completed=True)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             logger.error("Could not compile TestU01")
-            if logger.getEffectiveLevel() > logging.DEBUG:
-                logger.warning(
-                    (
-                        "To see the compilation output,"
-                        " increase the verbosity with crypto-condor-cli -vv ..."
-                    )
-                )
+            logger.debug("Exception caught while compiling TestU01", exc_info=True)
             raise
 
 
 # Test functions
 
 
-def test_file(filename: str, *, bit_count: int = 0) -> Results | None:
+def test_file(filename: str, *, bit_count: int = 0) -> ResultsDict:
     """Tests the output of a PRNG using TestU01.
+
+    Our NIST battery requires at least 500 bits.
 
     Args:
         filename: The name of the file to test.
 
     Keyword Args:
-        bit_count: The number of bits to read, must be less or equal to the size of the
-            file.
+        bit_count:
+            The number of bits to read. Must be less or equal to the size of the file,
+            and at least 500.
 
     Returns:
-        The results obtained from testing the file, None if the test could not be run
-        (e.g. compilation error).
+        A dictionart of results, containing a single :class:`Results`.
+
+    Raises:
+        ValueError:
+            If the bit count is strictly positive and less than 500, or the actual file
+            size if less than 500 bits.
     """
+    if 0 < bit_count < 500:
+        raise ValueError("The bit count cannot be less than 500")
+
+    file = Path(filename).absolute()
+
+    content = file.read_bytes()
+    if len(content) * 8 < 500:
+        raise ValueError(f"The file is too small ({len(content) * 8} < 500 bits)")
+
+    rd = ResultsDict()
+
     # Check that TestU01 is already installed.
     try:
         install_testu01()
     except subprocess.CalledProcessError:
-        logger.exception("Can't run TestU01, compilation failed")
-        return None
+        return rd
 
     t_dir = get_testu01_dir()
     testu01 = t_dir / "testu01.sh"
 
-    file = Path(filename).absolute()
     args = [str(testu01), str(file)]
 
     if bit_count > 0:
@@ -159,11 +170,8 @@ def test_file(filename: str, *, bit_count: int = 0) -> Results | None:
     try:
         output = subprocess.check_output(args, cwd=t_dir, text=True)
     except subprocess.CalledProcessError as error:
-        logger.error("Error running TestU01")
-        logger.debug(error)
-        logger.debug(error.stdout)
-        logger.debug(error.stderr)
-        return None
+        logger.error("Error running TestU01: %s", error.stdout)
+        return rd
 
     lines = output.split("\n")
 
@@ -172,13 +180,12 @@ def test_file(filename: str, *, bit_count: int = 0) -> Results | None:
     parts = lines[0].split(" = ")
     n_bits = int(parts[1].split(" ")[0])
 
-    results = Results(
+    res = Results(
         "TestU01",
         "test_file",
         "Tests the output of a PRNG with TestU01.",
         {"filename": filename, "bit_count": bit_count if bit_count else n_bits},
     )
-    results.add_notes({"TestU01": "TestU01 test"})
 
     # The format works as follows:
     #  - A 1 or 2 digits numerical ID, right-padded to three characters.
@@ -235,9 +242,10 @@ def test_file(filename: str, *, bit_count: int = 0) -> Results | None:
                 test_pvalue = float(lp)
 
         data = TestU01Data(info, test_name, test_pvalue)
-        results.add(data)
+        res.add(data)
 
-    return results
+    rd.add(res)
+    return rd
 
 
 # Block to install TestU01 by running the module as a script.

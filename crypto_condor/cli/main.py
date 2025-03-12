@@ -303,7 +303,9 @@ _testu01_help = """Test the output of a PRNG using TestU01.
 
 TestU01 is ``a software library, implemented in the ANSI C language, and offering a collection of utilities for the empirical statistical testing of uniform random number generators''.
 
-crypto-condor bundles this library with Quarkslab's modifications to run the NIST battery of tests.  This library is installed automagically during the first use of this command. Its location is OS-dependent, you can use the --where option to show where it is installed on your system.
+crypto-condor bundles this library with Quarkslab's modifications to run the NIST battery of tests. This library is installed automagically during the first use of this command. Its location is OS-dependent, you can use the --where option to show where it is installed on your system.
+
+The test battery requires at least 500 bits of data to run.
 """  # noqa: E501
 
 
@@ -367,7 +369,15 @@ def testu01(
     """
     from crypto_condor.primitives import TestU01
 
-    results = TestU01.test_file(str(file), bit_count=bit_count)
+    try:
+        results = TestU01.test_file(str(file), bit_count=bit_count)
+    except ValueError as error:
+        logger.error(
+            "Failed to test %s with TestU01: %s", str(file.absolute()), str(error)
+        )
+        logger.debug("Exception caught", exc_info=True)
+        raise typer.Exit(1) from error
+
     if results is None:  # pragma: no cover (requires error)
         logger.error("Could not test file")
         raise typer.Exit(1)

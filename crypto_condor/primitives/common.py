@@ -109,6 +109,7 @@ _DEFAULT_NOTES = {
     "UserInput": "User-provided·vectors.",
     "RandomTest": "Test values are randomly generated.",
     "MonteCarlo": "Test pseudo-random values by consecutively hashing a digest.",
+    "TestU01": "PRNG test with TestU01",
 }
 """Dictionary of commonly used flags and their notes."""
 
