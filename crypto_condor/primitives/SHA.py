@@ -688,6 +688,8 @@ def _test_lib_digest(
     lib,
     function: str,
     algorithm: Algorithm,
+    compliance: bool,
+    resilience: bool,
 ) -> ResultsDict:
     logger.info("Testing harness function %s", function)
 
@@ -709,10 +711,12 @@ def _test_lib_digest(
             raise ValueError(f"{function} failed with code {ret_val}")
         return bytes(c_buffer)
 
-    return test_digest(_sha, algorithm)
+    return test_digest(_sha, algorithm, compliance=compliance, resilience=resilience)
 
 
-def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
+def test_lib(
+    ffi: cffi.FFI, lib, functions: list[str], compliance: bool, resilience: bool
+) -> ResultsDict:
     """Tests functions from a shared library.
 
     Args:
@@ -722,6 +726,10 @@ def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
             The dlopen'd library.
         functions:
             A list of CC_SHA functions to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
     """
     logger.info("Found harness functions %s", ", ".join(functions))
 
@@ -735,7 +743,9 @@ def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
                 except ValueError:
                     logger.error("Invalid algorithm SHA_%s", "_".join(parts))
                     continue
-                results |= _test_lib_digest(ffi, lib, function, algo)
+                results |= _test_lib_digest(
+                    ffi, lib, function, algo, compliance, resilience
+                )
             case _:
                 logger.debug("Ignoring unknown CC_SHA function %s", function)
 

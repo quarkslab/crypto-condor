@@ -472,13 +472,22 @@ def _test_lib_digest(
     return test_digest(_shake, algorithm, orientation)
 
 
-def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
+def test_lib(
+    ffi: cffi.FFI, lib, functions: list[str], compliance: bool, resilience: bool
+) -> ResultsDict:
     """Tests functions from a shared library.
 
     Args:
-        ffi: The FFI instance.
-        lib: The dlopen'd library.
-        functions: A list of CC_SHAKE functions to test.
+        ffi:
+            The FFI instance.
+        lib:
+            The dlopen'd library.
+        functions:
+            A list of CC_SHAKE functions to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
     """
     logger.info("Found harness functions %s", ", ".join(functions))
 

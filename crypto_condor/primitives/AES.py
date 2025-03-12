@@ -1027,7 +1027,6 @@ def test_encrypt(
                     info.ok(data)
                 else:
                     info.fail(f"Exception raised: {str(error)}", data)
-                    print("fail", len(test.iv), str(error))
                 results.add(info)
                 continue
 
@@ -1670,7 +1669,13 @@ def run_python_wrapper(
 
 
 def _test_lib_enc(
-    ffi: cffi.FFI, lib, function: str, mode: Mode, key_length: KeyLength
+    ffi: cffi.FFI,
+    lib,
+    function: str,
+    mode: Mode,
+    key_length: KeyLength,
+    compliance: bool,
+    resilience: bool,
 ) -> ResultsDict:
     """Tests CC_AES_encrypt.
 
@@ -1705,11 +1710,23 @@ def _test_lib_enc(
         else:
             raise ValueError(f"Encrypt function failed with code {rc}")
 
-    return test_encrypt(_enc, mode, key_length)  # type: ignore
+    return test_encrypt(
+        _enc,  # type: ignore[arg-type]
+        mode,
+        key_length,
+        compliance=compliance,
+        resilience=resilience,
+    )
 
 
 def _test_lib_dec(
-    ffi: cffi.FFI, lib, function: str, mode: Mode, key_length: KeyLength
+    ffi: cffi.FFI,
+    lib,
+    function: str,
+    mode: Mode,
+    key_length: KeyLength,
+    compliance: bool,
+    resilience: bool,
 ) -> ResultsDict:
     """Tests CC_AES_decrypt.
 
@@ -1739,11 +1756,23 @@ def _test_lib_dec(
         else:
             raise ValueError(f"Decrypt failed with code {rc}")
 
-    return test_decrypt(_dec, mode, key_length)  # type: ignore
+    return test_decrypt(
+        _dec,  # type: ignore[arg-type]
+        mode,
+        key_length,
+        compliance=compliance,
+        resilience=resilience,
+    )
 
 
 def _test_lib_enc_aead(
-    ffi: cffi.FFI, lib, function: str, mode: Mode, key_length: KeyLength
+    ffi: cffi.FFI,
+    lib,
+    function: str,
+    mode: Mode,
+    key_length: KeyLength,
+    compliance: bool,
+    resilience: bool,
 ) -> ResultsDict:
     """Tests CC_AES_AEAD_encrypt.
 
@@ -1798,11 +1827,23 @@ def _test_lib_enc_aead(
         else:
             raise ValueError(f"Encrypt failed with code {rc}")
 
-    return test_encrypt(_enc, mode, key_length)  # type: ignore[arg-type]
+    return test_encrypt(
+        _enc,  # type: ignore[arg-type]
+        mode,
+        key_length,
+        compliance=compliance,
+        resilience=resilience,
+    )
 
 
 def _test_lib_dec_aead(
-    ffi: cffi.FFI, lib, function: str, mode: Mode, key_length: KeyLength
+    ffi: cffi.FFI,
+    lib,
+    function: str,
+    mode: Mode,
+    key_length: KeyLength,
+    compliance: bool,
+    resilience: bool,
 ) -> ResultsDict:
     """Tests CC_AES_AEAD_decrypt.
 
@@ -1859,16 +1900,31 @@ def _test_lib_dec_aead(
         else:
             raise ValueError(f"Decrypt failed with code {rc}")
 
-    return test_decrypt(_dec, mode, key_length)  # type: ignore[arg-type]
+    return test_decrypt(
+        _dec,  # type: ignore[arg-type]
+        mode,
+        key_length,
+        compliance=compliance,
+        resilience=resilience,
+    )
 
 
-def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
+def test_lib(
+    ffi: cffi.FFI, lib, functions: list[str], compliance: bool, resilience: bool
+) -> ResultsDict:
     """Tests functions from a shared library.
 
     Args:
-        ffi: The FFI instance.
-        lib: The dlopen'd library.
-        functions: A list of CC_AES functions to test.
+        ffi:
+            The FFI instance.
+        lib:
+            The dlopen'd library.
+        functions:
+            A list of CC_AES functions to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
     """
     logger.info("Found harness functions %s", ", ".join(functions))
 
@@ -1912,13 +1968,21 @@ def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
         # If the condition is false, it continues searching for a pattern.
         match (mode, op):
             case (mode, "encrypt") if mode in Mode.classic_modes():
-                results |= _test_lib_enc(ffi, lib, function, mode, klen)
+                results |= _test_lib_enc(
+                    ffi, lib, function, mode, klen, compliance, resilience
+                )
             case (mode, "encrypt"):
-                results |= _test_lib_enc_aead(ffi, lib, function, mode, klen)
+                results |= _test_lib_enc_aead(
+                    ffi, lib, function, mode, klen, compliance, resilience
+                )
             case (mode, "decrypt") if mode in Mode.classic_modes():
-                results |= _test_lib_dec(ffi, lib, function, mode, klen)
+                results |= _test_lib_dec(
+                    ffi, lib, function, mode, klen, compliance, resilience
+                )
             case (mode, "decrypt"):
-                results |= _test_lib_dec_aead(ffi, lib, function, mode, klen)
+                results |= _test_lib_dec_aead(
+                    ffi, lib, function, mode, klen, compliance, resilience
+                )
 
     return results
 

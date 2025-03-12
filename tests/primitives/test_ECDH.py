@@ -49,6 +49,7 @@ class EcdhInstance:
         ss = DH.key_agreement(static_priv=sk, static_pub=pk, kdf=lambda x: x)
         return ss
 
+
 @pytest.mark.parametrize("curve", [Curve.P256, Curve.P521])
 def test_exchange(curve: Curve):
     """Tests :func:`crypto_condor.primitives.ECDH.test_exchange`."""

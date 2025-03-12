@@ -23,7 +23,11 @@ logger = logging.getLogger(__name__)
 
 # --------------------------- Functions -----------------------------------------------
 def test_harness(
-    harness: Path, included: list[str] | None = None, excluded: list[str] | None = None
+    harness: Path,
+    included: list[str] | None = None,
+    excluded: list[str] | None = None,
+    compliance: bool = True,
+    resilience: bool = False,
 ) -> ResultsDict:
     """Tests a shared library harness.
 
@@ -32,9 +36,18 @@ def test_harness(
     ``test_lib`` function.
 
     Args:
-        harness: The path to the shared library harness.
-        included: List of included functions, allow-list style.
-        excluded: List of excluded functions, deny-list style.
+        harness:
+            The path to the shared library harness.
+
+    Keyword Args:
+        included:
+            List of included functions, allow-list style.
+        excluded:
+            List of excluded functions, deny-list style.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
 
     Returns:
         A dictionary of all results returned by the different primitives called.
@@ -93,12 +106,12 @@ def test_harness(
     results = ResultsDict()
 
     # Dynamically determine the module to import, call its test_lib function.
-    test: Callable[[cffi.FFI, _cffi_backend.Lib, list[str]], ResultsDict]
+    test: Callable[[cffi.FFI, _cffi_backend.Lib, list[str], bool, bool], ResultsDict]
     for primitive, functions in primitives.items():
         module = importlib.import_module(f"crypto_condor.primitives.{primitive}")
         test = module.test_lib
         try:
-            results |= test(ffi, lib, functions)
+            results |= test(ffi, lib, functions, compliance, resilience)
         except ValueError as error:
             logging.error("Error running CC_%s functions: %s", primitive, str(error))
 

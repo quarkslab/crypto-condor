@@ -50,6 +50,18 @@ def test_harness(
     excluded: Annotated[
         Optional[list[str]], typer.Option("--exclude", "-e", help="Exclude a function.")
     ] = None,
+    compliance: Annotated[
+        bool,
+        typer.Option(
+            "--compliance/--no-compliance", help="Use compliance test vectors."
+        ),
+    ] = True,
+    resilience: Annotated[
+        bool,
+        typer.Option(
+            "--resilience/--no-resilience", help="Use resilience test vectors."
+        ),
+    ] = False,
     no_save: Annotated[
         bool, typer.Option("--no-save", help="Do not prompt to save results.")
     ] = False,
@@ -65,6 +77,10 @@ def test_harness(
             List of functions to include, allow-list style.
         excluded:
             List of functions to exclude, deny-list style.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
         no_save:
             If True, no results are saved and the user is not prompted.
     """
@@ -72,7 +88,9 @@ def test_harness(
         console.print("Using both --include and --exclude is not allowed")
         raise typer.Exit(1)
 
-    results = harness.test_harness(Path(lib), included, excluded)
+    results = harness.test_harness(
+        Path(lib), included, excluded, compliance, resilience
+    )
     if console.process_results(results, no_save=no_save):
         raise typer.Exit(0)
     else:

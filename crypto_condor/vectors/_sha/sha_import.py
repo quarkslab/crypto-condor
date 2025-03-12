@@ -122,6 +122,7 @@ def check_fields() -> None:
             assert test.type, f"{file} test missing type field"
             assert test.md, f"{file} test missing md field"
 
+
 if __name__ == "__main__":
     pb2_dir = VECTORS_DIR / "pb2"
     pb2_dir.mkdir(exist_ok=True)

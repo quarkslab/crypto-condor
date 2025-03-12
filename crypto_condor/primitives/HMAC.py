@@ -1051,7 +1051,9 @@ def _test_harness_verify(ffi: cffi.FFI, lib, function: str, algo: Hash) -> Resul
     return test_verify(_verify, algo)
 
 
-def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
+def test_lib(
+    ffi: cffi.FFI, lib, functions: list[str], compliance: bool, resilience: bool
+) -> ResultsDict:
     """Tests functions from a shared library.
 
     Args:
@@ -1061,6 +1063,10 @@ def test_lib(ffi: cffi.FFI, lib, functions: list[str]) -> ResultsDict:
             The dlopen'd library.
         functions:
             A list of functions to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
     """
     logger.info("Found harness functions %s", ", ".join(functions))
 
