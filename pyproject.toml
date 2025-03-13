@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "crypto-condor"
-version = "2025.03.13"
+version = "2025.03.14-rc1"
 description = "Compliance testing for implementations of cryptographic primitives"
 license = "Apache-2.0"
 authors = [
@@ -14,6 +14,7 @@ repository = "https://github.com/quarkslab/crypto-condor"
 documentation = "https://quarkslab.github.io/crypto-condor/latest/index.html"
 keywords = ["cryptography", "compliance"]
 include = [
+  { path ="crypto_condor/vectors/**/*.pb2", format = ["sdist", "wheel"]},
   { path ="crypto_condor/vectors/_aes/dat/*.dat", format = ["sdist", "wheel"] },
   { path ="crypto_condor/vectors/_ECDH/dat/*.dat", format = ["sdist", "wheel"] },
   { path ="crypto_condor/vectors/_ecdsa/dat/*.dat", format = ["sdist", "wheel"] },
