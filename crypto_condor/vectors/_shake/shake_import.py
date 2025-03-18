@@ -124,7 +124,7 @@ def generate_json() -> None:
 
     out = VECTORS_DIR / "shake.json"
     with out.open("w") as fp:
-        json.dump(vectors, fp, indent=2)
+        json.dump(vectors, fp, indent=2, sort_keys=True)
 
 
 def main():
