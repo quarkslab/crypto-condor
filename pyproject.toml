@@ -15,7 +15,6 @@ documentation = "https://quarkslab.github.io/crypto-condor/latest/index.html"
 keywords = ["cryptography", "compliance"]
 include = [
   { path ="crypto_condor/vectors/**/*.pb2", format = ["sdist", "wheel"]},
-  { path ="crypto_condor/vectors/_aes/dat/*.dat", format = ["sdist", "wheel"] },
   { path ="crypto_condor/vectors/_ECDH/dat/*.dat", format = ["sdist", "wheel"] },
   { path ="crypto_condor/vectors/_ecdsa/dat/*.dat", format = ["sdist", "wheel"] },
   { path ="crypto_condor/vectors/_falcon/dat/*.dat", format = ["sdist", "wheel"] },
@@ -23,7 +22,6 @@ include = [
   { path ="crypto_condor/vectors/_mldsa/pb2/*.pb2", format = ["sdist", "wheel"] },
   { path ="crypto_condor/vectors/_mlkem/pb2/*.pb2", format = ["sdist", "wheel"] },
   { path ="crypto_condor/vectors/_rsa/dat/*.dat", format = ["sdist", "wheel"] },
-  { path ="crypto_condor/vectors/_sha/dat/*.dat", format = ["sdist", "wheel"] },
   { path ="crypto_condor/primitives/_testu01/examples/excel.dat", format = ["sdist", "wheel"] },
 ]
 exclude = [
