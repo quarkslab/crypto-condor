@@ -25,17 +25,9 @@ include = [
   { path ="crypto_condor/primitives/_testu01/examples/excel.dat", format = ["sdist", "wheel"] },
 ]
 exclude = [
-  "crypto_condor/vectors/_aes/rsp",
+  "crypto_condor/vectors/**/*.rsp",
   "crypto_condor/vectors/_ECDH/src",
-  "crypto_condor/vectors/_ecdsa/rsp",
-  "crypto_condor/vectors/_falcon/rsp",
-  "crypto_condor/vectors/_HMAC/rsp",
   "crypto_condor/vectors/_HMAC/wycheproof",
-  "crypto_condor/vectors/_mldsa/**/*.rsp",
-  "crypto_condor/vectors/_mlkem/**/*.rsp",
-  "crypto_condor/vectors/_rsa/rsp",
-  "crypto_condor/vectors/_sha/rsp",
-  "crypto_condor/vectors/_sphincs/rsp",
 ]
 
 [tool.poetry.dependencies]
