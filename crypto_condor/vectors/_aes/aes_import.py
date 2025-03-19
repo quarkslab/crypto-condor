@@ -400,6 +400,10 @@ def generate_json() -> None:
         _vec = AesVectors()
         _vec.ParseFromString(file.read_bytes())
         vectors[_vec.mode][_vec.keylen].append(file.name)
+        # Include CBC test vectors for CBC-PKCS7 -- ignoring the padding, CBC-PKCS7
+        # implementations should be able to use them.
+        if _vec.mode == "CBC":
+            vectors["CBC-PKCS7"][_vec.keylen].append(file.name)
 
     out = VECTORS_DIR / "aes.json"
     with out.open("w") as fp:

@@ -15,12 +15,18 @@
   },
   "CBC-PKCS7": {
     "128": [
+      "aes_cavp_CBC_128_enc.pb2",
+      "aes_cavp_CBC_128_dec.pb2",
       "aes_wycheproof_CBC-PKCS7_128.pb2"
     ],
     "192": [
+      "aes_cavp_CBC_192_enc.pb2",
+      "aes_cavp_CBC_192_dec.pb2",
       "aes_wycheproof_CBC-PKCS7_192.pb2"
     ],
     "256": [
+      "aes_cavp_CBC_256_enc.pb2",
+      "aes_cavp_CBC_256_dec.pb2",
       "aes_wycheproof_CBC-PKCS7_256.pb2"
     ]
   },
