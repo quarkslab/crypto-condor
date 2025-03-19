@@ -108,7 +108,7 @@ _DEFAULT_NOTES = {
     "NoFlag": "Test vector without flag.",
     "UserInput": "User-provided·vectors.",
     "RandomTest": "Test values are randomly generated.",
-    "MonteCarlo": "Test pseudo-random values by consecutively hashing a digest.",
+    "Compliance/MonteCarlo": "Test pseudo-random values by consecutively hashing a digest.",  # noqa: E501
     "TestU01": "PRNG test with TestU01",
 }
 """Dictionary of commonly used flags and their notes."""
