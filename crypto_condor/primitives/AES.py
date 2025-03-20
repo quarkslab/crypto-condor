@@ -1751,8 +1751,8 @@ def _test_lib_dec(
         rc = dec(
             c_pt, len(ciphertext), c_ct, len(ciphertext), c_key, len(key), c_iv, len(iv)
         )
-        if rc == 1:
-            return bytes(c_pt)
+        if rc >= 0:
+            return bytes(c_pt)[:rc]
         else:
             raise ValueError(f"Decrypt failed with code {rc}")
 

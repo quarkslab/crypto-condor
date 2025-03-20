@@ -20,8 +20,18 @@ ROOT_DIR = Path("tests/harness")
     [
         "AES_openssl_encrypt",
         "AES_openssl_decrypt",
-        "AES_openssl_encrypt_aead",
-        "AES_openssl_decrypt_aead",
+        pytest.param(
+            "AES_openssl_encrypt_aead",
+            marks=pytest.mark.xfail(
+                reason="OpenSSL limits the size of GCM nonce to 128 bytes"
+            ),
+        ),
+        pytest.param(
+            "AES_openssl_decrypt_aead",
+            marks=pytest.mark.xfail(
+                reason="OpenSSL limits the size of GCM nonce to 128 bytes"
+            ),
+        ),
         "ECDH_point",
         "ECDH_x509",
         "HMAC_digest",
@@ -38,7 +48,7 @@ def test_harness(primitive: str):
     subprocess.run(["make", "-C", ROOT_DIR, f"{primitive}.harness.so"], check=True)
 
     file = ROOT_DIR / f"{primitive}.harness.so"
-    rd = harness.test_harness(file)
+    rd = harness.test_harness(file, resilience=True)
 
     # Clean up
     file.unlink()

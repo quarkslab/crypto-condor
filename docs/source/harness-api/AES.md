@@ -176,9 +176,7 @@ Where `length` is one of `128`, `192`, or `256`.
     :param key_size: **[In]** The size of ``key`` in bytes. Passed even when specifying the key size.
     :param iv: **[In]** The IV to use. Not used for ECB mode.
     :param iv_size: **[In]** The size of ``iv`` in bytes. 0 if the IV is not used.
-    :returns: A status value.
-    :retval 1: Operation successful.
-    :retval 0: An error occurred.
+    :returns: The actual size of the (unpadded) plaintext, or -1 if an error occurred.
 ```
 
 ### Example
