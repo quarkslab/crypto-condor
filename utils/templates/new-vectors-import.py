@@ -12,12 +12,11 @@ from pathlib import Path
 from crypto_condor.vectors._LCPLACEHOLDER.LCPLACEHOLDER_pb2 import CapPLACEHOLDERVectors
 
 VECTORS_DIR = Path("crypto_condor/vectors/_LCPLACEHOLDER")
+PB2_DIR = VECTORS_DIR / "pb2"
 
 
 def generate_json() -> None:
     """Generates the JSON file indexing the vectors."""
-    pb2_dir = VECTORS_DIR / "pb2"
-
     # This is an example of a single level dictionary. Using defaultdict(list) means
     # that we can easily append values to a new key without having to check the
     # existence of the key or the list.
@@ -28,7 +27,7 @@ def generate_json() -> None:
     #
     # vectors: dict[str, dict[str, list[str]]] = dict()
 
-    for file in pb2_dir.iterdir():
+    for file in PB2_DIR.iterdir():
         cur = CapPLACEHOLDERVectors()
         try:
             cur.ParseFromString(file.read_bytes())
@@ -50,13 +49,12 @@ def generate_json() -> None:
 
     out = Path("crypto_condor/vectors/_LCPLACEHOLDER/LCPLACEHOLDER.json")
     with out.open("w") as fp:
-        json.dump(vectors, fp, indent=2)
+        json.dump(vectors, fp, indent=2, sort_keys=True)
 
 
 if __name__ == "__main__":
     # Ensure that the output directory exists.
-    pb2_dir = VECTORS_DIR / "pb2"
-    pb2_dir.mkdir(0o755, parents=False, exist_ok=True)
+    PB2_DIR.mkdir(0o755, parents=False, exist_ok=True)
 
     # Define the placeholder that Make uses to compile only when necessary.
     imported_marker = VECTORS_DIR / "LCPLACEHOLDER.imported"

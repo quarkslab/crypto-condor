@@ -24,6 +24,8 @@ def _create_primitive(primitive: str):
 
 
 def _create_vectors(primitive: str):
+    primitive = primitive.lower()
+
     print("[...] Create vectors directory", end="\r")
     Path(ROOT / "vectors" / f"_{primitive}").mkdir(0o755, parents=False, exist_ok=True)
     print("[OK ] Create vectors directory")
@@ -35,7 +37,7 @@ def _create_vectors(primitive: str):
         .replace("CapPLACEHOLDER", primitive.capitalize())
         .replace("PLACEHOLDER", primitive)
     )
-    Path(ROOT / f"vectors/{primitive}.proto").write_text(template)
+    Path(ROOT / f"vectors/_{primitive}/{primitive}.proto").write_text(template)
     print("[OK ] Create .proto file")
 
     print("[...] Create vectors import file", end="\r")
@@ -46,7 +48,17 @@ def _create_vectors(primitive: str):
         .replace("LCPLACEHOLDER", primitive.lower())
         .replace("PLACEHOLDER", primitive)
     )
+    Path(ROOT / f"vectors/_{primitive}/{primitive}_import.py").write_text(template)
     print("[OK ] Create vectors import file")
+
+    print("[...] Create vectors file", end="\r")
+    template = (
+        Path("utils/templates/new-vectors.py")
+        .read_text()
+        .replace("PLACEHOLDER", primitive)
+    )
+    Path(ROOT / f"vectors/{primitive}.py").write_text(template)
+    print("[OK ] Create vectors file")
 
 
 def _create_wrappers(primitive: str):

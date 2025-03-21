@@ -1,14 +1,7 @@
-"""Test vectors for PLACEHOLDER."""
+"""Enums for PLACEHOLDER."""
 
-import enum
-import logging
-from importlib import resources
+import strenum
 
-import attrs
-
-# --------------------------- Module --------------------------------------------------
-logger = logging.getLogger(__name__)
-
-# --------------------------- Enums ---------------------------------------------------
-
-# --------------------------- Vectors -------------------------------------------------
+# FIXME: a parameter that categorizes the test vectors.
+class Paramset(strenum.StrEnum):
+    """PLACEHOLDER parameter set."""
