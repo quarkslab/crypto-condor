@@ -39,4 +39,5 @@ livehtml:
 		--port "$(PORT)" \
 		--watch ../crypto_condor \
 		--watch ../tests \
-		--ignore *.dat
+		--ignore *.dat \
+		--ignore *.pb2
