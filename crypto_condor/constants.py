@@ -148,7 +148,7 @@ SUPPORTED_MODES: dict[Primitive, Modes] = {
         "method": True,
         "output": False,
         "wrapper": True,
-        "harness": False,
+        "harness": True,
     },
     Primitive.ECDH: {
         "audit": False,
