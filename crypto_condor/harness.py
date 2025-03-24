@@ -17,11 +17,65 @@ import lief
 
 from crypto_condor.primitives.common import ResultsDict
 
-# --------------------------- Module --------------------------------------------------
 logger = logging.getLogger(__name__)
 
 
 # --------------------------- Functions -----------------------------------------------
+
+
+def list_functions(
+    harness: Path, included: list[str], excluded: list[str]
+) -> dict[str, list[str]]:
+    """Lists functions in a harness.
+
+    Args:
+        harness:
+            A path to the harness to explore.
+        included:
+            A list of functions to test ('included'). Can be empty, in which case all
+            functions that start with ``CC_`` are included.
+        excluded:
+            A list of functions to exclude. Can be empty.
+
+    Returns:
+        A dictionary, where values are list of function names. Three keys are fixed:
+        ``included``, for all included functions regardless of primitive, ``excluded``
+        for all excluded functions, and ``other`` for any function that does not start
+        with ``CC_``. Additionally, each primitive that has at least one function
+        included has its own entry.
+
+    Notes:
+        The duplication of function names in ``included`` and the per-primitive lists is
+        intentional. The idea is to avoid another for-loop in :func:`test_harness` to
+        group functions by primitive.
+    """
+    lief_lib = lief.parse(harness.read_bytes())
+    if lief_lib is None:
+        raise ValueError("Could not parse the harness with LIEF")
+    functions: dict[str, list[str]] = defaultdict(list)
+
+    for name in set(
+        [
+            func.name
+            for func in lief_lib.exported_functions
+            if isinstance(func.name, str)
+        ]
+    ):
+        if name.startswith("CC_"):
+            if name in excluded or (included and name not in included):
+                logger.debug("Excluded %s", name)
+                functions["excluded"].append(name)
+            else:
+                logger.debug("Found included function %s", name)
+                primitive = name.split("_")[1]
+                functions[primitive].append(name)
+                functions["included"].append(name)
+        else:
+            functions["other"].append(name)
+
+    return functions
+
+
 def test_harness(
     harness: Path,
     included: list[str] | None = None,
@@ -77,42 +131,42 @@ def test_harness(
     if excluded is None:
         excluded = []
 
-    lief_lib = lief.parse(harness.read_bytes())
-    if lief_lib is None:
-        raise ValueError("Could not parse the harness with LIEF")
+    results = ResultsDict()
 
-    primitives: dict[str, list[str]] = defaultdict(list)
+    functions = list_functions(harness, included, excluded)
 
-    for funcname in set([func.name for func in lief_lib.exported_functions]):
-        if isinstance(funcname, bytes):
-            logger.debug("Function name is in bytes, skipped")
-            continue
-        match funcname.split("_"):
-            case ["CC", primitive, *_]:
-                # TODO: test if primitive is supported and supports this mode.
-                if funcname in excluded or (included and funcname not in included):
-                    logger.info("Excluded %s", funcname)
-                    continue
-                primitives[primitive].append(funcname)
-                logger.debug("Found CC function %s", funcname)
-            case _:
-                logger.debug("Omitted function %s", funcname)
-                continue
+    # Check that at least one CC functions was found, even if excluded.
+    if len(functions["included"]) == 0 and len(functions["excluded"]) == 0:
+        logger.error("No CC functions found in this harness")
+        return results
+
+    # Check if 'included' functions were not found.
+    diff = set(included).difference(set(functions["included"]))
+    if len(diff) > 0:
+        logger.warning(
+            "The following 'included' functions were not found in this harness: %s",
+            ", ".join(diff),
+        )
+
+    # Lastly check if there are actually 'included' functions.
+    if len(functions["included"]) == 0:
+        logger.error("No 'included' functions found in this harness")
+        return results
 
     logger.debug("dlopen %s", str(harness))
     ffi = cffi.FFI()
     lib = ffi.dlopen(str(harness.absolute()))
 
-    results = ResultsDict()
-
     # Dynamically determine the module to import, call its test_lib function.
     test: Callable[[cffi.FFI, _cffi_backend.Lib, list[str], bool, bool], ResultsDict]
-    for primitive, functions in primitives.items():
-        module = importlib.import_module(f"crypto_condor.primitives.{primitive}")
+    for prim_name, prim_funcs in functions.items():
+        if prim_name in {"included", "excluded", "other"}:
+            continue
+        module = importlib.import_module(f"crypto_condor.primitives.{prim_name}")
         test = module.test_lib
         try:
-            results |= test(ffi, lib, functions, compliance, resilience)
+            results |= test(ffi, lib, prim_funcs, compliance, resilience)
         except ValueError as error:
-            logging.error("Error running CC_%s functions: %s", primitive, str(error))
+            logging.error("Error running CC_%s functions: %s", prim_name, str(error))
 
     return results
