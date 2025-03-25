@@ -10,7 +10,7 @@ PB2_FILES := $(PROTO_FILES:%.proto=%_pb2.py)
 # PROTO_FILES := $(PROTO_NAMES:%.proto=$(VECTORS_DIR)/_%/%.proto)
 # PB2_FILES := $(PROTO_NAMES:%.proto=$(VECTORS_DIR)/_%/%_pb2.py)
 
-DATE := $(shell date '+%Y.%m.%d')
+DATE ?= $(shell date '+%Y.%m.%d')
 
 default: help
 
