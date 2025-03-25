@@ -86,6 +86,9 @@ ignore = [
   "D107", # missing docstring in __init__, we add docstrings to the class
 ]
 
+[tool.ruff.format]
+docstring-code-format = true
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 

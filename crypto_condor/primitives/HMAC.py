@@ -425,7 +425,7 @@ def test_verify(
 
         >>> def verify_sha256(key: bytes, msg: bytes, mac: bytes, mac_len: int) -> bool:
         ...     ref_mac = hmac.digest(key, msg, "sha256")
-        ...     return hmac.compare_digest(ref_mac[: mac_len], mac)
+        ...     return hmac.compare_digest(ref_mac[:mac_len], mac)
 
         Then we test it.
 

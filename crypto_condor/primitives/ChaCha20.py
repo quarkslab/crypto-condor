@@ -581,22 +581,14 @@ def test(
         the one that corresponds to ChaCha20.
 
         >>> def my_enc(
-        ...     key: bytes,
-        ...     plaintext: bytes,
-        ...     nonce: bytes,
-        ...     *,
-        ...     init_counter: int = 0
+        ...     key: bytes, plaintext: bytes, nonce: bytes, *, init_counter: int = 0
         ... ) -> bytes:
         ...     cipher = pyChaCha20.new(key=key, nonce=nonce)
         ...     if init_counter > 0:
         ...         cipher.seek(64 * init_counter)
         ...     return cipher.encrypt(plaintext)
         >>> def my_dec(
-        ...     key: bytes,
-        ...     ciphertext: bytes,
-        ...     nonce: bytes,
-        ...     *,
-        ...     init_counter: int = 0
+        ...     key: bytes, ciphertext: bytes, nonce: bytes, *, init_counter: int = 0
         ... ) -> bytes:
         ...     cipher = pyChaCha20.new(key=key, nonce=nonce)
         ...     if init_counter > 0:

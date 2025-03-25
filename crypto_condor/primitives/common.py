@@ -159,6 +159,7 @@ class DebugInfo:
         ...     key: bytes
         ...     message: bytes
         ...     signature: bytes
+        ...
         ...     def __str__(self):
         ...         s = str(self.info)
         ...         s += f"key = {self.key.hex()}\n"

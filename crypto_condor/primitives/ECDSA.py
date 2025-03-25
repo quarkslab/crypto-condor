@@ -422,7 +422,9 @@ def verify_file(
         without crashing.
 
         >>> try:
-        ...     result = ECDSA.verify_file(filename, ECDSA.PubKeyEncoding.DER, ECDSA.Hash("SHA-256"))
+        ...     result = ECDSA.verify_file(
+        ...         filename, ECDSA.PubKeyEncoding.DER, ECDSA.Hash("SHA-256")
+        ...     )
         ... except IOError as error:
         ...     print(error)
         Testing ...
@@ -1009,7 +1011,9 @@ def test_sign_then_verify(
 
         Then test both functions.
 
-        >>> results = ECDSA.test_sign_then_verify(my_sign, my_verify, curve, key_encoding, pubkey_encoding)
+        >>> results = ECDSA.test_sign_then_verify(
+        ...     my_sign, my_verify, curve, key_encoding, pubkey_encoding
+        ... )
         Signing and verifying ...
         >>> assert results.check()
     """  # noqa: E501
@@ -1140,7 +1144,7 @@ def test_key_pair_gen(keygen: KeyGen, curve: Curve) -> ResultsDict:
         :protocol:`KeyGen`.
 
         >>> from Crypto.PublicKey import ECC
-        >>> def my_key_gen() -> tuple[int, int|None, int|None]:
+        >>> def my_key_gen() -> tuple[int, int | None, int | None]:
         ...     key = ECC.generate(curve=str(curve))
         ...     return (int(key.d), key.pointQ.x, key.pointQ.y)
 
