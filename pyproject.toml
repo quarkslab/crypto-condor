@@ -75,6 +75,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff]
 # Exclude protobuf-generated classes.
 extend-exclude = ["*_pb2.py", "*.pyi", "utils/templates/*", "*.ipynb"]
+target-version = "py310"
 
 [tool.ruff.lint]
 # Enable flake8-bugbear rules.
