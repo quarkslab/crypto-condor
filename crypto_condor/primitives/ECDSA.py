@@ -322,8 +322,7 @@ def _verify(
         key: ec.EllipticCurvePublicKey = serialization.load_der_public_key(pubkey_der)  # type: ignore
     except ValueError as error:
         logger.debug("Error loading public DER key")
-        e = PubKeyImportError("Couldn't load the public DER key")
-        e.add_note(str(error))
+        e = PubKeyImportError(f"Couldn't load the public DER key: {str(error)}")
         raise e from error
 
     try:

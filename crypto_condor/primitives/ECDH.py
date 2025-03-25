@@ -413,10 +413,10 @@ def test_exchange_nist(ecdh: ECDH, curve: Curve) -> ResultsDict:
             vectors.tests, rf"\[{str(curve)}] Test exchange with NIST vectors"
         ):
             info = TestInfo.new_from_test(test, vectors.compliance)
-            d = int.from_bytes(test.d)
+            d = int.from_bytes(test.d, "big")
             coords = test.peer_point[1:]
-            x = int.from_bytes(coords[: len(coords) // 2])
-            y = int.from_bytes(coords[len(coords) // 2 :])
+            x = int.from_bytes(coords[: len(coords) // 2], "big")
+            y = int.from_bytes(coords[len(coords) // 2 :], "big")
             data = PointData(test.d, test.peer_point, test.ss)
             try:
                 ret_ss = ecdh.exchange_nist(d, x, y, test.peer_point)
@@ -578,7 +578,7 @@ def test_exchange_wycheproof(ecdh: ECDH, curve: Curve) -> ResultsDict:
             vectors.tests, rf"\[{str(curve)}] Test exchange with Wycheproof vectors"
         ):
             info = TestInfo.new_from_test(test, vectors.compliance)
-            secret = int.from_bytes(test.d)
+            secret = int.from_bytes(test.d, "big")
             data = X509Data(test.d, test.peer_x509, test.ss)
             try:
                 ret_ss = ecdh.exchange_wycheproof(secret, test.peer_x509)
