@@ -132,12 +132,16 @@ def test_file(filename: str, *, bit_count: int = 0) -> ResultsDict:
             and at least 500.
 
     Returns:
-        A dictionart of results, containing a single :class:`Results`.
+        A dictionary of results, containing a single :class:`Results`.
 
     Raises:
         ValueError:
             If the bit count is strictly positive and less than 500, or the actual file
             size if less than 500 bits.
+
+    .. versionchanged:: 2025.03.12
+        ``test_file`` now returns `ResultsDict` containing a single `Results` for a
+        TestU01 run.
     """
     if 0 < bit_count < 500:
         raise ValueError("The bit count cannot be less than 500")
