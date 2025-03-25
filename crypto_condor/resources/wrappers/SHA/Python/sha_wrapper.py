@@ -19,6 +19,7 @@ def CC_SHA_256_digest(data: bytes) -> bytes:
     """
     raise NotImplementedError
 
+
 def CC_SHA_3_384_digest(data: bytes) -> bytes:
     """Wrapper function for a SHA3-384 implementation.
 
