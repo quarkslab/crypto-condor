@@ -35,6 +35,7 @@ Supported primitives
     ChaCha20
     ECDH <ECDH>
     HMAC <HMAC>
+    HQC <HQC>
     MLDSA
     MLKEM
     SHA

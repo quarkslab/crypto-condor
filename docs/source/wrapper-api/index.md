@@ -12,6 +12,7 @@ protocol.
 AES <AES>
 ECDH <ECDH>
 HMAC <HMAC>
+HQC <HQC>
 SHA <SHA>
 SHAKE <SHAKE>
 :::
