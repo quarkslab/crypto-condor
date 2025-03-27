@@ -713,3 +713,47 @@ def mldsa(
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
+
+
+_hqc_help = "Run an HQC wrapper"
+
+
+@app.command(name="hqc", no_args_is_help=True, help=_hqc_help)
+def hqc(
+    wrapper: Annotated[
+        str, typer.Argument(metavar="File", help="The wrapper to test.")
+    ],
+    compliance: Annotated[bool, _compliance] = True,
+    resilience: Annotated[bool, _resilience] = False,
+    filename: Annotated[str, _filename] = "",
+    no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
+) -> None:
+    """Tests an HQC wrapper.
+
+    Args:
+        wrapper:
+            The wrapper to test.
+
+    Keyword Args:
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+        filename:
+            Name of the file to save results.
+        no_save:
+            Do not save results or prompt the user.
+        debug:
+            When saving the results to a file, whether to add the debug data.
+    """
+    from crypto_condor.primitives import HQC
+
+    path = Path(wrapper)
+    if not path.is_file():
+        raise FileNotFoundError(f"HQC wrapper not found: {filename}")
+    rd = HQC.test_wrapper(path, compliance, resilience)
+    if console.process_results(rd, filename, no_save, debug):
+        raise typer.Exit(0)
+    else:
+        raise typer.Exit(1)

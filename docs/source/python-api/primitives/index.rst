@@ -9,6 +9,7 @@ Primitives
    ECDH
    ECDSA
    HMAC
+   HQC
    MLDSA
    MLKEM
    RSAES

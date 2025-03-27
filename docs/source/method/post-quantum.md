@@ -5,35 +5,60 @@ as an effort to standardize algorithms resistant to attacks that make use of
 quantum-computers.
 
 Out of 69 candidates that were considered for the first round of the
-competition, 4 algorithms were selected at the end of the third round for
-standardization.  There are 3 digital signature schemes, CRYSTALS-Dilithium,
+competition, 4 algorithms were selected at [the end of the third
+round](https://www.nist.gov/news-events/news/2022/07/nist-announces-first-four-quantum-resistant-cryptographic-algorithms)
+for standardization.  There are 3 digital signature schemes, CRYSTALS-Dilithium,
 Falcon, and SPHINCS+, and one {abbr}`KEM (Key Encapsulation Mechanism)`[^kem],
 CRYSTALS-Kyber. NIST plans to recommend Kyber and Dilithium, while standardizing
 Falcon for cases where Dilithium's signatures may be too large, and SPHINCS+ to
 avoid relying only on lattice-based signature schemes.
-This guide has entries for each:
-
-:::{toctree}
-:titlesonly:
-
-Falcon
-SPHINCS+
-MLDSA
-MLKEM
-:::
 
 [^kem]: <https://en.wikipedia.org/wiki/Key_encapsulation_mechanism>
 
-Besides these algorithms, 4 other KEM candidates are going through a [fourth
+Besides these algorithms, 4 other KEM candidates went through a [fourth
 round](https://csrc.nist.gov/projects/post-quantum-cryptography/round-4-submissions)
 of analysis in order to standardize a KEM alternative to Kyber. These are BIKE,
-Classic McEliece, HQC, and SIKE, though last year an attack on SIKE has been
-published and the [team acknowledges SIKE should not be
+Classic McEliece, HQC, and SIKE, though in 2022 an attack on SIKE was published
+and the [team acknowledges SIKE should not be
 used](https://csrc.nist.gov/csrc/media/Projects/post-quantum-cryptography/documents/round-4/submissions/sike-team-note-insecure.pdf).
 
 And a new call for proposals for signature schemes with "short signatures and
 fast verification" is ongoing. For a list of all signature scheme candidates,
 see [Post-Quantum signatures zoo](https://pqshield.github.io/nist-sigs-zoo/).
+
+As of March 2025, there are [three finalized
+standards](https://www.nist.gov/news-events/news/2024/08/nist-releases-first-3-finalized-post-quantum-encryption-standards):
+ML-DSA (based on CRYSTALS-Dilithium), ML-KEM (based on CRYSTALS-Kyber), and
+SLH-DSA (based on SPHINCS+). [NIST IR
+8413](https://csrc.nist.gov/pubs/ir/8413/upd1/final) describes the selection
+process and summarizes the algorithms considered during the third round,
+including those selected for standardization or for the fourth round of
+analysis. Falcon will be standardized as FN-DSA.
+
+On March 2025, NIST [announced the selection of
+HQC](https://csrc.nist.gov/News/2025/hqc-announced-as-a-4th-round-selection) for
+standardization as the result of the [fourth
+round](https://csrc.nist.gov/projects/post-quantum-cryptography/round-4-submissions).
+[NIST IR 8545](https://csrc.nist.gov/pubs/ir/8545/final) "details the evaluation
+criteria, algorithm designs, and reasoning behind the selection".
+
+This guide has entries on the three signature schemes:
+
+```{toctree}
+:titlesonly:
+
+Falcon
+MLDSA
+SPHINCS+
+```
+
+As well as for the two KEMs:
+
+```{toctree}
+:titlesonly:
+HQC
+MLKEM
+```
 
 ## A quick comparison of signature schemes
 

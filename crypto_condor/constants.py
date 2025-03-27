@@ -24,6 +24,7 @@ class Primitive(strenum.StrEnum):
     ECDSA = "ECDSA"
     FALCON = "Falcon"
     HMAC = "HMAC"
+    HQC = "HQC"
     MLDSA = "MLDSA"
     MLKEM = "MLKEM"
     RSASSA = "RSASSA"
@@ -43,6 +44,7 @@ class Primitive(strenum.StrEnum):
             ECDH,
             ECDSA,
             HMAC,
+            HQC,
             MLDSA,
             MLKEM,
             RSAES,
@@ -63,6 +65,8 @@ class Primitive(strenum.StrEnum):
                 return ECDSA.Wrapper
             case Primitive.HMAC:
                 return HMAC.Wrapper
+            case Primitive.HQC:
+                return HQC.Wrapper
             case Primitive.MLDSA:
                 return MLDSA.Wrapper
             case Primitive.MLKEM:
@@ -168,6 +172,13 @@ SUPPORTED_MODES: dict[Primitive, Modes] = {
         "audit": False,
         "method": True,
         "output": True,
+        "wrapper": True,
+        "harness": True,
+    },
+    Primitive.HQC: {
+        "audit": False,
+        "method": False,
+        "output": False,
         "wrapper": True,
         "harness": True,
     },
