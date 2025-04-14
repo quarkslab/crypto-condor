@@ -241,6 +241,7 @@ class TestInfo:
         type: TestType,
         flags: list[str] | None = None,
         comment: str | None = None,
+        data: Any | None = None,
     ):
         """Creates a new instance of TestInfo.
 
@@ -268,18 +269,22 @@ class TestInfo:
             >>> info = TestInfo.new(test["id"], test["type"], comment="Edge case")
         """
         if flags is None:
-            return cls(id, type, list(), None, comment, None, None)
+            return cls(id, type, list(), None, comment, None, data)
         else:
-            return cls(id, type, flags, None, comment, None, None)
+            return cls(id, type, flags, None, comment, None, data)
 
     @classmethod
-    def new_from_test(cls, test: Any, compliance: bool):
+    def new_from_test(cls, test: Any, compliance: bool, data: Any = None):
         """Creates a new instance of TestInfo from a test vector.
 
         Args:
-            test: The test vector. It must contain the fields defined in
+            test:
+                The test vector. It must contain the fields defined in
                 utils/templates/new-vectors.proto.
-            compliance: Whether the test vector is for compliance or not.
+            compliance:
+                Whether the test vector is for compliance or not.
+            data:
+                An optional debug data class.
 
         Returns:
             A new instance of TestInfo with the ``result``, ``err_msg``, and ``data``
@@ -292,7 +297,7 @@ class TestInfo:
         else:
             prefix = "Compliance" if compliance else "Resilience"
             flags = [f"{prefix}/{flag}" for flag in test.flags]
-        return cls(test.id, TestType(test.type), flags, None, test.comment, None, None)
+        return cls(test.id, TestType(test.type), flags, None, test.comment, None, data)
 
     def ok(self, data: Any | None = None) -> None:
         """Marks a test as passed.
@@ -301,7 +306,8 @@ class TestInfo:
             data: Optional test debug data to add.
         """
         self.result = True
-        self.data = data
+        if data is not None:
+            self.data = data
 
     def fail(self, err_msg: str | None = None, data: Any | None = None) -> None:
         """Marks a test as failed.
@@ -312,7 +318,8 @@ class TestInfo:
         """
         self.result = False
         self.err_msg = err_msg
-        self.data = data
+        if data is not None:
+            self.data = data
 
 
 @attrs.define
