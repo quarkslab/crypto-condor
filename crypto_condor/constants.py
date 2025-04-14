@@ -177,7 +177,7 @@ SUPPORTED_MODES: dict[Primitive, Modes] = {
     },
     Primitive.HQC: {
         "audit": False,
-        "method": False,
+        "method": True,
         "output": False,
         "wrapper": True,
         "harness": True,
