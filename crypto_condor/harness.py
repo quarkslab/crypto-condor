@@ -125,6 +125,10 @@ def test_harness(
     """
     if not harness.is_file():
         raise FileNotFoundError(f"No shared library named {str(harness)} found")
+    if harness.suffix not in {".so", ".dylib"}:
+        raise ValueError(
+            "File is not a shared library, please supply a .so or .dylib file"
+        )
 
     if included is None:
         included = []

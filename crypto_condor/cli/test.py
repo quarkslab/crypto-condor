@@ -1,5 +1,6 @@
 """Module for test commands."""
 
+import logging
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -11,6 +12,7 @@ from crypto_condor import harness
 from crypto_condor.cli import run, verify
 from crypto_condor.primitives.common import Console
 
+logger = logging.getLogger(__name__)
 console = Console()
 
 _test_help = """Test an implementation of a cryptographic primitive.
@@ -149,9 +151,15 @@ def test_harness(
         console.print("Using both --include and --exclude is not allowed")
         raise typer.Exit(1)
 
-    results = harness.test_harness(
-        Path(lib), included, excluded, compliance, resilience
-    )
+    try:
+        results = harness.test_harness(
+            Path(lib), included, excluded, compliance, resilience
+        )
+    except (ValueError, FileNotFoundError) as error:
+        logger.error(str(error))
+        logger.debug("Exception caught while testing harness", exc_info=True)
+        raise typer.Exit(1) from error
+
     if console.process_results(results, no_save=no_save):
         raise typer.Exit(0)
     else:
