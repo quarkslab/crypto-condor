@@ -23,11 +23,11 @@ crypto-condor-cli list
 
 ## Method guides
 
-:::{note}
+```{note}
 The method guides are Markdown files which are used to generate the
 documentation pages. As such, it is recommended to read them directly from the
 documentation in order to enjoy the formatting.
-:::
+```
 
 The `method` command copies the primitive's *method guide*:
 
@@ -91,7 +91,21 @@ crypto-condor-cli get-wrapper SHA --language Python --example 1
 crypto-condor-cli test wrapper SHA sha_wrapper.py SHA-256
 ```
 
-:::{hint}
+```{hint}
 A list of available examples will be added. For now, consider that all wrappers
 have at least one example (`--example 1`).
-:::
+```
+
+## Test with a harness
+
+The `test harness` command is used to test a shared library that hooks the
+implementation. The shared library exposes functions with specific names and
+signatures so that {{ cc }} can use them to test the implementation. Once the
+library is compiled, pass it to {{ cc }}:
+
+```bash
+crypto-condor-cli test harness mylib.so
+```
+```{hint}
+For more information on this mode, see the {doc}`harness API </harness-api/index>`.
+```
