@@ -142,6 +142,7 @@ def _get_aes_lib() -> tuple[cffi.FFI | None, _cffi_backend.Lib | None]:
                     break
             # Don't try to be smart, just copy everything.
             if changes:
+                logger.warning("Found an old version of the AES library, will update")
                 myzip.extractall(lib_dir)
                 logger.info("Updated AES source files")
 
@@ -158,12 +159,11 @@ def _get_aes_lib() -> tuple[cffi.FFI | None, _cffi_backend.Lib | None]:
                 timeout=10.0,
                 capture_output=True,
             )
-        except subprocess.CalledProcessError as error:
-            logger.error("Failed to compile AES shared library")
-            logger.debug("Error: %s", str(error))
+        except subprocess.CalledProcessError:
+            logger.exception("Failed to compile AES shared library")
             _AES_LIB_COMPILATION_FAILED = True
             return None, None
-        logger.info("AES library installed")
+        logger.warning("AES library installed")
 
     _AES_FFI = cffi.FFI()
     _AES_FFI.cdef(
