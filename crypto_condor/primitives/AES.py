@@ -1505,7 +1505,7 @@ def test(
     Returns:
         A dictionary of results.
 
-    .. deprecated:: TODO(version)
+    .. deprecated:: 2025.03.12
         Use :func:`test_encrypt` and :func:`test_decrypt` instead.
     """
     rd = ResultsDict()
@@ -1565,7 +1565,7 @@ def verify_file(filename: str, mode: Mode, operation: Operation) -> ResultsDict:
     Returns:
         A dictionary of results.
 
-    .. deprecated:: TODO(version)
+    .. deprecated:: 2025.03.12
         Use :func:`test_output_encrypt` and :func:`test_output_decrypt` instead.
     """
     if operation == Operation.ENCRYPT:

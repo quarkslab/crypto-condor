@@ -166,7 +166,7 @@ class ECDH(Protocol):
 
     For compliance, use :meth:`exchange_nist`.
 
-    .. deprecated:: TODO(version)
+    .. deprecated:: 2025.03.12
         The test vectors have been changed so the protocols have been updated to match.
         ``ECDH`` is replaced by :class:`ExchangePoint` and :class:`ExchangeX509`.
     """
@@ -325,7 +325,7 @@ def test_exchange_point(
         [P-256][NIST CAVP] Testing ExchangePoint ...
         >>> assert rd.check()
 
-    .. versionadded:: TODO(version)
+    .. versionadded:: 2025.03.12
         This function roughly replaces ``test_exchange_nist``.
     """
     all_vectors = _load_vectors(curve, PubKeyType.POINT)
@@ -386,10 +386,10 @@ def test_exchange_nist(ecdh: ECDH, curve: Curve) -> ResultsDict:
     Returns:
         A dictionary of results.
 
-    .. versionchanged:: TODO(version)
+    .. versionchanged:: 2025.03.12
         Returns :class:`ResultsDict` instead of :class:`Results` or None.
 
-    .. deprecated:: TODO(version)
+    .. deprecated:: 2025.03.12
         The test vectors have been updated and the :protocol:`ECDH` protocol is now
         deprecated. Use :func:`test_exchange_point` and :protocol:`ExchangePoint`
         instead.
@@ -549,10 +549,10 @@ def test_exchange_wycheproof(ecdh: ECDH, curve: Curve) -> ResultsDict:
     Returns:
         A dictionary of results.
 
-    .. versionchanged:: TODO(version)
+    .. versionchanged:: 2025.03.12
         Returns :class:`ResultsDict` instead of :class:`Results` or None.
 
-    .. deprecated:: TODO(version)
+    .. deprecated:: 2025.03.12
         The test vectors have been updated and the :protocol:`ECDH` protocol is now
         deprecated. Use :func:`test_exchange_x509` and :protocol:`ExchangeX509`
         instead.
@@ -643,10 +643,10 @@ def test_exchange(
         Internally calls the :func:`test_exchange_nist` and
         :func:`test_exchange_wycheproof` functions.
 
-    .. versionchanged:: TODO(version)
+    .. versionchanged:: 2025.03.12
         Returns :class:`ResultsDict` instead of :class:`Results` or None.
 
-    .. deprecated:: TODO(version)
+    .. deprecated:: 2025.03.12
         The test vectors have been updated and the :protocol:`ECDH` protocol is now
         deprecated. Use :func:`test_exchange_point` and :func:`test_exchange_x509`
         instead.

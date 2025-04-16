@@ -71,7 +71,7 @@ class Wrapper(strenum.StrEnum):
 class Digest(Protocol):
     """Represents the HMAC digest operation.
 
-    .. versionadded:: TODO(version)
+    .. versionadded:: 2025.03.12
         Replaces :meth:`HMAC.digest`.
     """
 
@@ -96,7 +96,7 @@ class Verify(Protocol):
     Some implementations may offer a ``verify`` method, while others expect the user to
     generate a tag from the key and message, and compare it with the existing tag.
 
-    .. versionadded:: TODO(version)
+    .. versionadded:: 2025.03.12
         Replaces :meth:`HMAC.verify`.
     """
 
@@ -131,7 +131,7 @@ class HMAC(Protocol):
     Raising ``NotImplementedError`` is allowed for methods you do not want to test but
     all methods should be present.
 
-    .. deprecated:: TODO(version)
+    .. deprecated:: 2025.03.12
         Use :protocol:`Digest` and :protocol:`Verify` instead.
     """
 
@@ -172,7 +172,7 @@ class HMAC_IUF(Protocol):
     Raising ``NotImplementedError`` is allowed for (final) methods you do not want to
     test but all methods should be present.
 
-    .. deprecated:: TODO(version)
+    .. deprecated:: 2025.03.12
         Use :protocol:`Digest` and :protocol:`Verify` instead.
     """
 
@@ -335,7 +335,7 @@ def test_digest(
         [HMAC-SHA-256] Test digest ...
         >>> assert rd.check()
 
-    .. versionadded:: TODO(version)
+    .. versionadded:: 2025.03.12
         Replaces testing ``digest`` with :func:`test_hmac`.
     """
     all_vectors = _load_vectors(hash_function)
@@ -433,7 +433,7 @@ def test_verify(
         [HMAC-SHA-256] Test verify ...
         >>> assert rd.check()
 
-    .. versionadded:: TODO(version)
+    .. versionadded:: 2025.03.12
         Replaces testing ``verify`` with :func:`test_hmac`.
     """
     all_vectors = _load_vectors(hash_function)
@@ -534,7 +534,7 @@ def test_digest_nist(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> ResultsDict:
         Some NIST vectors have truncated MACs. The tag returned by the implementation is
         compared up to the length of the test tag.
 
-    .. versionchanged:: TODO(version)
+    .. versionchanged:: 2025.03.12
         Returns :class:`ResultsDict` instead of :class:`Results`.
     """
     all_vectors = _load_vectors(hash_function)
@@ -609,7 +609,7 @@ def test_digest_wycheproof(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> Result
         Some Wycheproof vectors have truncated MACs. The tag returned by the
         implementation is compared up to the length of the test tag.
 
-    .. versionchanged:: TODO(version)
+    .. versionchanged:: 2025.03.12
         Returns :class:`ResultsDict` instead of :class:`Results`.
     """
     all_vectors = _load_vectors(hash_function)
@@ -696,7 +696,7 @@ def test_verify_nist(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> ResultsDict:
         Some NIST vectors have truncated MACs. The tag returned by the implementation is
         compared up to the length of the test tag.
 
-    .. versionchanged:: TODO(version)
+    .. versionchanged:: 2025.03.12
         Returns :class:`ResultsDict` instead of :class:`Results`.
     """
     all_vectors = _load_vectors(hash_function)
@@ -771,7 +771,7 @@ def test_verify_wycheproof(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> Result
         Some Wycheproof vectors have truncated MACs. The tag returned by the
         implementation is compared up to the length of the test tag.
 
-    .. versionchanged:: TODO(version)
+    .. versionchanged:: 2025.03.12
         Returns :class:`ResultsDict` instead of :class:`Results`.
     """
     all_vectors = _load_vectors(hash_function)
@@ -865,7 +865,7 @@ def test_hmac(
         skip_verify:
             If True, skip testing the verify function.
 
-    .. deprecated:: TODO(version)
+    .. deprecated:: 2025.03.12
         Use :func:`test_digest` and :func:`test_verify` instead.
     """
     rd = ResultsDict()

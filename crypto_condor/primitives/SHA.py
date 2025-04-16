@@ -263,11 +263,11 @@ def test(
     Returns:
         A dictionary of results.
 
-    .. versionchanged:: TODO(version)
+    .. versionchanged:: 2025.03.12
         Removed the ``Orientation`` argument, added the ``compliance`` and
         ``resilience`` keywork arguments.
 
-    .. deprecated:: TODO(version)
+    .. deprecated:: 2025.03.12
         Will be removed in a future version, use :func:`test_digest` instead.
     """
     warnings.warn("Use test_digest instead", DeprecationWarning, stacklevel=1)
@@ -326,7 +326,7 @@ def test_digest(
         [SHA-256] Test digest ...
         >>> assert results_dict.check()
 
-    .. versionadded:: TODO(version)
+    .. versionadded:: 2025.03.12
         Replaces the ``test`` function.
     """
     all_vectors = _load_vectors(algorithm)
@@ -459,7 +459,7 @@ def test_wrapper_python(
         resilience:
             Whether to use resilience test vectors.
 
-    .. versionadded:: TODO(version)
+    .. versionadded:: 2025.03.12
     """
     logger.info("Running Python SHA wrapper: '%s'", str(wrapper.name))
     sys.path.insert(0, str(wrapper.parent.absolute()))
@@ -516,7 +516,7 @@ def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDi
         FileNotFoundError:
             If the wrapper is not found.
 
-    .. versionadded:: TODO(version)
+    .. versionadded:: 2025.03.12
         Replaces ``run_wrapper``.
     """
     if not wrapper.is_file():
@@ -588,10 +588,10 @@ def verify_file(filename: str, hash_algorithm: Algorithm) -> ResultsDict:
     Returns:
         A dictionary of results.
 
-    .. versionchanged:: TODO(version)
+    .. versionchanged:: 2025.03.12
         Returns a :class:`ResultsDict` instead of :class:`Results`.
 
-    .. deprecated:: TODO(version)
+    .. deprecated:: 2025.03.12
         Will be removed in a future version, use :func:`test_output_digest` instead.
     """
     warnings.warn("Use test_output_digest instead", DeprecationWarning, stacklevel=1)
