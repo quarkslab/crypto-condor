@@ -22,7 +22,10 @@ console = Console()
 app = typer.Typer(
     rich_markup_mode="rich",
     no_args_is_help=True,
-    context_settings={"max_content_width": console.width},
+    context_settings={
+        "max_content_width": console.width,
+        "help_option_names": ["-h", "--help"],
+    },
     pretty_exceptions_show_locals=False,
 )
 app.add_typer(test.app, name="test", rich_help_panel="Test implementations")
