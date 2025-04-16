@@ -1,4 +1,8 @@
-"""Wrapper template for SHAKE implementations."""
+"""Wrapper template for SHAKE implementations.
+
+Usage:
+    crypto-condor-cli test wrapper SHAKE shake_wrapper_example.py
+"""
 
 from Crypto.Hash import SHAKE128, SHAKE256
 
