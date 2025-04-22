@@ -854,7 +854,9 @@ def _decrypt(
 #     return result_group
 
 
-def _load_vectors(mode: Mode, keylen: KeyLength) -> list[AesVectors]:
+def _load_vectors(
+    mode: Mode, keylen: KeyLength, compliance: bool, resilience: bool
+) -> list[AesVectors]:
     """Loads vectors for a given mode and key length.
 
     Returns:
@@ -884,7 +886,10 @@ def _load_vectors(mode: Mode, keylen: KeyLength) -> list[AesVectors]:
             except Exception:
                 logger.exception("Failed to load AES vectors from %s", str(filename))
                 continue
-            vectors.append(_vec)
+            if _vec.compliance and compliance:
+                vectors.append(_vec)
+            if not _vec.compliance and resilience:
+                vectors.append(_vec)
 
     return vectors
 
@@ -993,16 +998,23 @@ def test_encrypt(
         [GCM][256][NIST CAVP] Testing encryption ...
         >>> assert res.check()
     """
-    all_vectors = _load_vectors(mode, keylen)
     rd = ResultsDict()
+
+    all_vectors = _load_vectors(mode, keylen, compliance, resilience)
+    if not all_vectors:
+        logger.error(
+            "No AES test vectors available for mode=%s, keylen=%s,"
+            " compliance=%s, resilience=%s",
+            str(mode),
+            str(keylen),
+            compliance,
+            resilience,
+        )
+        return rd
 
     test: AesTest
     for vectors in all_vectors:
         if not vectors.encrypt:
-            continue
-        if not compliance and vectors.compliance:
-            continue
-        if not resilience and not vectors.compliance:
             continue
 
         results = Results.new(f"Tests AES-{mode} encryption", ["mode", "keylen"])
@@ -1138,16 +1150,23 @@ def test_decrypt(
         [GCM][256][NIST CAVP] Testing decryption ...
         >>> assert res.check()
     """
-    all_vectors = _load_vectors(mode, keylen)
     rd = ResultsDict()
+
+    all_vectors = _load_vectors(mode, keylen, compliance, resilience)
+    if not all_vectors:
+        logger.error(
+            "No AES test vectors available for mode=%s, keylen=%s,"
+            " compliance=%s, resilience=%s",
+            str(mode),
+            str(keylen),
+            compliance,
+            resilience,
+        )
+        return rd
 
     test: AesTest
     for vectors in all_vectors:
         if not vectors.decrypt:
-            continue
-        if not compliance and vectors.compliance:
-            continue
-        if not resilience and not vectors.compliance:
             continue
 
         results = Results.new(f"Tests AES-{mode} decryption", ["mode", "keylen"])

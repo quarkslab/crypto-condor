@@ -422,8 +422,11 @@ def test_encaps(encaps: Encaps, paramset: Paramset) -> ResultsDict:
         A dictionary of results. It is empty if the internal decapsulation failed to
         run, or the implementation raised NotImplementedError.
     """
-    param_vectors = _load_vectors(paramset)
     rd = ResultsDict()
+    param_vectors = _load_vectors(paramset)
+    if not param_vectors:
+        logger.error("No ML-KEM test vectors for %s", str(paramset))
+        return rd
 
     test: MlkemTest
     for vectors in param_vectors:
@@ -496,8 +499,11 @@ def test_decaps(decaps: Decaps, paramset: Paramset) -> ResultsDict:
         A dictionary of results. It is empty if the internal decapsulation failed to
         run, or the implementation raised NotImplementedError.
     """
-    param_vectors = _load_vectors(paramset)
     rd = ResultsDict()
+    param_vectors = _load_vectors(paramset)
+    if not param_vectors:
+        logger.error("No ML-KEM test vectors for %s", str(paramset))
+        return rd
 
     test: MlkemTest
     for vectors in param_vectors:

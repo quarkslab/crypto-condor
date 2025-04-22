@@ -244,8 +244,12 @@ def test_digest(
 
     .. versionadded:: 2025.03.12
     """
-    all_vectors = _load_vectors(algorithm, orientation)
     rd = ResultsDict()
+
+    all_vectors = _load_vectors(algorithm, orientation)
+    if not all_vectors:
+        logger.error("No SHAKE test vectors for %s", str(algorithm))
+        return rd
 
     test: ShakeTest
     for vectors in all_vectors:

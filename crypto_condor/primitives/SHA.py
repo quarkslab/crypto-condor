@@ -329,8 +329,12 @@ def test_digest(
     .. versionadded:: 2025.03.12
         Replaces the ``test`` function.
     """
-    all_vectors = _load_vectors(algorithm)
     rd = ResultsDict()
+
+    all_vectors = _load_vectors(algorithm)
+    if not all_vectors:
+        logger.error("No SHA test vectors for %s", str(algorithm))
+        return rd
 
     test: ShaTest
     for vectors in all_vectors:

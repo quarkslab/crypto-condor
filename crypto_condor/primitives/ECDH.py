@@ -60,7 +60,9 @@ class Wrapper(strenum.StrEnum):
 # --------------------------- Vectors -------------------------------------------------
 
 
-def _load_vectors(curve: Curve, pub_type: PubKeyType) -> list[EcdhVectors]:
+def _load_vectors(
+    curve: Curve, pub_type: PubKeyType, compliance: bool, resilience: bool
+) -> list[EcdhVectors]:
     """Loads vectors for a given parameter set.
 
     Args:
@@ -68,6 +70,10 @@ def _load_vectors(curve: Curve, pub_type: PubKeyType) -> list[EcdhVectors]:
             The elliptic curve used.
         pub_type:
             The type of public key.
+        compliance:
+            whether to load compliance test vectors.
+        resilience:
+            whether to load resilience test vectors.
 
     Returns:
         A list of vectors.
@@ -80,12 +86,14 @@ def _load_vectors(curve: Curve, pub_type: PubKeyType) -> list[EcdhVectors]:
     vectors: list[EcdhVectors] = list()
 
     if curve not in sources:
-        logger.warning("No ECDH test vectors for %s", str(curve))
+        logger.error("No ECDH test vectors for curve %s", str(curve))
         return vectors
     curves = sources[curve]
     if pub_type not in curves:
-        logger.warning(
-            "No ECDH %s test vectors for %s public keys", str(curve), str(pub_type)
+        logger.error(
+            "No ECDH test vectors for curve %s and %s public keys",
+            str(curve),
+            str(pub_type),
         )
         return vectors
 
@@ -96,9 +104,11 @@ def _load_vectors(curve: Curve, pub_type: PubKeyType) -> list[EcdhVectors]:
         try:
             _vec.ParseFromString(vectors_file.read_bytes())
         except Exception:
-            logger.error("Failed to load ECDH vectors from %s", str(filename))
-            logger.debug("Exception caught while loading vectors", exc_info=True)
-        vectors.append(_vec)
+            logger.exception("Failed to load ECDH vectors from %s", str(filename))
+        if _vec.compliance and compliance:
+            vectors.append(_vec)
+        if not _vec.compliance and resilience:
+            vectors.append(_vec)
 
     return vectors
 
@@ -328,16 +338,22 @@ def test_exchange_point(
     .. versionadded:: 2025.03.12
         This function roughly replaces ``test_exchange_nist``.
     """
-    all_vectors = _load_vectors(curve, PubKeyType.POINT)
     rd = ResultsDict()
+
+    all_vectors = _load_vectors(curve, PubKeyType.POINT, compliance, resilience)
+    if not all_vectors:
+        logger.error(
+            "No ECDH test vectors available for curve=%s, public key type=%s"
+            ", compliance=%s, resilience=%s",
+            str(curve),
+            str(PubKeyType.POINT),
+            compliance,
+            resilience,
+        )
+        return rd
 
     test: EcdhTest
     for vectors in all_vectors:
-        if not compliance and vectors.compliance:
-            continue
-        if not resilience and not vectors.compliance:
-            continue
-
         res = Results.new("Tests ECDH exchange with peer point", ["curve"])
         rd.add(res, extra_values=[vectors.source])
 
@@ -395,17 +411,25 @@ def test_exchange_nist(ecdh: ECDH, curve: Curve) -> ResultsDict:
         instead.
     """
     warnings.warn("Use test_exchange_point instead", DeprecationWarning, stacklevel=1)
-    all_vectors = _load_vectors(curve, PubKeyType.POINT)
     rd = ResultsDict()
 
+    all_vectors = _load_vectors(curve, PubKeyType.POINT, True, False)
+    if not all_vectors:
+        logger.error(
+            "No ECDH test vectors available for curve=%s, public key type=%s"
+            ", compliance=%s, resilience=%s",
+            str(curve),
+            str(PubKeyType.POINT),
+            True,
+            False,
+        )
+        return rd
+
     if not any(vectors.source == "NIST CAVP" for vectors in all_vectors):
-        logger.warning("No NIST vectors for ECDH on %s", str(curve))
+        logger.error("No NIST vectors for ECDH on %s", str(curve))
         return rd
 
     for vectors in all_vectors:
-        if not vectors.compliance:
-            continue
-
         res = Results.new("Tests ECDH exchange with NIST vectors", ["curve"])
         rd.add(res)
 
@@ -490,16 +514,22 @@ def test_exchange_x509(
         [P-256][Wycheproof] Testing ExchangeX509 ...
         >>> assert rd.check()
     """
-    all_vectors = _load_vectors(curve, PubKeyType.X509)
     rd = ResultsDict()
+
+    all_vectors = _load_vectors(curve, PubKeyType.X509, compliance, resilience)
+    if not all_vectors:
+        logger.error(
+            "No ECDH test vectors available for curve=%s, public key type=%s"
+            ", compliance=%s, resilience=%s",
+            str(curve),
+            str(PubKeyType.X509),
+            compliance,
+            resilience,
+        )
+        return rd
 
     test: EcdhTest
     for vectors in all_vectors:
-        if not compliance and vectors.compliance:
-            continue
-        if not resilience and not vectors.compliance:
-            continue
-
         res = Results.new("Tests ECDH exchange with peer public key", ["curve"])
         rd.add(res, extra_values=[vectors.source])
 
@@ -558,19 +588,25 @@ def test_exchange_wycheproof(ecdh: ECDH, curve: Curve) -> ResultsDict:
         instead.
     """
     warnings.warn("Use test_exchange_x509 instead", DeprecationWarning, stacklevel=1)
-
-    all_vectors = _load_vectors(curve, PubKeyType.X509)
     rd = ResultsDict()
 
+    all_vectors = _load_vectors(curve, PubKeyType.X509, False, True)
+    if not all_vectors:
+        logger.error(
+            "No ECDH test vectors available for curve=%s, public key type=%s"
+            ", compliance=%s, resilience=%s",
+            str(curve),
+            str(PubKeyType.X509),
+            False,
+            True,
+        )
+
     if not any(vectors.source == "Wycheproof" for vectors in all_vectors):
-        logger.warning("No Wycheproof vectors for ECDH on %s", str(curve))
+        logger.error("No Wycheproof vectors for ECDH on %s", str(curve))
         return rd
 
     test: EcdhTest
     for vectors in all_vectors:
-        if vectors.compliance:
-            continue
-
         res = Results.new("Tests ECDH exchange with Wycheproof vectors", ["curve"])
         rd.add(res)
 

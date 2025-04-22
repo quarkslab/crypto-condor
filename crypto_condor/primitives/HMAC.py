@@ -253,12 +253,16 @@ mac = {self.mac.hex()}
 # --------------------------- Internals -----------------------------------------------
 
 
-def _load_vectors(algo: Hash) -> list[HmacVectors]:
+def _load_vectors(algo: Hash, compliance: bool, resilience: bool) -> list[HmacVectors]:
     """Loads HMAC vectors.
 
     Args:
         algo:
             The hash algorithm to get vectors of.
+        compliance:
+            Whether to load compliance test vectors.
+        resilience:
+            Whether to load resilience test vectors.
 
     Returns:
         A list of vectors.
@@ -279,7 +283,10 @@ def _load_vectors(algo: Hash) -> list[HmacVectors]:
         except Exception:
             logger.exception("Failed to load HMAC vectors from %s", str(filename))
             continue
-        vectors.append(_vec)
+        if _vec.compliance and compliance:
+            vectors.append(_vec)
+        if not _vec.compliance and resilience:
+            vectors.append(_vec)
 
     return vectors
 
@@ -338,17 +345,22 @@ def test_digest(
     .. versionadded:: 2025.03.12
         Replaces testing ``digest`` with :func:`test_hmac`.
     """
-    all_vectors = _load_vectors(hash_function)
     rd = ResultsDict()
+
+    all_vectors = _load_vectors(hash_function, compliance, resilience)
+    if not all_vectors:
+        logger.error(
+            "No HMAC test vectors available for hash function %s"
+            ", compliance=%s, resilience=%s",
+            str(hash_function),
+            compliance,
+            resilience,
+        )
+        return rd
 
     test: HmacTest
 
     for vectors in all_vectors:
-        if not compliance and vectors.compliance:
-            continue
-        if not resilience and not vectors.compliance:
-            continue
-
         res = Results.new("Test HMAC digest", ["hash_function"])
         rd.add(res, extra_values=[vectors.source])
 
@@ -436,17 +448,22 @@ def test_verify(
     .. versionadded:: 2025.03.12
         Replaces testing ``verify`` with :func:`test_hmac`.
     """
-    all_vectors = _load_vectors(hash_function)
     rd = ResultsDict()
+
+    all_vectors = _load_vectors(hash_function, compliance, resilience)
+    if not all_vectors:
+        logger.error(
+            "No HMAC test vectors available for hash function %s"
+            ", compliance=%s, resilience=%s",
+            str(hash_function),
+            compliance,
+            resilience,
+        )
+        return rd
 
     test: HmacTest
 
     for vectors in all_vectors:
-        if not compliance and vectors.compliance:
-            continue
-        if not resilience and not vectors.compliance:
-            continue
-
         res = Results.new("Test HMAC verify", ["hash_function"])
         rd.add(res, extra_values=[vectors.source])
 
@@ -537,8 +554,18 @@ def test_digest_nist(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> ResultsDict:
     .. versionchanged:: 2025.03.12
         Returns :class:`ResultsDict` instead of :class:`Results`.
     """
-    all_vectors = _load_vectors(hash_function)
     rd = ResultsDict()
+
+    all_vectors = _load_vectors(hash_function, True, False)
+    if not all_vectors:
+        logger.error(
+            "No HMAC test vectors available for hash function %s"
+            ", compliance=%s, resilience=%s",
+            str(hash_function),
+            True,
+            False,
+        )
+        return rd
 
     if not any(vectors.source == "NIST CAVP" for vectors in all_vectors):
         logger.warning("There are no NIST vectors for HMAC-%s", str(hash_function))
@@ -612,8 +639,18 @@ def test_digest_wycheproof(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> Result
     .. versionchanged:: 2025.03.12
         Returns :class:`ResultsDict` instead of :class:`Results`.
     """
-    all_vectors = _load_vectors(hash_function)
     rd = ResultsDict()
+
+    all_vectors = _load_vectors(hash_function, False, True)
+    if not all_vectors:
+        logger.error(
+            "No HMAC test vectors available for hash function %s"
+            ", compliance=%s, resilience=%s",
+            str(hash_function),
+            False,
+            True,
+        )
+        return rd
 
     if not any(vectors.source == "Wycheproof" for vectors in all_vectors):
         logger.warning(
@@ -699,8 +736,18 @@ def test_verify_nist(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> ResultsDict:
     .. versionchanged:: 2025.03.12
         Returns :class:`ResultsDict` instead of :class:`Results`.
     """
-    all_vectors = _load_vectors(hash_function)
     rd = ResultsDict()
+
+    all_vectors = _load_vectors(hash_function, True, False)
+    if not all_vectors:
+        logger.error(
+            "No HMAC test vectors available for hash function %s"
+            ", compliance=%s, resilience=%s",
+            str(hash_function),
+            True,
+            False,
+        )
+        return rd
 
     if not any(vectors.source == "NIST CAVP" for vectors in all_vectors):
         logger.warning("There are no NIST vectors for HMAC-%s", str(hash_function))
@@ -774,8 +821,18 @@ def test_verify_wycheproof(hmac: HMAC | HMAC_IUF, hash_function: Hash) -> Result
     .. versionchanged:: 2025.03.12
         Returns :class:`ResultsDict` instead of :class:`Results`.
     """
-    all_vectors = _load_vectors(hash_function)
     rd = ResultsDict()
+
+    all_vectors = _load_vectors(hash_function, False, True)
+    if not all_vectors:
+        logger.error(
+            "No HMAC test vectors available for hash function %s"
+            ", compliance=%s, resilience=%s",
+            str(hash_function),
+            False,
+            True,
+        )
+        return rd
 
     if not any(vectors.source == "Wycheproof" for vectors in all_vectors):
         logger.warning(

@@ -49,7 +49,7 @@ class Wrapper(strenum.StrEnum):
 # --------------------------- Vectors -------------------------------------------------
 
 
-def _load_vectors(paramset: Paramset) -> list[CapPLACEHOLDERVectors]:
+def _load_vectors(paramset: Paramset, compliance: bool, resilience: bool) -> list[CapPLACEHOLDERVectors]:
     """Loads vectors for a given parameter set.
 
     Args:
@@ -75,7 +75,10 @@ def _load_vectors(paramset: Paramset) -> list[CapPLACEHOLDERVectors]:
         except Exception:
             logger.error("Failed to load PLACEHOLDER vectors from %s", str(filename))
             logger.debug("Exception caught while loading vectors", exc_info=True)
-        vectors.append(_vec)
+        if _vec.compliance and compliance:
+            vectors.append(_vec)
+        if not _vec.compliance and resilience:
+            vectors.append(_vec)
 
     return vectors
 

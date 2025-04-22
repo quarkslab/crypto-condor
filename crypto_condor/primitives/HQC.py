@@ -83,8 +83,7 @@ def _load_vectors(
         try:
             _vec.ParseFromString(vectors_file.read_bytes())
         except Exception:
-            logger.error("Failed to load HQC vectors from %s", str(filename))
-            logger.debug("Exception caught while loading vectors", exc_info=True)
+            logger.exception("Failed to load HQC vectors from %s", str(filename))
         if compliance and _vec.compliance:
             vectors.append(_vec)
         if resilience and not _vec.compliance:

@@ -293,7 +293,8 @@ def _load_vectors(paramset: Paramset) -> list[MldsaVectors]:
     """Loads vectors for a given parameter set.
 
     Args:
-        paramset: The parameter set to load vectors of.
+        paramset:
+            The parameter set to load vectors of.
 
     Returns:
         A dictionary of vectors, indexed by the name of their source.
@@ -432,8 +433,12 @@ def test_sign(sign: Sign, paramset: Paramset) -> ResultsDict:
         A dictionary of results. It is empty if the internal decapsulation failed to
         run, or the implementation raised NotImplementedError.
     """
-    param_vectors = _load_vectors(paramset)
     rd = ResultsDict()
+
+    param_vectors = _load_vectors(paramset)
+    if not param_vectors:
+        logger.error( "no ml-dsa test vectors for %s", str(paramset))
+        return rd
 
     test: MldsaTest
     for vectors in param_vectors:
@@ -511,8 +516,12 @@ def test_verify(verify: Verify, paramset: Paramset) -> ResultsDict:
         A dictionary of results. It is empty if the internal decapsulation failed to
         run, or the implementation raised NotImplementedError.
     """
-    param_vectors = _load_vectors(paramset)
     rd = ResultsDict()
+
+    param_vectors = _load_vectors(paramset)
+    if not param_vectors:
+        logger.error( "No ML-DSA test vectors for %s", str(paramset),)
+        return rd
 
     test: MldsaTest
     for vectors in param_vectors:
