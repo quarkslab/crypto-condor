@@ -1,0 +1,67 @@
+diff --git a/ref/Makefile b/ref/Makefile
+index c0bcbd4..c086dff 100644
+--- a/ref/Makefile
++++ b/ref/Makefile
+@@ -1,6 +1,6 @@
+-CC ?= /usr/bin/cc
++CC = clang
+ CFLAGS += -Wall -Wextra -Wpedantic -Wmissing-prototypes -Wredundant-decls \
+-  -Wshadow -Wpointer-arith -O3 -fomit-frame-pointer -z noexecstack
++  -Wshadow -Wpointer-arith -O3 -fomit-frame-pointer
+ NISTFLAGS += -Wno-unused-result -O3 -fomit-frame-pointer
+ RM = /bin/rm
+ 
+@@ -27,10 +27,10 @@ speed: \
+   test/test_speed1024 \
+ 
+ shared: \
+-  lib/libpqcrystals_kyber512_ref.so \
+-  lib/libpqcrystals_kyber768_ref.so \
+-  lib/libpqcrystals_kyber1024_ref.so \
+-  lib/libpqcrystals_fips202_ref.so \
++  lib/libpqcrystals_kyber512_ref.dylib \
++  lib/libpqcrystals_kyber768_ref.dylib \
++  lib/libpqcrystals_kyber1024_ref.dylib \
++  lib/libpqcrystals_fips202_ref.dylib \
+ 
+ nistkat: \
+ 	nistkat/PQCgenKAT_kem512 \
+@@ -38,21 +38,21 @@ nistkat: \
+ 	nistkat/PQCgenKAT_kem1024 \
+ 
+ 
+-lib/libpqcrystals_fips202_ref.so: fips202.c fips202.h
++lib/libpqcrystals_fips202_ref.dylib: fips202.c fips202.h
+ 	mkdir -p lib
+-	$(CC) -shared -fPIC $(CFLAGS) fips202.c -o $@
++	$(CC) -dynamiclib -fPIC $(CFLAGS) fips202.c -o $@
+ 
+-lib/libpqcrystals_kyber512_ref.so: $(SOURCES) $(HEADERS) symmetric-shake.c
++lib/libpqcrystals_kyber512_ref.dylib: $(SOURCES) $(HEADERS) symmetric-shake.c fips202.c randombytes.c
+ 	mkdir -p lib
+-	$(CC) -shared -fPIC $(CFLAGS) -DKYBER_K=2 $(SOURCES) symmetric-shake.c -o $@
++	$(CC) -dynamiclib -fPIC $(CFLAGS) -DKYBER_K=2 $(SOURCES) fips202.c randombytes.c symmetric-shake.c -o $@
+ 
+-lib/libpqcrystals_kyber768_ref.so: $(SOURCES) $(HEADERS) symmetric-shake.c
++lib/libpqcrystals_kyber768_ref.dylib: $(SOURCES) $(HEADERS) symmetric-shake.c fips202.c randombytes.c
+ 	mkdir -p lib
+-	$(CC) -shared -fPIC $(CFLAGS) -DKYBER_K=3 $(SOURCES) symmetric-shake.c -o $@
++	$(CC) -dynamiclib -fPIC $(CFLAGS) -DKYBER_K=3 $(SOURCES) fips202.c randombytes.c symmetric-shake.c -o $@
+ 
+-lib/libpqcrystals_kyber1024_ref.so: $(SOURCES) $(HEADERS) symmetric-shake.c
++lib/libpqcrystals_kyber1024_ref.dylib: $(SOURCES) $(HEADERS) symmetric-shake.c fips202.c randombytes.c
+ 	mkdir -p lib
+-	$(CC) -shared -fPIC $(CFLAGS) -DKYBER_K=4 $(SOURCES) symmetric-shake.c -o $@
++	$(CC) -dynamiclib -fPIC $(CFLAGS) -DKYBER_K=4 $(SOURCES) fips202.c randombytes.c symmetric-shake.c -o $@
+ 
+ test/test_kyber512: $(SOURCESKECCAK) $(HEADERSKECCAK) test/test_kyber.c randombytes.c
+ 	$(CC) $(CFLAGS) -DKYBER_K=2 $(SOURCESKECCAK) randombytes.c test/test_kyber.c -o $@
+@@ -91,7 +91,7 @@ nistkat/PQCgenKAT_kem1024: $(SOURCESKECCAK) $(HEADERSKECCAK) nistkat/PQCgenKAT_k
+ 	$(CC) $(NISTFLAGS) -DKYBER_K=4 -o $@ $(SOURCESKECCAK) nistkat/rng.c nistkat/PQCgenKAT_kem.c $(LDFLAGS) -lcrypto
+ 
+ clean:
+-	-$(RM) -f *.gcno *.gcda *.lcov *.o *.so
++	-$(RM) -f *.gcno *.gcda *.lcov *.o *.dylib
+ 	-$(RM) -f test/test_kyber512
+ 	-$(RM) -f test/test_kyber768
+ 	-$(RM) -f test/test_kyber1024

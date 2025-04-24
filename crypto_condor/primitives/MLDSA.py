@@ -122,11 +122,23 @@ def _get_shared_lib_dir() -> Path:
     installed from the bundled zip file.
     """
     lib_dir = get_appdata_dir() / "MLDSA"
-    libs = {
-        "libpqcrystals_dilithium2_ref.so": "ML-DSA-44-ref.so",
-        "libpqcrystals_dilithium3_ref.so": "ML-DSA-65-ref.so",
-        "libpqcrystals_dilithium5_ref.so": "ML-DSA-87-ref.so",
-    }
+    match sys.platform:
+        case "linux":
+            libs = {
+                        "libpqcrystals_dilithium2_ref.so": "ML-DSA-44-ref.so",
+                        "libpqcrystals_dilithium3_ref.so": "ML-DSA-65-ref.so",
+                        "libpqcrystals_dilithium5_ref.so": "ML-DSA-87-ref.so",
+                    }
+        case "darwin":
+            libs = {
+                        "libpqcrystals_dilithium2_ref.dylib": "ML-DSA-44-ref.dylib",
+                        "libpqcrystals_dilithium3_ref.dylib": "ML-DSA-65-ref.dylib",
+                        "libpqcrystals_dilithium5_ref.dylib": "ML-DSA-87-ref.dylib",
+                    }
+        case _:
+            raise ValueError(
+                f"Unsupported platform {sys.platform}, can't get appdata directory"
+            )
     rsc = resources.files("crypto_condor") / "primitives/_mldsa"
     install = False
 
@@ -147,29 +159,33 @@ def _get_shared_lib_dir() -> Path:
         install = True
 
     if install:
-        lib_zip = rsc / "mldsa.zip"
-        with tempfile.TemporaryDirectory() as tmpdir:
-            try:
-                with zipfile.ZipFile(str(lib_zip)) as myzip:
-                    myzip.extractall(tmpdir)
-            except Exception:
-                logger.critical("Failed to unzip mldsa.zip", exc_info=True)
-                raise
+        if not (rsc / "dilithium/ref").is_dir(): 
             try:
                 subprocess.run(
-                    ["make", "shared"],
-                    cwd=Path(tmpdir) / "dilithium/ref",
+                    ["make", "all"],
+                    cwd=rsc,
                     check=True,
                     capture_output=True,
                     timeout=15.0,
                 )
-            except subprocess.CalledProcessError:
-                logger.critical("Failed to compile ML-DSA implementation")
+            except Exception:
+                logger.critical("Failed to patch ML-DSA Makefile for CC usage", exc_info=True)
                 raise
-            for lib, dst in libs.items():
-                src = Path(tmpdir) / "dilithium/ref" / lib
-                shutil.move(src, lib_dir / dst)
-            logger.info("ML-DSA implementation installed")
+        try:
+            subprocess.run(
+                ["make", "shared"],
+                cwd=rsc / "dilithium/ref",
+                check=True,
+                capture_output=True,
+                timeout=15.0,
+            )
+        except subprocess.CalledProcessError:
+            logger.critical("Failed to compile ML-DSA implementation")
+            raise
+        for lib, dst in libs.items():
+            src = rsc / "dilithium/ref" / lib
+            shutil.move(src, lib_dir / dst)
+        logger.info("ML-DSA implementation installed")
 
     global SHARED_LIB_DIR
     SHARED_LIB_DIR = lib_dir
@@ -195,7 +211,16 @@ def _keygen(paramset: Paramset) -> tuple[bytes, bytes]:
     ffi = cffi.FFI()
     ffi.cdef(f"int {fname}(uint8_t *pk, uint8_t *sk);")
     lib_dir = SHARED_LIB_DIR or _get_shared_lib_dir()
-    lib_path = lib_dir / f"{str(paramset)}-ref.so"
+    match sys.platform:
+        case "linux":
+            lib_path = lib_dir / f"{str(paramset)}-ref.so"
+              
+        case "darwin":
+            lib_path = lib_dir / f"{str(paramset)}-ref.dylib"
+        case _:
+            raise ValueError(
+                f"Unsupported platform {sys.platform}, can't get appdata directory"
+            )
     lib = ffi.dlopen(str(lib_path.absolute()))
 
     c_pk = ffi.new(f"uint8_t[{paramset.pk_size}]")
@@ -234,7 +259,16 @@ def _sign(paramset: Paramset, sk: bytes, msg: bytes, ctx: bytes) -> bytes:
     )
 
     lib_dir = SHARED_LIB_DIR or _get_shared_lib_dir()
-    lib_path = lib_dir / f"{str(paramset)}-ref.so"
+    match sys.platform:
+        case "linux":
+            lib_path = lib_dir / f"{str(paramset)}-ref.so"
+              
+        case "darwin":
+            lib_path = lib_dir / f"{str(paramset)}-ref.dylib"
+        case _:
+            raise ValueError(
+                f"Unsupported platform {sys.platform}, can't get appdata directory"
+            )
     lib = ffi.dlopen(str(lib_path.absolute()))
 
     c_sk = ffi.new("uint8_t[]", sk)
@@ -272,7 +306,16 @@ def _verify(paramset: Paramset, pk: bytes, msg: bytes, sig: bytes, ctx: bytes) -
     )
 
     lib_dir = SHARED_LIB_DIR or _get_shared_lib_dir()
-    lib_path = lib_dir / f"{str(paramset)}-ref.so"
+    match sys.platform:
+        case "linux":
+            lib_path = lib_dir / f"{str(paramset)}-ref.so"
+              
+        case "darwin":
+            lib_path = lib_dir / f"{str(paramset)}-ref.dylib"
+        case _:
+            raise ValueError(
+                f"Unsupported platform {sys.platform}, can't get appdata directory"
+            )
     lib = ffi.dlopen(str(lib_path.absolute()))
 
     c_pk = ffi.new("uint8_t[]", pk)

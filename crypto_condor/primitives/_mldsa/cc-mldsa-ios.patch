@@ -1,0 +1,71 @@
+diff --git a/ref/Makefile b/ref/Makefile
+index 2c94d35..a965b8a 100644
+--- a/ref/Makefile
++++ b/ref/Makefile
+@@ -1,4 +1,4 @@
+-CC ?= /usr/bin/cc
++CC = clang
+ CFLAGS += -Wall -Wextra -Wpedantic -Wmissing-prototypes -Wredundant-decls \
+   -Wshadow -Wvla -Wpointer-arith -O3 -fomit-frame-pointer
+ NISTFLAGS += -Wno-unused-result -O3 -fomit-frame-pointer
+@@ -8,6 +8,8 @@ HEADERS = config.h params.h api.h sign.h packing.h polyvec.h poly.h ntt.h \
+ KECCAK_SOURCES = $(SOURCES) fips202.c symmetric-shake.c
+ KECCAK_HEADERS = $(HEADERS) fips202.h
+ 
++SOURCES += fips202.c randombytes.c
++
+ .PHONY: all speed shared clean
+ 
+ all: \
+@@ -30,24 +32,24 @@ speed: \
+   test/test_speed5 \
+ 
+ shared: \
+-  libpqcrystals_dilithium2_ref.so \
+-  libpqcrystals_dilithium3_ref.so \
+-  libpqcrystals_dilithium5_ref.so \
+-  libpqcrystals_fips202_ref.so \
++  libpqcrystals_dilithium2_ref.dylib \
++  libpqcrystals_dilithium3_ref.dylib \
++  libpqcrystals_dilithium5_ref.dylib \
++  libpqcrystals_fips202_ref.dylib \
+ 
+-libpqcrystals_fips202_ref.so: fips202.c fips202.h
+-	$(CC) -shared -fPIC $(CFLAGS) -o $@ $<
++libpqcrystals_fips202_ref.dylib: fips202.c fips202.h
++	$(CC) -dynamiclib -fPIC $(CFLAGS) -o $@ $<
+ 
+-libpqcrystals_dilithium2_ref.so: $(SOURCES) $(HEADERS) symmetric-shake.c
+-	$(CC) -shared -fPIC $(CFLAGS) -DDILITHIUM_MODE=2 \
++libpqcrystals_dilithium2_ref.dylib: $(SOURCES) $(HEADERS) symmetric-shake.c
++	$(CC) -dynamiclib -fPIC $(CFLAGS) -DDILITHIUM_MODE=2 \
+ 	  -o $@ $(SOURCES) symmetric-shake.c
+ 
+-libpqcrystals_dilithium3_ref.so: $(SOURCES) $(HEADERS) symmetric-shake.c
+-	$(CC) -shared -fPIC $(CFLAGS) -DDILITHIUM_MODE=3 \
++libpqcrystals_dilithium3_ref.dylib: $(SOURCES) $(HEADERS) symmetric-shake.c
++	$(CC) -dynamiclib -fPIC $(CFLAGS) -DDILITHIUM_MODE=3 \
+ 	  -o $@ $(SOURCES) symmetric-shake.c
+ 
+-libpqcrystals_dilithium5_ref.so: $(SOURCES) $(HEADERS) symmetric-shake.c
+-	$(CC) -shared -fPIC $(CFLAGS) -DDILITHIUM_MODE=5 \
++libpqcrystals_dilithium5_ref.dylib: $(SOURCES) $(HEADERS) symmetric-shake.c
++	$(CC) -dynamiclib -fPIC $(CFLAGS) -DDILITHIUM_MODE=5 \
+ 	  -o $@ $(SOURCES) symmetric-shake.c
+ 
+ test/test_dilithium2: test/test_dilithium.c randombytes.c $(KECCAK_SOURCES) \
+@@ -120,10 +122,10 @@ nistkat/PQCgenKAT_sign5: nistkat/PQCgenKAT_sign.c nistkat/rng.c nistkat/rng.h $(
+ 
+ clean:
+ 	rm -f *~ test/*~ *.gcno *.gcda *.lcov
+-	rm -f libpqcrystals_dilithium2_ref.so
+-	rm -f libpqcrystals_dilithium3_ref.so
+-	rm -f libpqcrystals_dilithium5_ref.so
+-	rm -f libpqcrystals_fips202_ref.so
++	rm -f libpqcrystals_dilithium2_ref.dylib
++	rm -f libpqcrystals_dilithium3_ref.dylib
++	rm -f libpqcrystals_dilithium5_ref.dylib
++	rm -f libpqcrystals_fips202_ref.dylib
+ 	rm -f test/test_dilithium2
+ 	rm -f test/test_dilithium3
+ 	rm -f test/test_dilithium5

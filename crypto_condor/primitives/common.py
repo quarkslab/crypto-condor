@@ -938,7 +938,7 @@ def get_appdata_dir() -> Path:
                 / "crypto_condor"
             )
         case "darwin":
-            appdata = home / "Library/Application Support" / "crypto-condor"
+            appdata = home / "Library/Caches" / "crypto-condor"
         case _:
             raise ValueError(
                 f"Unsupported platform {sys.platform}, can't get appdata directory"

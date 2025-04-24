@@ -83,8 +83,8 @@
   },
   "P-256": {
     "point": [
-      "ecdh_cavp_P-256_point.pb2",
-      "ecdh_wycheproof_P-256_point.pb2"
+      "ecdh_wycheproof_P-256_point.pb2",
+      "ecdh_cavp_P-256_point.pb2"
     ],
     "x509": [
       "ecdh_wycheproof_P-256_x509.pb2"
@@ -92,8 +92,8 @@
   },
   "P-384": {
     "point": [
-      "ecdh_cavp_P-384_point.pb2",
-      "ecdh_wycheproof_P-384_point.pb2"
+      "ecdh_wycheproof_P-384_point.pb2",
+      "ecdh_cavp_P-384_point.pb2"
     ],
     "x509": [
       "ecdh_wycheproof_P-384_x509.pb2"

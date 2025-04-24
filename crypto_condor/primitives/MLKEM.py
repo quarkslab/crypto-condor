@@ -113,11 +113,24 @@ def _get_shared_lib_dir() -> Path:
     installed from the bundled zip file.
     """
     lib_dir = get_appdata_dir() / "MLKEM"
-    libs = {
-        "libpqcrystals_kyber512_ref.so": "ML-KEM-512-ref.so",
-        "libpqcrystals_kyber768_ref.so": "ML-KEM-768-ref.so",
-        "libpqcrystals_kyber1024_ref.so": "ML-KEM-1024-ref.so",
-    }
+    match sys.platform:
+        case "linux":
+            libs = {
+                        "libpqcrystals_kyber512_ref.so": "ML-KEM-512-ref.so",
+                        "libpqcrystals_kyber768_ref.so": "ML-KEM-768-ref.so",
+                        "libpqcrystals_kyber1024_ref.so": "ML-KEM-1024-ref.so",
+                    }
+        case "darwin":
+            libs = {
+                        "libpqcrystals_kyber512_ref.dylib": "ML-KEM-512-ref.dylib",
+                        "libpqcrystals_kyber768_ref.dylib": "ML-KEM-768-ref.dylib",
+                        "libpqcrystals_kyber1024_ref.dylib": "ML-KEM-1024-ref.dylib",
+                    }
+        case _:
+            raise ValueError(
+                f"Unsupported platform {sys.platform}, can't get appdata directory"
+            )
+    
     rsc = resources.files("crypto_condor") / "primitives/_mlkem"
     install = False
 
@@ -138,29 +151,33 @@ def _get_shared_lib_dir() -> Path:
         install = True
 
     if install:
-        lib_zip = rsc / "mlkem.zip"
-        with tempfile.TemporaryDirectory() as tmpdir:
-            try:
-                with zipfile.ZipFile(str(lib_zip)) as myzip:
-                    myzip.extractall(tmpdir)
-            except Exception:
-                logger.critical("Failed to unzip mlkem.zip", exc_info=True)
-                raise
+        if not (rsc / "kyber/ref").is_dir(): 
             try:
                 subprocess.run(
-                    ["make", "shared"],
-                    cwd=Path(tmpdir) / "kyber/ref",
+                    ["make", "all"],
+                    cwd=rsc,
                     check=True,
                     capture_output=True,
                     timeout=15.0,
                 )
-            except subprocess.CalledProcessError:
-                logger.critical("Failed to compile ML-KEM implementation")
+            except Exception:
+                logger.critical("Failed to patch ML-KEM Makefile for CC usage", exc_info=True)
                 raise
-            for lib, dst in libs.items():
-                src = Path(tmpdir) / "kyber/ref/lib" / lib
-                shutil.move(src, lib_dir / dst)
-            logger.info("ML-KEM implementation installed")
+        try:
+            subprocess.run(
+                ["make", "shared"],
+                cwd=rsc / "kyber/ref",
+                check=True,
+                capture_output=True,
+                timeout=15.0,
+            )
+        except subprocess.CalledProcessError:
+            logger.critical("Failed to compile ML-KEM implementation")
+            raise
+        for lib, dst in libs.items():
+            src = rsc / "kyber/ref/lib" / lib
+            shutil.move(src, lib_dir / dst)
+        logger.info("ML-KEM implementation installed")
 
     global SHARED_LIB_DIR
     SHARED_LIB_DIR = lib_dir
@@ -186,7 +203,16 @@ def _keygen(paramset: Paramset) -> tuple[bytes, bytes]:
     ffi = cffi.FFI()
     ffi.cdef(f"int {fname}(uint8_t *pk, uint8_t *sk);")
     lib_dir = SHARED_LIB_DIR or _get_shared_lib_dir()
-    lib_path = lib_dir / f"{str(paramset)}-ref.so"
+    match sys.platform:
+        case "linux":
+            lib_path = lib_dir / f"{str(paramset)}-ref.so"
+              
+        case "darwin":
+            lib_path = lib_dir / f"{str(paramset)}-ref.dylib"
+        case _:
+            raise ValueError(
+                f"Unsupported platform {sys.platform}, can't get appdata directory"
+            )
     lib = ffi.dlopen(str(lib_path.absolute()))
 
     c_pk = ffi.new(f"uint8_t[{paramset.pk_size}]")
@@ -220,7 +246,16 @@ def _encaps(paramset: Paramset, pk: bytes) -> tuple[bytes, bytes]:
     )
 
     lib_dir = SHARED_LIB_DIR or _get_shared_lib_dir()
-    lib_path = lib_dir / f"{str(paramset)}-ref.so"
+    match sys.platform:
+        case "linux":
+            lib_path = lib_dir / f"{str(paramset)}-ref.so"
+              
+        case "darwin":
+            lib_path = lib_dir / f"{str(paramset)}-ref.dylib"
+        case _:
+            raise ValueError(
+                f"Unsupported platform {sys.platform}, can't get appdata directory"
+            )
     lib = ffi.dlopen(str(lib_path.absolute()))
 
     c_pk = ffi.new("uint8_t[]", pk)
@@ -258,7 +293,16 @@ def _decaps(paramset: Paramset, sk: bytes, ct: bytes) -> bytes:
     )
 
     lib_dir = SHARED_LIB_DIR or _get_shared_lib_dir()
-    lib_path = lib_dir / f"{str(paramset)}-ref.so"
+    match sys.platform:
+        case "linux":
+            lib_path = lib_dir / f"{str(paramset)}-ref.so"
+              
+        case "darwin":
+            lib_path = lib_dir / f"{str(paramset)}-ref.dylib"
+        case _:
+            raise ValueError(
+                f"Unsupported platform {sys.platform}, can't get appdata directory"
+            )
     lib = ffi.dlopen(str(lib_path.absolute()))
 
     c_sk = ffi.new("uint8_t[]", sk)
