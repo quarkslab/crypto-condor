@@ -431,5 +431,3 @@ def main(
             :func:`~crypto_condor.cli.callbacks.print_version` callback.
     """
     set_logging(verbose)
-    if verbose >= 2:
-        app.pretty_exceptions_show_locals = True
