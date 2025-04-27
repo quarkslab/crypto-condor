@@ -164,7 +164,7 @@ def _get_shared_lib_dir() -> Path:
                     cwd=rsc,
                     check=True,
                     capture_output=True,
-                    timeout=15.0,
+                    timeout=30.0,
                 )
             except Exception:
                 logger.exception("Failed to patch ML-DSA Makefile for CC usage")
@@ -175,7 +175,7 @@ def _get_shared_lib_dir() -> Path:
                 cwd=rsc / "dilithium/ref",
                 check=True,
                 capture_output=True,
-                timeout=15.0,
+                timeout=30.0,
             )
         except subprocess.CalledProcessError:
             logger.exception("Failed to compile ML-DSA implementation")
