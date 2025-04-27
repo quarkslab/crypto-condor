@@ -110,8 +110,7 @@ def install_testu01(*, debug: bool = False):
             )
             progress.update(task, completed=True)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            logger.error("Could not compile TestU01")
-            logger.debug("Exception caught while compiling TestU01", exc_info=True)
+            logger.exception("Could not compile TestU01")
             raise
 
 
