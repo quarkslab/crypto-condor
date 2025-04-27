@@ -7,46 +7,29 @@ Be it issues, pull requests, or suggestions, contributions are welcome!
 The external dependencies are (not including Python packages):
 
 - [poetry](https://python-poetry.org/).
-- GNU Make and gcc.
+- GNU Make and gcc (or clang for MacOS).
 - [protoc](https://grpc.io/docs/protoc-installation/), the protobuf compiler.
 
 To configure the Python dependencies and the repo:
 
-- Run `make install` to install the development dependencies.
-- Use a virtual environment with `poetry shell`.
+- Run `make install` to create the virtual environment and install the development dependencies.
+- Activate the virtual environment ([source](https://python-poetry.org/docs/managing-environments/#activating-the-environment)):
+    - For Bash/Zsh/Csh: `eval $(poetry env activate)`
+    - For Fish: `eval (poetry env activate)`
 - Run `make init` to configure the repo.
 - When coding and committing, run `make all` to run the test suite.
 
-`make install` installs all the dependencies, including the development and
-documentation dependencies, inside a virtual environment[^venv]. It uses a lock
-file (`poetry.lock`) to ensure that package versions are consistent between
-developers' environments.
+Inside the virtual environment, the `crypto-condor` package is installed as an
+*editable package*, meaning that changes to the source code are immediately
+reflected, and do not require building and installing the package.
 
-[^venv]: Read poetry's documentation for more information on [how they are
-    managed](https://python-poetry.org/docs/managing-environments/).
+Additionally, the CLI is also installed as `crypto-condor-cli`.
 
-It also installs the project as an **editable package** inside that virtual
-environment, meaning that changes to the source code are immediately reflected
-in the package. The CLI is installed as `crypto-condor-cli`.
+To exit the virtual environment, run `deactivate`.
 
-`poetry shell` activates the virtual environment inside a sub-shell that can be
-exited with `ctrl+D` or by typing `exit`. This is the recommended way, as
-otherwise all commands requiring the venv's python would have to be preceded by
-`poetry run`.
-
-`make all` is the go-to command for testing changes. It runs the linter, tests,
-and coverage. It also builds the docs, checking for errors and running the
-doctest examples, ensuring they stay up-to-date.
-
-You can run commands normally inside this sub-shell:
-
-```bash
-# Display the CLI's help.
-crypto-condor-cli --help
-
-# Run the unit tests.
-make test
-```
+**Note:** all Makefile commands except `install` shall be run inside the virtual
+environment. They shall be run from the root of the repository, and not the
+`crypto_condor` sub-directory.
 
 ## Design
 
