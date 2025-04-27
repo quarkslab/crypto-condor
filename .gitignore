@@ -24,6 +24,11 @@ debug.log
 # objects
 *.o
 
+# shared libs
+*.so
+*.dylib
+*.dll
+
 # built docs
 docs/build
 
