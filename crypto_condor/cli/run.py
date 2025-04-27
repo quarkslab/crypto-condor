@@ -757,3 +757,52 @@ def hqc(
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
+
+
+# TODO: expand.
+_slhdsa_help = "Run a SLH-DSA wrapper."
+
+
+@app.command(name="SLHDSA", no_args_is_help=True, help=_slhdsa_help)
+@app.command(name="slhdsa", no_args_is_help=True, help=_slhdsa_help, hidden=True)
+def slhdsa(
+    wrapper: Annotated[Path, typer.Argument()],
+    compliance: Annotated[bool, _compliance] = True,
+    resilience: Annotated[bool, _resilience] = False,
+    filename: Annotated[str, _filename] = "",
+    no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
+):
+    """Runs a SLH-DSA wrapper.
+
+    Args:
+        wrapper:
+            The wrapper to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+        filename:
+            Name of the file to save results.
+        no_save:
+            Do not save results or prompt the user.
+        debug:
+            When saving the results to a file, whether to add the debug data.
+    """
+    from crypto_condor.primitives import SLHDSA
+
+    if not wrapper.is_file():
+        raise FileNotFoundError(f"SLH-DSA wrapper not found: {str(wrapper)}")
+
+    match wrapper.suffix:
+        case ".py":
+            results = SLHDSA.test_wrapper_python(wrapper, compliance, resilience)
+        case _:
+            console.print(
+                "There is no SLH-DSA runner defined for %s wrappers" % wrapper.suffix
+            )
+            raise typer.Exit(1)
+    if console.process_results(results, filename, no_save, debug):
+        raise typer.Exit(0)
+    else:
+        raise typer.Exit(1)

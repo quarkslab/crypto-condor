@@ -474,7 +474,7 @@ def test_sign(sign: Sign, paramset: Paramset) -> ResultsDict:
 
     param_vectors = _load_vectors(paramset)
     if not param_vectors:
-        logger.error( "no ml-dsa test vectors for %s", str(paramset))
+        logger.error("no ml-dsa test vectors for %s", str(paramset))
         return rd
 
     test: MldsaTest
@@ -557,7 +557,10 @@ def test_verify(verify: Verify, paramset: Paramset) -> ResultsDict:
 
     param_vectors = _load_vectors(paramset)
     if not param_vectors:
-        logger.error( "No ML-DSA test vectors for %s", str(paramset),)
+        logger.error(
+            "No ML-DSA test vectors for %s",
+            str(paramset),
+        )
         return rd
 
     test: MldsaTest

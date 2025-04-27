@@ -16,3 +16,4 @@ Primitives
    RSASSA
    SHA
    SHAKE
+   SLH-DSA <SLHDSA>

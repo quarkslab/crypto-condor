@@ -1,0 +1,140 @@
+{
+  "keygen": {
+    "SHA2-128f": [
+      "slhdsa_acvp_keygen_SHA2-128f.pb2"
+    ],
+    "SHA2-128s": [
+      "slhdsa_acvp_keygen_SHA2-128s.pb2"
+    ],
+    "SHA2-192f": [
+      "slhdsa_acvp_keygen_SHA2-192f.pb2"
+    ],
+    "SHA2-192s": [
+      "slhdsa_acvp_keygen_SHA2-192s.pb2"
+    ],
+    "SHA2-256f": [
+      "slhdsa_acvp_keygen_SHA2-256f.pb2"
+    ],
+    "SHA2-256s": [
+      "slhdsa_acvp_keygen_SHA2-256s.pb2"
+    ],
+    "SHAKE-128f": [
+      "slhdsa_acvp_keygen_SHAKE-128f.pb2"
+    ],
+    "SHAKE-128s": [
+      "slhdsa_acvp_keygen_SHAKE-128s.pb2"
+    ],
+    "SHAKE-192f": [
+      "slhdsa_acvp_keygen_SHAKE-192f.pb2"
+    ],
+    "SHAKE-192s": [
+      "slhdsa_acvp_keygen_SHAKE-192s.pb2"
+    ],
+    "SHAKE-256f": [
+      "slhdsa_acvp_keygen_SHAKE-256f.pb2"
+    ],
+    "SHAKE-256s": [
+      "slhdsa_acvp_keygen_SHAKE-256s.pb2"
+    ]
+  },
+  "siggen": {
+    "SHA2-128f": [
+      "slhdsa_acvp_siggen_SHA2-128f_det.pb2",
+      "slhdsa_acvp_siggen_SHA2-128f_prehash_det.pb2"
+    ],
+    "SHA2-128s": [
+      "slhdsa_acvp_siggen_SHA2-128s_det.pb2",
+      "slhdsa_acvp_siggen_SHA2-128s_prehash_det.pb2"
+    ],
+    "SHA2-192f": [
+      "slhdsa_acvp_siggen_SHA2-192f_det.pb2",
+      "slhdsa_acvp_siggen_SHA2-192f_prehash_det.pb2"
+    ],
+    "SHA2-192s": [
+      "slhdsa_acvp_siggen_SHA2-192s_det.pb2",
+      "slhdsa_acvp_siggen_SHA2-192s_prehash_det.pb2"
+    ],
+    "SHA2-256f": [
+      "slhdsa_acvp_siggen_SHA2-256f_det.pb2",
+      "slhdsa_acvp_siggen_SHA2-256f_prehash_det.pb2"
+    ],
+    "SHA2-256s": [
+      "slhdsa_acvp_siggen_SHA2-256s_det.pb2",
+      "slhdsa_acvp_siggen_SHA2-256s_prehash_det.pb2"
+    ],
+    "SHAKE-128f": [
+      "slhdsa_acvp_siggen_SHAKE-128f_det.pb2",
+      "slhdsa_acvp_siggen_SHAKE-128f_prehash_det.pb2"
+    ],
+    "SHAKE-128s": [
+      "slhdsa_acvp_siggen_SHAKE-128s_det.pb2",
+      "slhdsa_acvp_siggen_SHAKE-128s_prehash_det.pb2"
+    ],
+    "SHAKE-192f": [
+      "slhdsa_acvp_siggen_SHAKE-192f_det.pb2",
+      "slhdsa_acvp_siggen_SHAKE-192f_prehash_det.pb2"
+    ],
+    "SHAKE-192s": [
+      "slhdsa_acvp_siggen_SHAKE-192s_det.pb2",
+      "slhdsa_acvp_siggen_SHAKE-192s_prehash_det.pb2"
+    ],
+    "SHAKE-256f": [
+      "slhdsa_acvp_siggen_SHAKE-256f_det.pb2",
+      "slhdsa_acvp_siggen_SHAKE-256f_prehash_det.pb2"
+    ],
+    "SHAKE-256s": [
+      "slhdsa_acvp_siggen_SHAKE-256s_det.pb2",
+      "slhdsa_acvp_siggen_SHAKE-256s_prehash_det.pb2"
+    ]
+  },
+  "sigver": {
+    "SHA2-128f": [
+      "slhdsa_acvp_sigver_SHA2-128f.pb2",
+      "slhdsa_acvp_sigver_SHA2-128f_prehash.pb2"
+    ],
+    "SHA2-128s": [
+      "slhdsa_acvp_sigver_SHA2-128s.pb2",
+      "slhdsa_acvp_sigver_SHA2-128s_prehash.pb2"
+    ],
+    "SHA2-192f": [
+      "slhdsa_acvp_sigver_SHA2-192f.pb2",
+      "slhdsa_acvp_sigver_SHA2-192f_prehash.pb2"
+    ],
+    "SHA2-192s": [
+      "slhdsa_acvp_sigver_SHA2-192s.pb2",
+      "slhdsa_acvp_sigver_SHA2-192s_prehash.pb2"
+    ],
+    "SHA2-256f": [
+      "slhdsa_acvp_sigver_SHA2-256f.pb2",
+      "slhdsa_acvp_sigver_SHA2-256f_prehash.pb2"
+    ],
+    "SHA2-256s": [
+      "slhdsa_acvp_sigver_SHA2-256s.pb2",
+      "slhdsa_acvp_sigver_SHA2-256s_prehash.pb2"
+    ],
+    "SHAKE-128f": [
+      "slhdsa_acvp_sigver_SHAKE-128f.pb2",
+      "slhdsa_acvp_sigver_SHAKE-128f_prehash.pb2"
+    ],
+    "SHAKE-128s": [
+      "slhdsa_acvp_sigver_SHAKE-128s.pb2",
+      "slhdsa_acvp_sigver_SHAKE-128s_prehash.pb2"
+    ],
+    "SHAKE-192f": [
+      "slhdsa_acvp_sigver_SHAKE-192f.pb2",
+      "slhdsa_acvp_sigver_SHAKE-192f_prehash.pb2"
+    ],
+    "SHAKE-192s": [
+      "slhdsa_acvp_sigver_SHAKE-192s.pb2",
+      "slhdsa_acvp_sigver_SHAKE-192s_prehash.pb2"
+    ],
+    "SHAKE-256f": [
+      "slhdsa_acvp_sigver_SHAKE-256f.pb2",
+      "slhdsa_acvp_sigver_SHAKE-256f_prehash.pb2"
+    ],
+    "SHAKE-256s": [
+      "slhdsa_acvp_sigver_SHAKE-256s.pb2",
+      "slhdsa_acvp_sigver_SHAKE-256s_prehash.pb2"
+    ]
+  }
+}

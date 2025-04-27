@@ -115,8 +115,8 @@ bibtex_bibfiles = [
     "method/mlkem.bib",
     "method/mldsa.bib",
     "method/falcon.bib",
-    "method/sphincs.bib",
     "method/hqc.bib",
+    "method/slhdsa.bib",
 ]
 # suppress_warnings = ["bibtex.duplicate_label"]
 

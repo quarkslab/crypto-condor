@@ -12,6 +12,16 @@ Falcon, and SPHINCS+, and one {abbr}`KEM (Key Encapsulation Mechanism)`[^kem],
 CRYSTALS-Kyber. NIST plans to recommend Kyber and Dilithium, while standardizing
 Falcon for cases where Dilithium's signatures may be too large, and SPHINCS+ to
 avoid relying only on lattice-based signature schemes.
+This guide has entries for each:
+
+:::{toctree}
+:titlesonly:
+
+Falcon
+MLDSA
+MLKEM
+SLH-DSA <SLHDSA>
+:::
 
 [^kem]: <https://en.wikipedia.org/wiki/Key_encapsulation_mechanism>
 
@@ -73,7 +83,7 @@ three different signatures schemes to compare.
 - -
   - [Dilithium](/method/MLDSA)
   - [Falcon](/method/Falcon)
-  - [SPHINCS+](/method/SPHINCS+)
+  - [SPHINCS+](/method/SLHDSA)
 - - Based on
   - (Module) lattices
   - NTRU lattices

@@ -31,7 +31,7 @@ class Primitive(strenum.StrEnum):
     RSAES = "RSAES"
     SHA = "SHA"
     SHAKE = "SHAKE"
-    SPHINCS = "SPHINCS+"
+    SLHDSA = "SLHDSA"
 
     def get_languages(self):
         """Returns the primitive's Wrapper enum.
@@ -51,6 +51,7 @@ class Primitive(strenum.StrEnum):
             RSASSA,
             SHA,
             SHAKE,
+            SLHDSA,
             ChaCha20,
         )
 
@@ -79,6 +80,8 @@ class Primitive(strenum.StrEnum):
                 return SHA.Wrapper
             case Primitive.SHAKE:
                 return SHAKE.Wrapper
+            case Primitive.SLHDSA:
+                return SLHDSA.Wrapper
             case _:
                 return None
 
@@ -105,12 +108,12 @@ SUPPORTED_MODES: dict[Primitive, Modes] = {
         "wrapper": None,
         "harness": False,
     },
-    Primitive.SPHINCS: {
+    Primitive.SLHDSA: {
         "audit": False,
         "method": True,
-        "output": None,
-        "wrapper": None,
-        "harness": False,
+        "output": False,
+        "wrapper": True,
+        "harness": True,
     },
     Primitive.SHA: {
         "audit": False,

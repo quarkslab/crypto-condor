@@ -40,3 +40,4 @@ Supported primitives
     MLKEM
     SHA
     SHAKE
+    SLH-DSA <SLHDSA>
