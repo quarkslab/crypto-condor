@@ -35,3 +35,6 @@ dist/
 
 # pyenv
 .python-version
+
+# mypy
+.dmypy.json
