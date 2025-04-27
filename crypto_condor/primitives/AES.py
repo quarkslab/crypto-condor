@@ -152,9 +152,9 @@ def _get_aes_lib() -> tuple[cffi.FFI | None, _cffi_backend.Lib | None]:
 
     if not lib_file.is_file() or changes:
         if changes:
-            logger.info("AES shared library is outdated, updating")
+            logger.warning("AES shared library is outdated, updating")
         else:
-            logger.info("AES shared library not found, installing")
+            logger.warning("AES shared library not found, installing")
         try:
             subprocess.run(
                 ["make", "all"],

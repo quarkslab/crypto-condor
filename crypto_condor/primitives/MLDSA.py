@@ -167,7 +167,7 @@ def _get_shared_lib_dir() -> Path:
                     timeout=15.0,
                 )
             except Exception:
-                logger.critical("Failed to patch ML-DSA Makefile for CC usage", exc_info=True)
+                logger.exception("Failed to patch ML-DSA Makefile for CC usage")
                 raise
         try:
             subprocess.run(
@@ -178,7 +178,7 @@ def _get_shared_lib_dir() -> Path:
                 timeout=15.0,
             )
         except subprocess.CalledProcessError:
-            logger.critical("Failed to compile ML-DSA implementation")
+            logger.exception("Failed to compile ML-DSA implementation")
             raise
         for lib, dst in libs.items():
             src = rsc / "dilithium/ref" / lib
@@ -351,8 +351,7 @@ def _load_vectors(paramset: Paramset) -> list[MldsaVectors]:
         try:
             _vec.ParseFromString(vectors_file.read_bytes())
         except Exception:
-            logger.error("Failed to load ML-DSA vectors from %s", str(filename))
-            logger.debug("Exception caught while loading vectors", exc_info=True)
+            logger.exception("Failed to load ML-DSA vectors from %s", str(filename))
         vectors.append(_vec)
 
     return vectors
