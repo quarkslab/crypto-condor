@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Protocol
 
 import attrs
+import cffi
 import strenum
 from rich.progress import track
 
