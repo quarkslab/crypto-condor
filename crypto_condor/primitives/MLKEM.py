@@ -153,7 +153,7 @@ def _get_shared_lib_dir() -> Path:
             try:
                 subprocess.run(
                     ["make", "all"],
-                    cwd=rsc,
+                    cwd=str(rsc),
                     check=True,
                     capture_output=True,
                     timeout=15.0,
@@ -164,7 +164,7 @@ def _get_shared_lib_dir() -> Path:
         try:
             subprocess.run(
                 ["make", "shared"],
-                cwd=rsc / "kyber/ref",
+                cwd=str(rsc / "kyber/ref"),
                 check=True,
                 capture_output=True,
                 timeout=15.0,
@@ -173,7 +173,7 @@ def _get_shared_lib_dir() -> Path:
             logger.exception("Failed to compile ML-KEM implementation")
             raise
         for lib, dst in libs.items():
-            src = rsc / "kyber/ref/lib" / lib
+            src = str(rsc / "kyber/ref/lib" / lib)
             shutil.move(src, lib_dir / dst)
         logger.info("ML-KEM implementation installed")
 

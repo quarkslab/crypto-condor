@@ -161,7 +161,7 @@ def _get_shared_lib_dir() -> Path:
             try:
                 subprocess.run(
                     ["make", "all"],
-                    cwd=rsc,
+                    cwd=str(rsc),
                     check=True,
                     capture_output=True,
                     timeout=30.0,
@@ -172,7 +172,7 @@ def _get_shared_lib_dir() -> Path:
         try:
             subprocess.run(
                 ["make", "shared"],
-                cwd=rsc / "dilithium/ref",
+                cwd=str(rsc / "dilithium/ref"),
                 check=True,
                 capture_output=True,
                 timeout=30.0,
@@ -181,7 +181,7 @@ def _get_shared_lib_dir() -> Path:
             logger.exception("Failed to compile ML-DSA implementation")
             raise
         for lib, dst in libs.items():
-            src = rsc / "dilithium/ref" / lib
+            src = str(rsc / "dilithium/ref" / lib)
             shutil.move(src, lib_dir / dst)
         logger.info("ML-DSA implementation installed")
 
