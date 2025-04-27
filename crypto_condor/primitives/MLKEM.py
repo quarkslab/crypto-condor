@@ -6,8 +6,6 @@ import logging
 import shutil
 import subprocess
 import sys
-import tempfile
-import zipfile
 from importlib import resources
 from pathlib import Path
 from typing import Protocol
@@ -116,21 +114,21 @@ def _get_shared_lib_dir() -> Path:
     match sys.platform:
         case "linux":
             libs = {
-                        "libpqcrystals_kyber512_ref.so": "ML-KEM-512-ref.so",
-                        "libpqcrystals_kyber768_ref.so": "ML-KEM-768-ref.so",
-                        "libpqcrystals_kyber1024_ref.so": "ML-KEM-1024-ref.so",
-                    }
+                "libpqcrystals_kyber512_ref.so": "ML-KEM-512-ref.so",
+                "libpqcrystals_kyber768_ref.so": "ML-KEM-768-ref.so",
+                "libpqcrystals_kyber1024_ref.so": "ML-KEM-1024-ref.so",
+            }
         case "darwin":
             libs = {
-                        "libpqcrystals_kyber512_ref.dylib": "ML-KEM-512-ref.dylib",
-                        "libpqcrystals_kyber768_ref.dylib": "ML-KEM-768-ref.dylib",
-                        "libpqcrystals_kyber1024_ref.dylib": "ML-KEM-1024-ref.dylib",
-                    }
+                "libpqcrystals_kyber512_ref.dylib": "ML-KEM-512-ref.dylib",
+                "libpqcrystals_kyber768_ref.dylib": "ML-KEM-768-ref.dylib",
+                "libpqcrystals_kyber1024_ref.dylib": "ML-KEM-1024-ref.dylib",
+            }
         case _:
             raise ValueError(
                 f"Unsupported platform {sys.platform}, can't get appdata directory"
             )
-    
+
     rsc = resources.files("crypto_condor") / "primitives/_mlkem"
     install = False
 
@@ -151,7 +149,7 @@ def _get_shared_lib_dir() -> Path:
         install = True
 
     if install:
-        if not (rsc / "kyber/ref").is_dir(): 
+        if not (rsc / "kyber/ref").is_dir():
             try:
                 subprocess.run(
                     ["make", "all"],
@@ -206,7 +204,6 @@ def _keygen(paramset: Paramset) -> tuple[bytes, bytes]:
     match sys.platform:
         case "linux":
             lib_path = lib_dir / f"{str(paramset)}-ref.so"
-              
         case "darwin":
             lib_path = lib_dir / f"{str(paramset)}-ref.dylib"
         case _:
@@ -249,7 +246,6 @@ def _encaps(paramset: Paramset, pk: bytes) -> tuple[bytes, bytes]:
     match sys.platform:
         case "linux":
             lib_path = lib_dir / f"{str(paramset)}-ref.so"
-              
         case "darwin":
             lib_path = lib_dir / f"{str(paramset)}-ref.dylib"
         case _:
@@ -296,7 +292,6 @@ def _decaps(paramset: Paramset, sk: bytes, ct: bytes) -> bytes:
     match sys.platform:
         case "linux":
             lib_path = lib_dir / f"{str(paramset)}-ref.so"
-              
         case "darwin":
             lib_path = lib_dir / f"{str(paramset)}-ref.dylib"
         case _:

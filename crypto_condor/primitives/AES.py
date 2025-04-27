@@ -71,6 +71,7 @@ _AES_FFI: cffi.FFI | None = None
 _AES_LIB: _cffi_backend.Lib | None = None
 """The dlopen'ed library. If None, call _get_aes_lib."""
 
+
 def _get_aes_lib() -> tuple[cffi.FFI | None, _cffi_backend.Lib | None]:
     """Install or find the shared library for our implementation of AES.
 
@@ -128,8 +129,8 @@ def _get_aes_lib() -> tuple[cffi.FFI | None, _cffi_backend.Lib | None]:
     changes = False
 
     # If there is already a shared library, check for changes to the source files to
-    # know when to update it. We can use the CRC32 checksums included in the zip file header 
-    # to compare files.
+    # know when to update it. We can use the CRC32 checksums included in the zip file
+    # header to compare files.
     if lib_file.is_file():
         with zipfile.ZipFile(str(lib_zip), "r") as myzip:
             for info in myzip.infolist():
@@ -199,7 +200,7 @@ def _get_aes_lib() -> tuple[cffi.FFI | None, _cffi_backend.Lib | None]:
         void AES_CTR_xcrypt_buffer(struct AES_ctx *ctx, uint8_t *buffer, size_t length);
         """
     )
-    
+
     _AES_LIB = _AES_FFI.dlopen(str(lib_file.absolute()))
 
     return _AES_FFI, _AES_LIB
