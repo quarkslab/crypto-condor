@@ -250,6 +250,7 @@ class TestInfo:
             type: The type of test vector, see :enum:`TestType`.
             flags: An optional list of flags that categorize the test.
             comment: An optional comment describing what is being tested.
+            data: An optional debug data class.
 
         Returns:
             A new instance of TestInfo with the ``result``, ``err_msg``, and ``data``
@@ -318,6 +319,9 @@ class TestInfo:
         """
         self.result = False
         self.err_msg = err_msg
+        # We check if data is None because the TestInfo instance may already have debug
+        # data, added when creating the instance. If we simply assign data to self.data
+        # without checking, we may overwrite the existing data with None.
         if data is not None:
             self.data = data
 
