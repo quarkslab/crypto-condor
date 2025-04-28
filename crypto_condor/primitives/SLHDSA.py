@@ -52,7 +52,7 @@ def __dir__():  # pragma: no cover
 class Wrapper(strenum.StrEnum):
     """Supported languages for wrappers."""
 
-    pass
+    PYTHON = "Python"
 
 
 class Operation(strenum.StrEnum):

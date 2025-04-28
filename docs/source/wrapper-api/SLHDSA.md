@@ -86,7 +86,6 @@ existence.
 To test the invariant for SLH-DSA-SHA2-128s:
 
 ```python
-
 def CC_SLHDSA_sha2_128s_sign_pure(sk: bytes, msg: bytes, ctx: bytes, ph: str) -> bytes:
     ...
 
