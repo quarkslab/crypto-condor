@@ -15,7 +15,7 @@ ifeq ($(HOST_OS),Darwin)
 	LIBFLAGS = -dynamiclib
 	LIBRARY_SUFFIX = .dylib
 else ifeq ($(HOST_OS),Linux)
-	CC      = gcc
+	CC      ?= gcc
 	LIBFLAGS = -shared
 	LIBRARY_SUFFIX = .so
 else

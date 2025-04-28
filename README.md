@@ -51,12 +51,12 @@ primitives.
 ## Requirements
 
 crypto-condor requires **Python 3.10+**. For information, it is developed using
-Python 3.12 on Fedora 39.
+Python 3.13 on Fedora 41.
 
 The implementations of **AES, ML-KEM, ML-DSA, and TestU01** are written in C and
 are compiled directly on the user's machine. As such, they require a C compiler
-and GNU Make. These primitives are only compiled when required, and not when
-installing the package:
+(by default GCC on Linux and Clang on MacOS) and GNU Make. These primitives are
+only compiled when required, and not when installing the package:
 
 - AES: when testing the output of an implementation using classic modes of
 operation (not CCM or GCM).
@@ -64,6 +64,9 @@ operation (not CCM or GCM).
   vectors on the `encapsulate` function.
 - ML-DSA: when testing the output of an implementation.
 - TestU01: when used to test a file.
+
+The compiler can be chosen by setting the `CC` environment variable on Linux. On
+MacOS, only Clang has been confirmed to work.
 
 ## Installation
 
