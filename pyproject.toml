@@ -24,8 +24,14 @@ include = [
 ]
 exclude = [
   "crypto_condor/vectors/**/*.rsp",
-  "crypto_condor/vectors/_ECDH/src",
-  "crypto_condor/vectors/_HMAC/wycheproof",
+  "crypto_condor/vectors/_aes/cavp",
+  "crypto_condor/vectors/_aes/wycheproof",
+  "crypto_condor/vectors/_ecdh/cavp",
+  "crypto_condor/vectors/_ecdh/wycheproof",
+  "crypto_condor/vectors/_ecdsa/rsp",
+  "crypto_condor/vectors/_hmac/wycheproof",
+  "crypto_condor/vectors/_rsa/rsp",
+  "crypto_condor/vectors/_slhdsa/acvp",
 ]
 
 [tool.poetry.dependencies]
