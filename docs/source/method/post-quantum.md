@@ -59,7 +59,7 @@ This guide has entries on the three signature schemes:
 
 Falcon
 MLDSA
-SPHINCS+
+SLH-DSA <SLHDSA>
 ```
 
 As well as for the two KEMs:
