@@ -9,8 +9,8 @@
       "aes_cavp_CBC_192_dec.pb2"
     ],
     "256": [
-      "aes_cavp_CBC_256_dec.pb2",
-      "aes_cavp_CBC_256_enc.pb2"
+      "aes_cavp_CBC_256_enc.pb2",
+      "aes_cavp_CBC_256_dec.pb2"
     ]
   },
   "CBC-PKCS7": {
@@ -31,24 +31,24 @@
       "aes_wycheproof_CCM_128.pb2"
     ],
     "192": [
-      "aes_wycheproof_CCM_192.pb2",
+      "aes_cavp_ccm_192.pb2",
       "aes_cavp_ccm_192_dvpt.pb2",
-      "aes_cavp_ccm_192.pb2"
+      "aes_wycheproof_CCM_192.pb2"
     ],
     "256": [
+      "aes_cavp_ccm_256.pb2",
       "aes_cavp_ccm_256_dvpt.pb2",
-      "aes_wycheproof_CCM_256.pb2",
-      "aes_cavp_ccm_256.pb2"
+      "aes_wycheproof_CCM_256.pb2"
     ]
   },
   "CFB128": {
     "128": [
-      "aes_cavp_CFB128_128_dec.pb2",
-      "aes_cavp_CFB128_128_enc.pb2"
+      "aes_cavp_CFB128_128_enc.pb2",
+      "aes_cavp_CFB128_128_dec.pb2"
     ],
     "192": [
-      "aes_cavp_CFB128_192_dec.pb2",
-      "aes_cavp_CFB128_192_enc.pb2"
+      "aes_cavp_CFB128_192_enc.pb2",
+      "aes_cavp_CFB128_192_dec.pb2"
     ],
     "256": [
       "aes_cavp_CFB128_256_enc.pb2",
@@ -65,8 +65,8 @@
       "aes_cavp_CFB8_192_dec.pb2"
     ],
     "256": [
-      "aes_cavp_CFB8_256_dec.pb2",
-      "aes_cavp_CFB8_256_enc.pb2"
+      "aes_cavp_CFB8_256_enc.pb2",
+      "aes_cavp_CFB8_256_dec.pb2"
     ]
   },
   "CTR": {
@@ -79,8 +79,8 @@
       "aes_cavp_CTR_192_dec.pb2"
     ],
     "256": [
-      "aes_cavp_CTR_256_dec.pb2",
-      "aes_cavp_CTR_256_enc.pb2"
+      "aes_cavp_CTR_256_enc.pb2",
+      "aes_cavp_CTR_256_dec.pb2"
     ]
   },
   "ECB": {
@@ -93,15 +93,15 @@
       "aes_cavp_ECB_192_dec.pb2"
     ],
     "256": [
-      "aes_cavp_ECB_256_dec.pb2",
-      "aes_cavp_ECB_256_enc.pb2"
+      "aes_cavp_ECB_256_enc.pb2",
+      "aes_cavp_ECB_256_dec.pb2"
     ]
   },
   "GCM": {
     "128": [
       "aes_cavp_GCM_128_enc.pb2",
-      "aes_wycheproof_GCM_128.pb2",
-      "aes_cavp_gcm_128_dec.pb2"
+      "aes_cavp_gcm_128_dec.pb2",
+      "aes_wycheproof_GCM_128.pb2"
     ],
     "192": [
       "aes_cavp_GCM_192_enc.pb2",
@@ -109,8 +109,8 @@
       "aes_wycheproof_GCM_192.pb2"
     ],
     "256": [
-      "aes_cavp_gcm_256_dec.pb2",
       "aes_cavp_GCM_256_enc.pb2",
+      "aes_cavp_gcm_256_dec.pb2",
       "aes_wycheproof_GCM_256.pb2"
     ]
   }
