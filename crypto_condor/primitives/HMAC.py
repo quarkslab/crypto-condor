@@ -10,6 +10,7 @@ individual test results come from. We recommend using :func:`test_hmac` and its 
 to select which the modes to test and test vectors to use.
 """
 
+import hmac
 import importlib
 import inspect
 import json
@@ -232,6 +233,11 @@ msg = {self.msg.hex()}
 mac = {self.mac.hex()}
 returned mac = {self.res.hex() if self.res else "<none>"}
 """
+
+    @classmethod
+    def from_output(cls, key: str, msg: str, tag: str):
+        """Creates new instance from a parsed output."""
+        return cls(bytes.fromhex(key), bytes.fromhex(msg), bytes.fromhex(tag))
 
 
 @attrs.define
@@ -952,6 +958,62 @@ def test_hmac(
         if resilience:
             rd |= test_verify_wycheproof(hmac, hash_function)
 
+    return rd
+
+
+def test_output_digest(path: Path, hash_function: Hash) -> ResultsDict:
+    """Tests the output of an HMAC implementation.
+
+    Args:
+        path:
+            The path to the output file.
+        hash_function:
+            The hash function used for creating the HMAC tags.
+
+    Returns:
+        A dictionary of results. If the file can't be read (``IOError``), the dictionary
+        will be empty.
+    """
+    rd = ResultsDict()
+    res = Results.new("Test HMAC output", ["path", "hash_function"])
+
+    try:
+        with path.open("r") as file:
+            lines = file.readlines()
+    except IOError:
+        logger.exception("Failed to read file %s", str(path))
+        return rd
+
+    count = 1
+    for index, line in enumerate(lines, start=1):
+        line = line.rstrip()
+        if line.startswith("#") or not line:
+            continue
+        info = TestInfo.new(count, TestType.VALID, ["UserInput"], f"Line {index}")
+        count += 1
+        args = line.split("/")
+        match args:
+            case [key, msg, tag]:
+                data = HmacDigestData.from_output(key, msg, tag)
+                info.data = data
+            case _:
+                info.fail(
+                    f"Failed to parse line {index}:"
+                    f" expected 3 arguments, got {len(args)}"
+                )
+                res.add(info)
+                continue
+
+        ref_tag = hmac.digest(data.key, data.msg, str(hash_function))
+        data.res = ref_tag
+
+        if data.mac == ref_tag:
+            info.ok()
+        else:
+            info.fail("Wrong MAC tag")
+        res.add(info)
+
+    rd.add(res)
     return rd
 
 

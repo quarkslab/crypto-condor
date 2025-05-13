@@ -8,6 +8,7 @@ import typer
 
 from crypto_condor.primitives import AES, ECDSA, SHA, SHAKE, ChaCha20
 from crypto_condor.primitives.common import Console
+from crypto_condor.vectors import hmac
 
 # --------------------------- Module --------------------------------------------------
 
@@ -388,6 +389,75 @@ def shake(
         debug: If the results are saved, include debug data.
     """
     rd = SHAKE.test_output_digest(input_file, algorithm)
+    if console.process_results(rd, filename, no_save, debug):
+        raise typer.Exit(0)
+    else:
+        raise typer.Exit(1)
+
+
+_hmac_help = """Test the output of an HMAC implementation.
+
+The format of the output file is as follows:
+
+- One line per operation, separated by newlines ``\n``.
+- Lines starting with ``#`` are considered comments and ignored.
+- Values are written in hexadecimal.
+- Values are separated by forward slashes ``/``.
+- The order of the values is:
+
+    ``key/message/mac``
+"""
+
+
+@app.command(
+    name="HMAC",
+    help=_hmac_help,
+    no_args_is_help=True,
+    rich_help_panel="Subcommands",
+    context_settings={"max_content_width": console.width},
+)
+@app.command(
+    name="hmac",
+    help=_hmac_help,
+    no_args_is_help=True,
+    rich_help_panel="Subcommands",
+    context_settings={"max_content_width": console.width},
+    hidden=True,
+)
+def test_hmac(
+    input_file: Annotated[str, typer.Argument(metavar="FILE")],
+    hash_function: Annotated[
+        hmac.Hash,
+        typer.Argument(help="The hash function used to generate the HMAC tags."),
+    ],
+    filename: Annotated[str, _filename] = "",
+    no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
+):
+    """Tests the output of a SHAKE implementation.
+
+    Args:
+        input_file:
+            The file to test.
+        hash_function:
+            The hash function used to generate the HMAC tags.
+
+    Keyword Args:
+        filename:
+            The name of the file to save the results.
+        no_save:
+            If True, results are not saved and the user is not prompted.
+        debug:
+            If the results are saved, include debug data.
+    """
+    from crypto_condor.primitives import HMAC
+
+    path = Path(input_file)
+    if not path.is_file():
+        console.print(f"Cannot find file {input_file}")
+        raise typer.Exit(1)
+
+    rd = HMAC.test_output_digest(path, hash_function)
     if console.process_results(rd, filename, no_save, debug):
         raise typer.Exit(0)
     else:

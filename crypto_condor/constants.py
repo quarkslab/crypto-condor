@@ -153,7 +153,7 @@ SUPPORTED_MODES: dict[Primitive, Modes] = {
     Primitive.HMAC: {
         "audit": False,
         "method": True,
-        "output": False,
+        "output": True,
         "wrapper": True,
         "harness": True,
     },

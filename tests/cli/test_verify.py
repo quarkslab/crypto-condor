@@ -13,7 +13,9 @@ from typer.testing import CliRunner
 
 from crypto_condor.cli.main import app
 from crypto_condor.constants import SUPPORTED_MODES, Primitive
-from crypto_condor.primitives import AES, ECDSA, SHA, ChaCha20
+from crypto_condor.primitives import AES, ECDSA, HMAC, SHA, ChaCha20
+
+from ..utils.hmac import generate_hmac_output
 
 runner = CliRunner()
 
@@ -657,3 +659,49 @@ class TestChaCha:
         )
         assert dec_result.exit_code == 1, dec_result.output
         assert str(number_fail) in dec_result.output, dec_result.output
+
+
+class TestHmac:
+    """Class to test the ``test output hmac`` command."""
+
+    @pytest.mark.parametrize(("algo"), HMAC.Hash)
+    def test_output(self, algo: HMAC.Hash, tmp_path):
+        """Tests :func:`crypto_condor.primitives.HMAC.test_output_digest`."""
+        output = generate_hmac_output(str(algo), algo.digest_size // 8, True)
+        output_file = tmp_path / f"hmac_{str(algo)}.txt"
+        output_file.write_text(output)
+
+        res = runner.invoke(
+            app,
+            (
+                "test",
+                "output",
+                "hmac",
+                str(output_file.absolute()),
+                str(algo),
+                "--no-save",
+            ),
+        )
+        print(res.stdout)
+        assert res.exit_code == 0
+
+    @pytest.mark.parametrize(("algo"), HMAC.Hash)
+    def test_output_invalid(self, algo: HMAC.Hash, tmp_path):
+        """Tests :func:`crypto_condor.primitives.HMAC.test_output_digest`."""
+        output = generate_hmac_output(str(algo), algo.digest_size // 8, False)
+        output_file = tmp_path / f"hmac_{str(algo)}_invalid.txt"
+        output_file.write_text(output)
+
+        res = runner.invoke(
+            app,
+            (
+                "test",
+                "output",
+                "hmac",
+                str(output_file.absolute()),
+                str(algo),
+                "--no-save",
+            ),
+        )
+        print(res.stdout)
+        assert res.exit_code != 0
