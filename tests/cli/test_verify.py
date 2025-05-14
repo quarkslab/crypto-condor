@@ -13,8 +13,9 @@ from typer.testing import CliRunner
 
 from crypto_condor.cli.main import app
 from crypto_condor.constants import SUPPORTED_MODES, Primitive
-from crypto_condor.primitives import AES, ECDSA, HMAC, SHA, ChaCha20
+from crypto_condor.primitives import AES, ECDH, ECDSA, HMAC, SHA, ChaCha20
 
+from ..utils.ecdh import generate_ecdh_output
 from ..utils.hmac import generate_hmac_output
 
 runner = CliRunner()
@@ -700,6 +701,70 @@ class TestHmac:
                 "hmac",
                 str(output_file.absolute()),
                 str(algo),
+                "--no-save",
+            ),
+        )
+        print(res.stdout)
+        assert res.exit_code != 0
+
+
+class TestEcdh:
+    """Class to test the ``test output ecdh`` command."""
+
+    @pytest.mark.parametrize(
+        "curve",
+        (
+            ECDH.Curve.P224,
+            ECDH.Curve.P256,
+            ECDH.Curve.P384,
+            ECDH.Curve.P521,
+            ECDH.Curve.SECP256K1,
+        ),
+    )
+    def test_output(self, curve: ECDH.Curve, tmp_path):
+        """Tests :func:`crypto_condor.primitives.ECDH.test_output_exchange`."""
+        output = generate_ecdh_output(curve, True)
+        output_file = tmp_path / f"ecdh_{str(curve)}.txt"
+        output_file.write_text(output)
+
+        res = runner.invoke(
+            app,
+            (
+                "test",
+                "output",
+                "ecdh",
+                str(output_file.absolute()),
+                str(curve),
+                "--no-save",
+            ),
+        )
+        print(res.stdout)
+        assert res.exit_code == 0
+
+    @pytest.mark.parametrize(
+        "curve",
+        (
+            ECDH.Curve.P224,
+            ECDH.Curve.P256,
+            ECDH.Curve.P384,
+            ECDH.Curve.P521,
+            ECDH.Curve.SECP256K1,
+        ),
+    )
+    def test_output_invalid(self, curve: ECDH.Curve, tmp_path):
+        """Tests :func:`crypto_condor.primitives.ECDH.test_output_exchange`."""
+        output = generate_ecdh_output(curve, False)
+        output_file = tmp_path / f"ecdh_{str(curve)}.txt"
+        output_file.write_text(output)
+
+        res = runner.invoke(
+            app,
+            (
+                "test",
+                "output",
+                "ecdh",
+                str(output_file.absolute()),
+                str(curve),
                 "--no-save",
             ),
         )

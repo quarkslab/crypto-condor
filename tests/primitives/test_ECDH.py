@@ -6,6 +6,8 @@ from Crypto.PublicKey import ECC
 
 from crypto_condor.primitives import ECDH
 
+from ..utils.ecdh import generate_ecdh_output
+
 Curve = ECDH.Curve
 
 
@@ -57,3 +59,29 @@ def test_exchange(curve: Curve):
     rd = ECDH.test_exchange_wycheproof(ecdh, curve)
     print(rd)
     assert rd.check()
+
+
+@pytest.mark.parametrize(
+    "curve", (Curve.P224, Curve.P256, Curve.P384, Curve.P521, Curve.SECP256K1)
+)
+def test_output(curve: Curve, tmp_path):
+    """Tests :func:`crypto_condor.primitives.ECDH.test_output_exchange`."""
+    output = generate_ecdh_output(curve, True)
+    output_file = tmp_path / f"ecdh_{str(curve)}.txt"
+    output_file.write_text(output)
+
+    rd = ECDH.test_output_exchange(output_file, curve)
+    assert rd.check(fail_if_empty=True)
+
+
+@pytest.mark.parametrize(
+    "curve", (Curve.P224, Curve.P256, Curve.P384, Curve.P521, Curve.SECP256K1)
+)
+def test_output_invalid(curve: Curve, tmp_path):
+    """Tests :func:`crypto_condor.primitives.ECDH.test_output_exchange`."""
+    output = generate_ecdh_output(curve, False)
+    output_file = tmp_path / f"ecdh_{str(curve)}_invalid.txt"
+    output_file.write_text(output)
+
+    rd = ECDH.test_output_exchange(output_file, curve)
+    assert not rd.check()

@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from typing import Annotated, Optional
 
+import strenum
 import typer
 
 from crypto_condor.primitives import AES, ECDSA, SHA, SHAKE, ChaCha20
@@ -458,6 +459,111 @@ def test_hmac(
         raise typer.Exit(1)
 
     rd = HMAC.test_output_digest(path, hash_function)
+    if console.process_results(rd, filename, no_save, debug):
+        raise typer.Exit(0)
+    else:
+        raise typer.Exit(1)
+
+
+_ecdh_help = r"""Test the output of an ECDH implementation.
+
+The format of the output file is as follows:
+
+- One line per operation, separated by newlines ``\n``.
+- Lines starting with ``#`` are considered comments and ignored.
+- Values are written in hexadecimal.
+- Values are separated by forward slashes ``/``.
+- The order of the values is:
+
+    ``d/pk/secret``
+
+Where:
+
+- ``d`` is the secret scalar.
+- ``pk`` is the peer's DER-encoded public key.
+- ``secret`` is the resulting shared secret.
+"""
+
+
+class EcdhCurve(strenum.StrEnum):
+    """Elliptic curves supported by cryptography."""
+
+    P192 = "P-192"
+    P224 = "P-224"
+    P256 = "P-256"
+    P384 = "P-384"
+    P521 = "P-521"
+    K163 = "K-163"
+    K233 = "K-233"
+    K283 = "K-283"
+    K409 = "K-409"
+    K571 = "K-571"
+    B163 = "B-163"
+    B233 = "B-233"
+    B283 = "B-283"
+    B409 = "B-409"
+    B571 = "B-571"
+    BRAINPOOLP256R1 = "brainpoolP256r1"
+    BRAINPOOLP384R1 = "brainpoolP384r1"
+    BRAINPOOLP512R1 = "brainpoolP512r1"
+    SECP256K1 = "secp256k1"
+
+
+@app.command(
+    name="ECDH",
+    help=_ecdh_help,
+    no_args_is_help=True,
+    rich_help_panel="Subcommands",
+    context_settings={"max_content_width": console.width},
+)
+@app.command(
+    name="ecdh",
+    help=_ecdh_help,
+    no_args_is_help=True,
+    rich_help_panel="Subcommands",
+    context_settings={"max_content_width": console.width},
+    hidden=True,
+)
+def test_ecdh(
+    input_file: Annotated[str, typer.Argument(metavar="FILE", show_default=False)],
+    curve: Annotated[
+        EcdhCurve,
+        typer.Argument(
+            help=f"The elliptic curve used for the exchange. One of: {', '.join([str(c) for c in EcdhCurve])}",
+            metavar="STRING",
+            show_default=False,
+        ),
+    ],
+    filename: Annotated[str, _filename] = "",
+    no_save: Annotated[bool, _no_save] = False,
+    debug: Annotated[Optional[bool], _debug] = None,
+):
+    """Tests the output of a SHAKE implementation.
+
+    Args:
+        input_file:
+            The file to test.
+        curve:
+            The elliptic curve used for the exchange.
+
+    Keyword Args:
+        filename:
+            The name of the file to save the results.
+        no_save:
+            If True, results are not saved and the user is not prompted.
+        debug:
+            If the results are saved, include debug data.
+    """
+    from crypto_condor.primitives import ECDH
+
+    path = Path(input_file)
+    if not path.is_file():
+        console.print(f"Cannot find file {input_file}")
+        raise typer.Exit(1)
+
+    cc_curve = ECDH.Curve.from_name(str(curve))
+
+    rd = ECDH.test_output_exchange(path, cc_curve)
     if console.process_results(rd, filename, no_save, debug):
         raise typer.Exit(0)
     else:

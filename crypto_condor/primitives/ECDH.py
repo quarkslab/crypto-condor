@@ -16,6 +16,8 @@ from typing import Protocol
 import attrs
 import cffi
 import strenum
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.serialization import load_der_public_key
 from rich.progress import track
 
 from crypto_condor.primitives.common import Results, ResultsDict, TestInfo, TestType
@@ -279,6 +281,11 @@ peer_key = {self.pub.hex()}
 ss = {self.ss.hex()}
 returned ss = {self.ret_ss.hex() if self.ret_ss is not None else "<none>"}
 """
+
+    @classmethod
+    def from_output(cls, d: str, pk: str, secret: str):
+        """Creates a new instance from a parsed output."""
+        return cls(bytes.fromhex(d), bytes.fromhex(pk), bytes.fromhex(secret))
 
 
 # --------------------------- Test functions ------------------------------------------
@@ -700,6 +707,80 @@ def test_exchange(
         rd |= test_exchange_nist(ecdh, curve)
     if resilience:
         rd |= test_exchange_wycheproof(ecdh, curve)
+    return rd
+
+
+def test_output_exchange(path: Path, curve: Curve) -> ResultsDict:
+    """Tests the output of an ECDH implementation.
+
+    Args:
+        path:
+            The path to the output file.
+        curve:
+            The elliptic curve used for the exchange.
+
+    Returns:
+        A dictionary of results. If the file can't be read (``IOError``), the dictionary
+        will be empty.
+    """
+    rd = ResultsDict()
+    res = Results.new("Test HMAC output", ["path", "curve"])
+
+    try:
+        with path.open("r") as file:
+            lines = file.readlines()
+    except IOError:
+        logger.exception("Failed to read file %s", str(path))
+        return rd
+
+    count = 1
+    for index, line in enumerate(lines, start=1):
+        line = line.rstrip()
+        if line.startswith("#") or not line:
+            continue
+        info = TestInfo.new(count, TestType.VALID, ["UserInput"], f"Line {index}")
+        count += 1
+        args = line.split("/")
+        match args:
+            case [d, pub, secret]:
+                data = X509Data.from_output(d, pub, secret)
+                info.data = data
+            case _:
+                info.fail(
+                    f"Failed to parse line {index}:"
+                    f" expected 3 arguments, got {len(args)}"
+                )
+                res.add(info)
+                continue
+
+        try:
+            pk = load_der_public_key(data.pub, None)
+        except ValueError:
+            info.fail("Invalid public key")
+            res.add(info)
+            continue
+
+        # Deriving the private key from an int should not fail, hence the lack of
+        # try/except.
+        ec_curve = getattr(ec, curve.get_ec_name())
+        sk = ec.derive_private_key(int.from_bytes(data.d, "big"), ec_curve())
+
+        try:
+            ref_secret = sk.exchange(ec.ECDH(), pk)  # type: ignore
+        except ValueError as error:
+            info.fail(str(error))
+            res.add(info)
+            continue
+
+        data.ret_ss = ref_secret
+
+        if data.ss == ref_secret:
+            info.ok()
+        else:
+            info.fail("Wrong shared secret")
+        res.add(info)
+
+    rd.add(res)
     return rd
 
 
