@@ -529,7 +529,10 @@ def test_ecdh(
     curve: Annotated[
         EcdhCurve,
         typer.Argument(
-            help=f"The elliptic curve used for the exchange. One of: {', '.join([str(c) for c in EcdhCurve])}",
+            help=(
+                "The elliptic curve used for the exchange."
+                f" One of: {', '.join([str(c) for c in EcdhCurve])}"
+            ),
             metavar="STRING",
             show_default=False,
         ),
