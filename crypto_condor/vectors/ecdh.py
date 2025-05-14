@@ -87,8 +87,8 @@ class Curve(strenum.StrEnum):
                     return "SECT163R2"
                 return f"SECT{name[2:]}R1"
             case "br":
-                return name.upper()
+                return name.replace("b", "B").replace("lp", "lP")
             case "se":
-                return name
+                return name.upper()
             case _:
                 raise ValueError(f"Invalid curve {name}")
