@@ -56,7 +56,7 @@ Where `length` is one of `128`, `192`, or `256`.
 Compile with:
 
 ```bash
-gcc -fPIC -static -o AES_openssl_encrypt.so AES_openssl_encrypt.c -lssl -lcrypto
+gcc -fPIC -shared -o AES_openssl_encrypt.so AES_openssl_encrypt.c -lssl -lcrypto
 ```
 
 Then test with:
@@ -125,7 +125,7 @@ Where `length` is one of `128`, `192`, or `256`.
 Compile with:
 
 ```bash
-gcc -fPIC -static -o AES_openssl_encrypt_aead.so AES_openssl_encrypt_aead.c -lssl -lcrypto
+gcc -fPIC -shared -o AES_openssl_encrypt_aead.so AES_openssl_encrypt_aead.c -lssl -lcrypto
 ```
 
 Then test with:
@@ -188,7 +188,7 @@ Where `length` is one of `128`, `192`, or `256`.
 Compile with:
 
 ```bash
-gcc -fPIC -static -o AES_openssl_decrypt.so AES_openssl_decrypt.c -lssl -lcrypto
+gcc -fPIC -shared -o AES_openssl_decrypt.so AES_openssl_decrypt.c -lssl -lcrypto
 ```
 
 Then test with:
@@ -258,7 +258,7 @@ Where `length` is one of `128`, `192`, or `256`.
 Compile with:
 
 ```bash
-gcc -fPIC -static -o AES_openssl_decrypt_aead.so AES_openssl_decrypt_aead.c -lssl -lcrypto
+gcc -fPIC -shared -o AES_openssl_decrypt_aead.so AES_openssl_decrypt_aead.c -lssl -lcrypto
 ```
 
 Then test with:
