@@ -450,7 +450,13 @@ def run_python_wrapper(wrapper: Path, compliance: bool, resilience: bool):
 
 
 def _test_lib_digest(
-    ffi: cffi.FFI, lib, function: str, algorithm: Algorithm, orientation: Orientation
+    ffi: cffi.FFI,
+    lib,
+    function: str,
+    algorithm: Algorithm,
+    orientation: Orientation,
+    compliance: bool,
+    resilience: bool,
 ) -> ResultsDict:
     """Tests a harness digest.
 
@@ -473,7 +479,9 @@ def _test_lib_digest(
             raise ValueError(f"{function} returned {retval}")
         return bytes(buf)
 
-    return test_digest(_shake, algorithm, orientation)
+    return test_digest(
+        _shake, algorithm, orientation, compliance=compliance, resilience=resilience
+    )
 
 
 def test_lib(
@@ -521,6 +529,8 @@ def test_lib(
                 orientation = Orientation.BIT
             case _:
                 logger.debug("Ignoring unknown CC_SHAKE function %s", function)
-        rd |= _test_lib_digest(ffi, lib, function, algorithm, orientation)
+        rd |= _test_lib_digest(
+            ffi, lib, function, algorithm, orientation, compliance, resilience
+        )
 
     return rd

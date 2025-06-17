@@ -1113,7 +1113,9 @@ def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDi
 # --------------------------- Harness -------------------------------------------------
 
 
-def _test_harness_digest(ffi: cffi.FFI, lib, function: str, algo: Hash) -> ResultsDict:
+def _test_harness_digest(
+    ffi: cffi.FFI, lib, function: str, algo: Hash, compliance: bool, resilience: bool
+) -> ResultsDict:
     """Tests a harness for digest."""
     logger.info("Testing harness function %s", function)
 
@@ -1137,10 +1139,12 @@ def _test_harness_digest(ffi: cffi.FFI, lib, function: str, algo: Hash) -> Resul
             raise ValueError(f"{function} failed with code {rc}")
         return bytes(c_mac)
 
-    return test_digest(_digest, algo)
+    return test_digest(_digest, algo, compliance=compliance, resilience=resilience)
 
 
-def _test_harness_verify(ffi: cffi.FFI, lib, function: str, algo: Hash) -> ResultsDict:
+def _test_harness_verify(
+    ffi: cffi.FFI, lib, function: str, algo: Hash, compliance: bool, resilience: bool
+) -> ResultsDict:
     """Tests a harness for verify."""
     logger.info("Testing harness function %s", function)
 
@@ -1167,7 +1171,7 @@ def _test_harness_verify(ffi: cffi.FFI, lib, function: str, algo: Hash) -> Resul
         else:
             raise ValueError(f"{function} failed with code {rc}")
 
-    return test_verify(_verify, algo)
+    return test_verify(_verify, algo, compliance=compliance, resilience=resilience)
 
 
 def test_lib(
@@ -1199,14 +1203,14 @@ def test_lib(
                 except ValueError as error:
                     logger.error(str(error))
                     continue
-                rd |= _test_harness_digest(ffi, lib, func, algo)
+                rd |= _test_harness_digest(ffi, lib, func, algo, compliance, resilience)
             case ["CC", "HMAC", "verify", *parts]:
                 try:
                     algo = Hash.from_funcname(parts)
                 except ValueError as error:
                     logger.error(str(error))
                     continue
-                rd |= _test_harness_verify(ffi, lib, func, algo)
+                rd |= _test_harness_verify(ffi, lib, func, algo, compliance, resilience)
             case _:
                 logger.debug("Skipped invalid CC_HMAC function %s", func)
                 continue

@@ -1021,7 +1021,7 @@ def test_lib(
                     )
                     continue
                 rd |= _test_harness_exchange_point(
-                    ffi, lib, function, curve, True, True
+                    ffi, lib, function, curve, compliance, resilience
                 )
             case ["CC", "ECDH", "exchange", "x509", _curve]:
                 try:
@@ -1031,7 +1031,9 @@ def test_lib(
                         "Invalid curve %s for ECDH, skipped %s", _curve, function
                     )
                     continue
-                rd |= _test_harness_exchange_x509(ffi, lib, function, curve, True, True)
+                rd |= _test_harness_exchange_x509(
+                    ffi, lib, function, curve, compliance, resilience
+                )
             case ["CC", "ECDH", *_]:
                 logger.warning("Invalid CC_ECDH function %s, skipped", function)
                 continue
