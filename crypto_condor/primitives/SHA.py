@@ -4,6 +4,7 @@ import importlib
 import inspect
 import json
 import logging
+import os
 import subprocess
 import sys
 import warnings
@@ -233,6 +234,35 @@ def _load_vectors(algo: Algorithm) -> list[ShaVectors]:
     return vectors
 
 
+def _generate_random_vectors(algo: Algorithm, n: int, start_id: int) -> ShaVectors:
+    """Loads SHA random vectors.
+
+    Args:
+        algo:
+            The algorithm to load vectors of.
+        n:
+            The number of random vectors to generate.
+        start_id:
+            The starting ID for the random vectors.
+
+    Returns:
+        A list of :class:`ShaVectors`.
+    """
+    vectors = ShaVectors()
+    for i in range(n):
+        msg = os.urandom(64)
+        vectors.tests.append(
+            ShaTest(
+                id=start_id + i,
+                type="valid",
+                flags=["RandomTest"],
+                msg=msg,
+                md=_sha(algo, msg),
+            )
+        )
+    return vectors
+
+
 # --------------------------- Test functions ------------------------------------------
 
 
@@ -282,6 +312,7 @@ def test_digest(
     *,
     compliance: bool = True,
     resilience: bool = False,
+    random_inputs: bool = False,
 ) -> ResultsDict:
     """Tests a SHA implementation.
 
@@ -299,6 +330,8 @@ def test_digest(
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
+        random_inputs:
+            Whether to use random input vectors.
 
     Returns:
         A dictionary of results.
@@ -444,6 +477,34 @@ def test_digest(
                 info.fail(f"Failed at checkpoint {j}", mc_data)
             res.add(info)
 
+    if random_inputs:
+        last_id = vectors.tests[-1].id if vectors.tests else 0
+        # consider also the monte-carlo test
+        last_id += 1
+        # 10 random values are enough to detect incorrect implementations
+        random_vectors = _generate_random_vectors(algorithm, 10, last_id + 1)
+
+        for test in track(random_vectors.tests, rf"\[{str(algorithm)}] Random tests"):
+            info = TestInfo.new_from_test(test, False)
+            data = DigestData(test.msg, test.md)
+            try:
+                md = digest(test.msg)
+            except NotImplementedError:
+                logger.warning("%s digest not implemented, skipped", algorithm)
+                return rd
+            except Exception as error:
+                info.fail(f"Exception caught: {str(error)}", digest)
+                res.add(info)
+                continue
+            data.ret_md = md
+            if len(md) * 8 != algorithm.digest_size:
+                info.fail(f"Wrong digest size ({len(md) * 8})", data)
+            elif md != data.md:
+                info.fail("Wrong digest", data)
+            else:
+                info.ok(data)
+            res.add(info)
+
     return rd
 
 
@@ -451,7 +512,7 @@ def test_digest(
 
 
 def test_wrapper_python(
-    wrapper: Path, compliance: bool, resilience: bool
+    wrapper: Path, compliance: bool, resilience: bool, random_inputs: bool
 ) -> ResultsDict:
     """Tests a Python SHA wrapper.
 
@@ -462,6 +523,8 @@ def test_wrapper_python(
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
+        random_inputs:
+            Whether to use random test vectors.
 
     .. versionadded:: 2025.03.12
     """
@@ -493,6 +556,7 @@ def test_wrapper_python(
                     algo,
                     compliance=compliance,
                     resilience=resilience,
+                    random_inputs=random_inputs,
                 )
             case ["CC", "SHA", *_]:
                 logger.warning("Ignored unknown CC_SHA function %s", func)
@@ -503,7 +567,9 @@ def test_wrapper_python(
     return rd
 
 
-def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDict:
+def test_wrapper(
+    wrapper: Path, compliance: bool, resilience: bool, random_inputs: bool
+) -> ResultsDict:
     """Tests a SHA wrapper.
 
     Calls the corresponding ``test_wrapper`` function based on the wrapper's extension.
@@ -515,6 +581,8 @@ def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDi
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
+        random_inputs:
+            Whether to use random test vectors.
 
     Raises:
         FileNotFoundError:
@@ -528,7 +596,7 @@ def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDi
 
     match wrapper.suffix:
         case ".py":
-            return test_wrapper_python(wrapper, compliance, resilience)
+            return test_wrapper_python(wrapper, compliance, resilience, random_inputs)
         case _:
             raise ValueError(f"No runner for '{wrapper.suffix}' wrappers")
 

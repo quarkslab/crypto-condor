@@ -68,6 +68,9 @@ _compliance = typer.Option(
 _resilience = typer.Option(
     "--resilience/--no-resilience", help="Use resilience test vectors."
 )
+_random_inputs = typer.Option(
+    "--random-inputs/--no-random-inputs", help="Use random test vectors."
+)
 _encrypt = typer.Option("--encrypt/--no-encrypt", help="Test the encryption function.")
 _decrypt = typer.Option("--decrypt/--no-decrypt", help="Test the decryption function.")
 _sign = typer.Option("--sign/--no-sign", help="Test the signing function.")
@@ -310,6 +313,7 @@ def sha(
     wrapper: Annotated[str, typer.Argument(metavar="FILE")],
     compliance: Annotated[bool, _compliance] = True,
     resilience: Annotated[bool, _resilience] = False,
+    random_inputs: Annotated[bool, _random_inputs] = False,
     filename: Annotated[str, _filename] = "",
     no_save: Annotated[bool, _no_save] = False,
     debug: Annotated[Optional[bool], _debug] = None,
@@ -325,6 +329,8 @@ def sha(
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
+        random_inputs:
+            Whether to use random test vectors.
         filename:
             Name of the file to save results.
         no_save:
@@ -333,7 +339,7 @@ def sha(
             When saving the results to a file, whether to add the debug data.
     """
     try:
-        results = SHA.test_wrapper(Path(wrapper), compliance, resilience)
+        results = SHA.test_wrapper(Path(wrapper), compliance, resilience, random_inputs)
     except ValueError as error:
         logger.error(error)
         raise typer.Exit(1) from error
