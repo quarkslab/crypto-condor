@@ -70,11 +70,11 @@ Naming convention
 
 Where ``curve`` is one of:
 
-* ``P192``, ``P224``, ``P256``, ``P384``, ``P521``.
+* ``P224``, ``P256``, ``P384``, ``P521``.
 * ``brainpoolP224r1``, ``brainpoolP256r1``, ``brainpoolP320r1``, ``brainpoolP384r1``, ``brainpoolP512r1``.
 * ``secp256k1``.
-* ``B163``, ``B223``, ``B283``, ``B409``, ``B571``.
-* ``K163``, ``K223``, ``K283``, ``K409``, ``K571``.
+* ``B283``, ``B409``, ``B571``.
+* ``K283``, ``K409``, ``K571``.
 
 .. attention::
 
