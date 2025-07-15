@@ -28,6 +28,7 @@ Its signature must be:
 .. c:function:: void MLDSA_sign(\
     uint8_t *sig, size_t siglen,\
     const uint8_t *msg, size_t msglen,\
+    const uint8_t *ctx, size_t ctxlen,\
     const uint8_t *sk, size_t sklen)
 
     Signs a message with MLDSA.
@@ -36,6 +37,8 @@ Its signature must be:
     :param siglen: **[In]** The size of the signature buffer in bytes.
     :param msg: **[In]** The message to sign.
     :param msglen: **[In]** The size of the message in bytes.
+    :param ctx: **[In]** The context string, can be empty.
+    :param ctxlen: **[In]** The size of the context string in bytes.
     :param sk: **[In]** The secret key to use.
     :param sklen: **[In]** The size of the secret key in bytes.
 
@@ -47,6 +50,7 @@ Example:
 
     void CC_MLDSA_44_sign(uint8_t *sig, size_t siglen,
                           const uint8_t *msg, size_t msglen,
+                          const uint8_t *ctx, size_t ctxlen,
                           const uint8_t *sk, size_t sklen);
 
 Verify
@@ -63,12 +67,15 @@ Its signature must be:
 .. c:function:: int MLDSA_verify(\
     const uint8_t *sig, size_t siglen,\
     const uint8_t *msg, size_t msglen,\
+    const uint8_t *ctx, size_t ctxlen,\
     const uint8_t *pk, size_t pklen)
 
     :param sig: **[In]** The signature to verify.
     :param siglen: **[In]** The size of the signature in bytes.
     :param msg: **[In]** The message that was signed.
     :param msglen: **[In]** The size of the message in bytes.
+    :param ctx: **[In]** The context string, can be empty.
+    :param ctxlen: **[In]** The size of the context string in bytes.
     :param pk: **[In]** The public key.
     :param pklen: **[In]** The size of the public key in bytes.
     :returns: The result of the verification.
@@ -83,4 +90,5 @@ Example:
 
     int CC_MLDSA_44_verify(const uint8_t *sig, size_t siglen,
                            const uint8_t *msg, size_t msglen,
+                           const uint8_t *ctx, size_t ctxlen,
                            const uint8_t *pk, size_t pklen);
