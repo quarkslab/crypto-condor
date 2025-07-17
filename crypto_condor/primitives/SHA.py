@@ -479,9 +479,13 @@ def test_digest(
             res.add(info)
 
     if random_inputs:
-        last_id = vectors.tests[-1].id if vectors.tests else 0
-        # consider also the monte-carlo test
-        last_id += 1
+        last_id = (
+            max(
+            (test.id for vectors in all_vectors for test in vectors.tests),
+            default=0,
+            )
+            + 1
+        )
         # 10 random values are enough to detect incorrect implementations
         random_vectors = _generate_random_vectors(algorithm, 10, last_id + 1)
 
