@@ -15,6 +15,7 @@ import importlib
 import inspect
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any, Protocol, cast
@@ -296,6 +297,38 @@ def _load_vectors(algo: Hash, compliance: bool, resilience: bool) -> list[HmacVe
 
     return vectors
 
+def _generate_random_vectors(algo: Hash, n: int, start_id: int) -> HmacVectors:
+    """Generates random HMAC vectors.
+
+    Args:
+        algo:
+            The hash algorithm to get vectors of.
+        n:
+            The number of random vectors to generate.
+        start_id:
+            The starting ID for the random vectors.
+
+    Returns:
+        A list of :class:`HmacVectors`.
+    """
+    vectors = HmacVectors()
+    for i in range(n):
+        key = os.urandom(32)
+        msg = os.urandom(64)
+        mac = hmac.digest(key, msg, algo.value)
+        vectors.tests.append(
+            HmacTest(
+                id=start_id + i,
+                type="valid",
+                flags=["RandomTest"],
+                key=key,
+                msg=msg,
+                mac=mac,
+            )
+        )
+        
+    return vectors
+
 
 # --------------------------- Test functions ------------------------------------------
 
@@ -306,6 +339,7 @@ def test_digest(
     *,
     compliance: bool = True,
     resilience: bool = False,
+    randomness: bool = False,
 ) -> ResultsDict:
     """Tests an implementation of the HMAC digest operation.
 
@@ -324,6 +358,8 @@ def test_digest(
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
+        randomness:
+            Wheter to use random input vectors.
 
     Returns:
         A dictionary of results.
@@ -402,6 +438,41 @@ def test_digest(
                     # There are no acceptable test for now.
                     raise ValueError(f"Invalid result ({test.type}, {is_same_mac})")
             res.add(info)
+    if randomness:
+        last_id = (
+            max(
+            (test.id for vectors in all_vectors for test in vectors.tests),
+            default=0,
+            )
+            + 1
+        )
+        # 10 random values are enough to detect incorrect implementations
+        random_vectors = _generate_random_vectors(hash_function, 10, last_id)
+
+        for test in track(
+            random_vectors.tests,
+            rf"\[HMAC-{str(hash_function)}] Test digest with random vectors"
+        ):
+            info = TestInfo.new_from_test(test, True)
+            data = HmacDigestData(test.key, test.msg, test.mac)
+            try:
+                ret_mac = digest(test.key, test.msg)
+            except NotImplementedError:
+                logger.warning(
+                    "HMAC-%s digest not implemented, test skipped", str(hash_function)
+                )
+                return rd
+            except Exception as error:
+                info.fail(f"Exception caught: {str(error)}", data)
+                logger.debug("Exception caught when running HMAC.digest", exc_info=True)
+                res.add(info)
+                continue
+            data.res = ret_mac
+            if ret_mac[: len(test.mac)] == test.mac:
+                info.ok(data)
+            else:
+                info.fail("Wrong MAC", data)
+            res.add(info)
 
     return rd
 
@@ -412,6 +483,7 @@ def test_verify(
     *,
     compliance: bool = True,
     resilience: bool = False,
+    randomness: bool = False,
 ) -> ResultsDict:
     """Tests an implementation of HMAC tag verification.
 
@@ -426,6 +498,8 @@ def test_verify(
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
+        randomness:
+            Whether to use random input vectors.
 
     Returns:
         A dictionary of results.
@@ -499,6 +573,40 @@ def test_verify(
                 case _:
                     # There are no acceptable test for now.
                     raise ValueError(f"Invalid result ({test.type}, {ret_valid})")
+            res.add(info)
+    
+    if randomness:
+        last_id = (
+            max(
+            (test.id for vectors in all_vectors for test in vectors.tests),
+            default=0,
+            )
+            + 1
+        )
+        random_vectors = _generate_random_vectors(hash_function, 10, last_id)
+
+        for test in track(
+            random_vectors.tests,
+            rf"\[HMAC-{str(hash_function)}] Test verify with random vectors"
+        ):
+            info = TestInfo.new_from_test(test, True)
+            data = HmacVerifyData(test.key, test.msg, test.mac)
+            try:
+                ret_valid = verify(test.key, test.msg, test.mac, len(test.mac))
+            except NotImplementedError:
+                logger.warning(
+                    "HMAC-%s verify not implemented, test skipped", str(hash_function)
+                )
+                return rd
+            except Exception as error:
+                logger.debug("Exception caught when running HMAC.verify", exc_info=True)
+                info.fail(f"Exception caught: {str(error)}", data)
+                res.add(info)
+                continue
+            if ret_valid:
+                info.ok(data)
+            else:
+                info.fail("Valid MAC rejected", data)
             res.add(info)
 
     return rd
@@ -1021,7 +1129,7 @@ def test_output_digest(path: Path, hash_function: Hash) -> ResultsDict:
 
 
 def test_wrapper_python(
-    wrapper: Path, compliance: bool, resilience: bool
+    wrapper: Path, compliance: bool, resilience: bool, randomness: bool
 ) -> ResultsDict:
     """Tests a HMAC Python wrapper.
 
@@ -1032,6 +1140,8 @@ def test_wrapper_python(
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
+        randomness:
+            Whether to use random test vectors.
     """
     logger.info("Running Python HMAC wrapper: '%s'", str(wrapper.name))
     sys.path.insert(0, str(wrapper.parent.absolute()))
@@ -1063,6 +1173,7 @@ def test_wrapper_python(
                     algo,
                     compliance=compliance,
                     resilience=resilience,
+                    randomness=randomness,
                 )
             case ["CC", "HMAC", "verify", *parts]:
                 logger.info("Found CC_HMAC function %s", func)
@@ -1078,6 +1189,7 @@ def test_wrapper_python(
                     algo,
                     compliance=compliance,
                     resilience=resilience,
+                    randomness=randomness,
                 )
             case ["CC", "HMAC", *_]:
                 logger.warning("Ignored unknown CC_HMAC function %s", func)
@@ -1088,7 +1200,9 @@ def test_wrapper_python(
     return rd
 
 
-def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDict:
+def test_wrapper(
+    wrapper: Path, compliance: bool, resilience: bool, randomness: bool
+) -> ResultsDict:
     """Tests an HMAC wrapper.
 
     Calls the corresponding runner depending on the file extension.
@@ -1100,12 +1214,14 @@ def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDi
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
+        randomness:
+            Whether to use random test vectors.
     """
     if not wrapper.is_file():
         raise FileNotFoundError(f"No wrapper named {str(wrapper)} found")
     match wrapper.suffix:
         case ".py":
-            return test_wrapper_python(wrapper, compliance, resilience)
+            return test_wrapper_python(wrapper, compliance, resilience, randomness)
         case _:
             raise ValueError(f"No runner defined for {wrapper.suffix} wrappers")
 
