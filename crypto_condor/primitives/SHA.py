@@ -313,7 +313,7 @@ def test_digest(
     *,
     compliance: bool = True,
     resilience: bool = False,
-    random_inputs: bool = False,
+    randomness: bool = False,
 ) -> ResultsDict:
     """Tests a SHA implementation.
 
@@ -331,7 +331,7 @@ def test_digest(
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
-        random_inputs:
+        randomness:
             Whether to use random input vectors.
 
     Returns:
@@ -478,7 +478,7 @@ def test_digest(
                 info.fail(f"Failed at checkpoint {j}", mc_data)
             res.add(info)
 
-    if random_inputs:
+    if randomness:
         last_id = (
             max(
             (test.id for vectors in all_vectors for test in vectors.tests),
@@ -489,7 +489,7 @@ def test_digest(
         # 10 random values are enough to detect incorrect implementations
         random_vectors = _generate_random_vectors(algorithm, 10, last_id + 1)
 
-        for test in track(random_vectors.tests, rf"\[{str(algorithm)}] Random tests"):
+        for test in track(random_vectors.tests, rf"\[{str(algorithm)}] Random vectors"):
             info = TestInfo.new_from_test(test, False)
             data = DigestData(test.msg, test.md)
             try:
@@ -517,7 +517,7 @@ def test_digest(
 
 
 def test_wrapper_python(
-    wrapper: Path, compliance: bool, resilience: bool, random_inputs: bool
+    wrapper: Path, compliance: bool, resilience: bool, randomness: bool
 ) -> ResultsDict:
     """Tests a Python SHA wrapper.
 
@@ -528,7 +528,7 @@ def test_wrapper_python(
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
-        random_inputs:
+        randomness:
             Whether to use random test vectors.
 
     .. versionadded:: 2025.03.12
@@ -561,7 +561,7 @@ def test_wrapper_python(
                     algo,
                     compliance=compliance,
                     resilience=resilience,
-                    random_inputs=random_inputs,
+                    randomness=randomness,
                 )
             case ["CC", "SHA", *_]:
                 logger.warning("Ignored unknown CC_SHA function %s", func)
@@ -573,7 +573,7 @@ def test_wrapper_python(
 
 
 def test_wrapper(
-    wrapper: Path, compliance: bool, resilience: bool, random_inputs: bool
+    wrapper: Path, compliance: bool, resilience: bool, randomness: bool
 ) -> ResultsDict:
     """Tests a SHA wrapper.
 
@@ -586,7 +586,7 @@ def test_wrapper(
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
-        random_inputs:
+        randomness:
             Whether to use random test vectors.
 
     Raises:
@@ -601,7 +601,7 @@ def test_wrapper(
 
     match wrapper.suffix:
         case ".py":
-            return test_wrapper_python(wrapper, compliance, resilience, random_inputs)
+            return test_wrapper_python(wrapper, compliance, resilience, randomness)
         case _:
             raise ValueError(f"No runner for '{wrapper.suffix}' wrappers")
 
