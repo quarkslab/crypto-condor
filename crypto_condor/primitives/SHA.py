@@ -260,6 +260,7 @@ def _generate_random_vectors(algo: Algorithm, n: int, start_id: int) -> ShaVecto
                 md=_sha(algo, msg),
             )
         )
+    
     return vectors
 
 
