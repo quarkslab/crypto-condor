@@ -529,6 +529,7 @@ def test_lib(
                 orientation = Orientation.BIT
             case _:
                 logger.debug("Ignoring unknown CC_SHAKE function %s", function)
+                continue
         rd |= _test_lib_digest(
             ffi, lib, function, algorithm, orientation, compliance, resilience
         )
