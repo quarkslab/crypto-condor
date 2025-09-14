@@ -112,6 +112,127 @@ def parse_cavp(mode: str, keylen: int, files: list[str]):
         out_dec.write_bytes(dec_vectors.SerializeToString())
 
 
+def parse_cavp_kw_and_kwp_ae(
+        keylen: int,
+        fwd_or_inv: str,
+        filename: str,
+        padding: bool) -> None:
+    """Parses CAVP key wrapping test vectors."""
+    ae_vectors = AesVectors(
+        source="NIST CAVP",
+        source_desc="Test vectors from NIST's Cryptographic Algorithm Validation Program",  # noqa: E501
+        source_url="https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/cavp-testing-block-cipher-modes#KW",
+        compliance=True,
+        mode=("KW" if not padding and fwd_or_inv == "" else
+              "KW_INV" if not padding and fwd_or_inv == "_inv" else
+              "KWP" if padding and fwd_or_inv == "" else
+              "KWP_INV"),
+        keylen=keylen,
+        encrypt=True,
+        decrypt=False,
+    )
+
+    file = VECTORS_DIR / "cavp" / filename
+    blocks = file.read_text().split("\n\n")
+
+    tid = 0
+    for block in blocks:
+        block = block.strip()
+        if not block or block.startswith("#") or block.startswith("["):
+            continue
+
+        lines = [line.strip() for line in block.split("\n")\
+                if line.strip() and not line.strip().startswith("[")]
+
+        test = ae_vectors.tests.add()
+        tid += 1
+        test.id = tid
+        test.type = "valid"
+        for line in lines:
+            sp = line.split(" = ")
+            if len(sp) == 2:
+                key, value = sp
+                match key:
+                    case "COUNT":
+                        pass
+                    case "K":
+                        test.key = bytes.fromhex(value)
+                    case "C":
+                        test.ct = bytes.fromhex(value)
+                    case "P":
+                        test.pt = bytes.fromhex(value)
+                    case _:
+                        raise ValueError(f"Unexpected {key = }")
+        if not padding:
+            out_enc = VECTORS_DIR / "pb2" / f"aes_cavp_kw_ae_{keylen}{fwd_or_inv}.pb2"
+            out_enc.write_bytes(ae_vectors.SerializeToString())
+        else:
+            out_enc = VECTORS_DIR / "pb2" / f"aes_cavp_kwp_ae_{keylen}{fwd_or_inv}.pb2"
+            out_enc.write_bytes(ae_vectors.SerializeToString())
+
+
+def parse_cavp_kw_and_kwp_ad(
+        keylen: int,
+        fwd_or_inv: str,
+        filename: str,
+        padding: bool) -> None:
+    """Parses CAVP key wrapping test vectors."""
+    ad_vectors = AesVectors(
+        source="NIST CAVP",
+        source_desc="Test vectors from NIST's Cryptographic Algorithm Validation Program",  # noqa: E501
+        source_url="https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/cavp-testing-block-cipher-modes#KW",
+        compliance=True,
+        mode=("KW" if not padding and fwd_or_inv == "" else
+              "KW_INV" if not padding and fwd_or_inv == "_inv" else
+              "KWP" if padding and fwd_or_inv == "" else
+              "KWP_INV"),
+        keylen=keylen,
+        encrypt=False,
+        decrypt=True,
+    )
+
+    file = VECTORS_DIR / "cavp" / filename
+    blocks = file.read_text().split("\n\n")
+
+    tid = 0
+    for block in blocks:
+        block = block.strip()
+        if not block or block.startswith("#") or block.startswith("["):
+            continue
+
+        lines = [line.strip() for line in block.split("\n")\
+                if line.strip() and not line.strip().startswith("[")]
+        is_fail = any(line == "FAIL" for line in lines)
+
+        test = ad_vectors.tests.add()
+        tid += 1
+        test.id = tid
+        test.type = "invalid" if is_fail else "valid"
+        for line in lines:
+            if line == "FAIL":
+                continue
+            sp = line.split(" = ")
+            if len(sp) == 2:
+                key, value = sp
+                match key:
+                    case "COUNT":
+                        pass
+                    case "K":
+                        test.key = bytes.fromhex(value)
+                    case "C":
+                        test.ct = bytes.fromhex(value)
+                    case "P":
+                        test.pt = bytes.fromhex(value)
+                    case _:
+                        raise ValueError(f"Unexpected {key = }")
+        if not padding:
+            out_dec = VECTORS_DIR / "pb2" / f"aes_cavp_kw_ad_{keylen}{fwd_or_inv}.pb2"
+            out_dec.write_bytes(ad_vectors.SerializeToString())
+        else:
+            out_dec = VECTORS_DIR / "pb2" / f"aes_cavp_kwp_ad_{keylen}{fwd_or_inv}.pb2"
+            out_dec.write_bytes(ad_vectors.SerializeToString())
+
+
 def parse_cavp_gcm_decrypt(keylen: int, filename: str) -> None:
     """Parses CAVP GCM decryption test vectors.
 
@@ -323,13 +444,27 @@ def parse_wycheproof(filename: str):
         data = json.load(file)
 
     mode = data["algorithm"].lstrip("AES-")
+    
+    # Handle different note structures
+    # KWP has nested objects, others have flat strings
+    notes = {}
+    for key, value in data["notes"].items():
+        if isinstance(value, dict) and "description" in value:
+            # KWP style: nested object with description
+            notes[key] = value["description"]
+        elif isinstance(value, str):
+            # CBC/CCM/GCM style: flat string
+            notes[key] = value
+        else:
+            # Fallback: convert to string
+            notes[key] = str(value)
 
     v128 = AesVectors(
         source="Wycheproof",
         source_desc="Test vectors for encryption and decryption.",
         source_url="https://github.com/C2SP/wycheproof/tree/master/testvectors",
         compliance=False,
-        notes=data["notes"],
+        notes=notes,
         mode=mode,
         keylen=128,
         encrypt=True,
@@ -340,7 +475,7 @@ def parse_wycheproof(filename: str):
         source_desc="Resilience test vectors from Project Wycheproof",
         source_url="https://github.com/C2SP/wycheproof/tree/master/testvectors",
         compliance=False,
-        notes=data["notes"],
+        notes=notes,
         mode=mode,
         keylen=192,
         encrypt=True,
@@ -351,7 +486,7 @@ def parse_wycheproof(filename: str):
         source_desc="Resilience test vectors from Project Wycheproof",
         source_url="https://github.com/C2SP/wycheproof/tree/master/testvectors",
         compliance=False,
-        notes=data["notes"],
+        notes=notes,
         mode=mode,
         keylen=256,
         encrypt=True,
@@ -369,6 +504,7 @@ def parse_wycheproof(filename: str):
         for test in group["tests"]:
             aad = bytes.fromhex(test["aad"]) if "aad" in test else None
             tag = bytes.fromhex(test["tag"]) if "tag" in test else None
+            iv = bytes.fromhex(test["iv"]) if "iv" in test else None
             vectors.tests.add(
                 id=test["tcId"],
                 type=test["result"],
@@ -377,7 +513,7 @@ def parse_wycheproof(filename: str):
                 key=bytes.fromhex(test["key"]),
                 pt=bytes.fromhex(test["msg"]),
                 ct=bytes.fromhex(test["ct"]),
-                iv=bytes.fromhex(test["iv"]),
+                iv=iv,
                 aad=aad,
                 tag=tag,
             )
@@ -415,6 +551,30 @@ if __name__ == "__main__":
         mode, keylen = k
         parse_cavp(mode, keylen, files)
 
+    kw_files_ae = [(keylen, fwd_or_inv, f"KW_AE_{keylen}{fwd_or_inv}.txt")
+                for keylen in [128, 192, 256]
+                for fwd_or_inv in ["", "_inv"]]
+    for keylen, fwd_or_inv, filename in kw_files_ae:
+        parse_cavp_kw_and_kwp_ae(keylen, fwd_or_inv, filename, False)
+    
+    kwp_files_ae = [(keylen, fwd_or_inv, f"KWP_AE_{keylen}{fwd_or_inv}.txt")
+                for keylen in [128, 192, 256]
+                for fwd_or_inv in ["", "_inv"]]
+    for keylen, fwd_or_inv, filename in kwp_files_ae:
+        parse_cavp_kw_and_kwp_ae(keylen, fwd_or_inv, filename, True)
+    
+    kw_files_ad = [(keylen, fwd_or_inv, f"KW_AD_{keylen}{fwd_or_inv}.txt")
+                   for keylen in [128, 192, 256]
+                   for fwd_or_inv in ["", "_inv"]]
+    for keylen, fwd_or_inv, filename in kw_files_ad:
+        parse_cavp_kw_and_kwp_ad(keylen, fwd_or_inv, filename, False)
+
+    kwp_files_ad = [(keylen, fwd_or_inv, f"KWP_AD_{keylen}{fwd_or_inv}.txt")
+                   for keylen in [128, 192, 256]
+                   for fwd_or_inv in ["", "_inv"]]
+    for keylen, fwd_or_inv, filename in kwp_files_ad:
+        parse_cavp_kw_and_kwp_ad(keylen, fwd_or_inv, filename, True)
+
     gcm_decrypt_files = [(keylen, f"gcmDecrypt{keylen}.rsp") for keylen in KEY_LENGTHS]
     for klen, filename in gcm_decrypt_files:
         parse_cavp_gcm_decrypt(klen, filename)
@@ -431,7 +591,10 @@ if __name__ == "__main__":
     for klen, filename in ccm_dvpt_files:
         parse_cavp_ccm_dvpt(klen, filename)
 
-    wp_files = ["aes_cbc_pkcs5_test.json", "aes_ccm_test.json", "aes_gcm_test.json"]
+    wp_files = ["aes_cbc_pkcs5_test.json",
+                "aes_ccm_test.json",
+                "aes_gcm_test.json",
+                "aes_kwp_test.json"]
     for filename in wp_files:
         parse_wycheproof(filename)
 
