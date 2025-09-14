@@ -123,4 +123,85 @@ void AES_CFB_encrypt_buffer(struct AES_ctx *ctx, uint8_t *buffer, size_t length,
  */
 void AES_CFB_decrypt_buffer(struct AES_ctx *ctx, uint8_t *buffer, size_t length,
                             size_t segment_size);
+
+/**
+ * @brief Encrypts a buffer using the AES Key Wrap algorithm with forward AES cipher function.
+ *
+ * @param ctx the AES context.
+ * @param buffer the buffer containing the plaintext.
+ * @param length the length of the buffer in bytes.
+ */
+void AES_KW_encrypt_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length);
+
+/**
+ * @brief Encrypts a buffer using the AES Key Wrap algorithm with reverse AES cipher function.
+ *
+ * @param ctx the AES context.
+ * @param buffer the buffer containing the plaintext.
+ * @param length the length of the buffer in bytes.
+ */
+void AES_KW_encrypt_inv_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length);
+
+/**
+ * @brief Decrypts a buffer using the AES Key Wrap algorithm with forward AES cipher function.
+ *
+ * @param ctx the AES context.
+ * @param buffer the buffer containing the ciphertext.
+ * @param length the length of the buffer in bytes.
+ *
+ * @return 1 on success, 0 on failure (e.g., if the IV is incorrect).
+ */
+int AES_KW_decrypt_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length);
+
+/**
+ * @brief Decrypts a buffer using the AES Key Wrap algorithm with reverse AES cipher function.
+ *
+ * @param ctx the AES context.
+ * @param buffer the buffer containing the ciphertext.
+ * @param length the length of the buffer in bytes.
+ * 
+ * @return 1 on success, 0 on failure (e.g., if the IV is incorrect).
+ */
+int AES_KW_decrypt_inv_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length);
+
+/**
+ * @brief Encrypts a buffer using the AES Key Wrap with Padding (KWP) algorithm and with forward AES cipher function.
+ *
+ * @param ctx the AES context.
+ * @param buffer the buffer containing the plaintext.
+ * @param length the length of the buffer in bytes.
+ */
+void AES_KWP_encrypt_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length);
+
+/**
+ * @brief Encrypts a buffer using the AES Key Wrap with Padding (KWP) algorithm and with reverse AES cipher function.
+ *
+ * @param ctx the AES context.
+ * @param buffer the buffer containing the plaintext.
+ * @param length the length of the buffer in bytes.
+ */
+void AES_KWP_encrypt_inv_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length);
+
+/**
+ * @brief Decrypts a buffer using the AES Key Wrap with Padding (KWP) algorithm and with forward AES cipher function.
+ *
+ * @param ctx the AES context.
+ * @param buffer the buffer containing the ciphertext.
+ * @param length the length of the buffer in bytes.
+ * 
+ * @return the length of the plaintext in bytes, or 0 if decryption fails (e.g., if the IV is incorrect).
+ */
+int AES_KWP_decrypt_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length);
+
+/**
+ * @brief Decrypts a buffer using the AES Key Wrap with Padding (KWP) algorithm and with reverse AES cipher function.
+ *
+ * @param ctx the AES context.
+ * @param buffer the buffer containing the ciphertext.
+ * @param length the length of the buffer in bytes.
+ * 
+ * @return the length of the plaintext in bytes, or 0 if decryption fails (e.g., if the IV is incorrect).
+ */
+int AES_KWP_decrypt_inv_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length);
+
 #endif // _AES_H_
