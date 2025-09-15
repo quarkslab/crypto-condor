@@ -42,7 +42,7 @@ def _create_vectors(primitive: str):
 
     print("[...] Create vectors import file", end="\r")
     template = (
-        Path("utils/templates/new-vectors.proto")
+        Path("utils/templates/new-vectors-import.py")
         .read_text()
         .replace("CapPLACEHOLDER", primitive.capitalize())
         .replace("LCPLACEHOLDER", primitive.lower())
