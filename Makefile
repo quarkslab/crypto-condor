@@ -30,12 +30,12 @@ bump: # Bump the version to today.
 	@echo "[+] Create git tag"
 	@git tag -a $(DATE) -m "Version $(DATE)"
 
-.PHONY: import-nist-vectors
-import-nist-vectors: # Serialize NIST test vectors with protobuf.
-import-nist-vectors: $(PROTO_FILES:%.proto=%.imported)
+.PHONY: import-vectors
+import-vectors: # Serialize test vectors with protobuf.
+import-vectors: $(PROTO_FILES:%.proto=%.imported)
 
 %.imported: %_import.py %_pb2.py
-	@NAME=`dirname $@`; echo "[+] Importing NIST $$NAME test vectors"
+	@NAME=`dirname $@`; echo "[+] Importing $$NAME test vectors"
 	@python $<
 
 compile-primitives: # Compile primitives written in C.
@@ -79,10 +79,10 @@ ci-setup:
 	POETRY_VIRTUALENVS_IN_PROJECT=1 poetry install --with=dev,docs
 
 init: # Common requirements for several targets.
-init: install import-nist-vectors compile-primitives copy-guides copy-contributing
+init: install import-vectors compile-primitives copy-guides copy-contributing
 
 init-ci: # Common requirements before other CI targets.
-init-ci: ci-setup import-nist-vectors copy-guides copy-contributing
+init-ci: ci-setup import-vectors copy-guides copy-contributing
 
 lint: # Check linting with ruff.
 	@echo "[+] Linting"
