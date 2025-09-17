@@ -92,7 +92,7 @@ class Ed25519Vectors(google.protobuf.message.Message):
     COMPLIANCE_FIELD_NUMBER: builtins.int
     NOTES_FIELD_NUMBER: builtins.int
     TESTS_FIELD_NUMBER: builtins.int
-    ALGORITHM_FIELD_NUMBER: builtins.int
+    VARIANT_FIELD_NUMBER: builtins.int
     SIGN_FIELD_NUMBER: builtins.int
     VERIFY_FIELD_NUMBER: builtins.int
     source: builtins.str
@@ -103,7 +103,7 @@ class Ed25519Vectors(google.protobuf.message.Message):
     """The URL of the source."""
     compliance: builtins.bool
     """Whether these are compliance test vectors or not."""
-    algorithm: builtins.str
+    variant: builtins.str
     """The Ed25519 variant, one of: ed25519, ed25519ctx, ed25519ph."""
     sign: builtins.bool
     """Whether the test vectors can be used to test signing."""
@@ -126,10 +126,10 @@ class Ed25519Vectors(google.protobuf.message.Message):
         compliance: builtins.bool = ...,
         notes: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         tests: collections.abc.Iterable[global___Ed25519Test] | None = ...,
-        algorithm: builtins.str = ...,
+        variant: builtins.str = ...,
         sign: builtins.bool = ...,
         verify: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["algorithm", b"algorithm", "compliance", b"compliance", "notes", b"notes", "sign", b"sign", "source", b"source", "source_desc", b"source_desc", "source_url", b"source_url", "tests", b"tests", "verify", b"verify"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["compliance", b"compliance", "notes", b"notes", "sign", b"sign", "source", b"source", "source_desc", b"source_desc", "source_url", b"source_url", "tests", b"tests", "variant", b"variant", "verify", b"verify"]) -> None: ...
 
 global___Ed25519Vectors = Ed25519Vectors

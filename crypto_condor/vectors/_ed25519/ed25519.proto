@@ -41,7 +41,7 @@ message Ed25519Vectors{
 	repeated Ed25519Test tests = 6;
 
 	// The Ed25519 variant, one of: ed25519, ed25519ctx, ed25519ph.
-	string algorithm = 7;
+	string variant = 7;
 	// Whether the test vectors can be used to test signing.
 	bool sign = 8;
 	// Whether the test vectors can be used to test verifying.
