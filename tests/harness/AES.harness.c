@@ -187,3 +187,31 @@ void CC_AES_CFB128_decrypt(uint8_t *buffer, size_t buffer_size,
   init(&ctx, key, key_size, iv);
   dec(&ctx, buffer, buffer_size, 128);
 }
+
+void CC_AES_KW_encrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
+  size_t key_size, const uint8_t *iv, size_t iv_size) {
+  struct AES_ctx ctx;
+  void *handle = get_lib_handle("aes.so");
+  void (*init)(struct AES_ctx *, const uint8_t *, size_t);
+  void (*enc)(struct AES_ctx *, uint8_t *, size_t, uint8_t, uint8_t);
+
+  init = get_func(handle, "AES_init_ctx");
+  enc = get_func(handle, "AES_KW_encrypt_buffer");
+  
+  init(&ctx, key, key_size);
+  enc(&ctx, buffer, buffer_size, 0, 0);
+}
+    
+void CC_AES_KW_decrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
+                        size_t key_size, const uint8_t *iv, size_t iv_size) {
+  struct AES_ctx ctx;
+  void *handle = get_lib_handle("aes.so");
+  void (*init)(struct AES_ctx *, const uint8_t *, size_t);
+  void (*dec)(struct AES_ctx *, uint8_t *, size_t, uint8_t, uint8_t);
+
+  init = get_func(handle, "AES_init_ctx");
+  dec = get_func(handle, "AES_KW_decrypt_buffer");
+  
+  init(&ctx, key, key_size);
+  dec(&ctx, buffer, buffer_size, 0, 0);
+}

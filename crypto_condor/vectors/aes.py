@@ -31,6 +31,10 @@ class Mode(strenum.StrEnum):
     CTR = "CTR"
     GCM = "GCM"
     CCM = "CCM"
+    KW = "KW"
+    KW_INV = "KW_INV"
+    KWP = "KWP"
+    KWP_INV = "KWP_INV"
 
     @classmethod
     def classic_modes(cls):
