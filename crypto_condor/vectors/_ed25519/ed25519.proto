@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single Ed25519 test vector.
+message Ed25519Test{
+	// The test ID, unique in its set of vectors.
+	int32 id = 1;
+	// The type of test. One of: valid, invalid, acceptable.
+	string type = 2;
+	// A comment on the test.
+	string comment = 3;
+	// Flags that categorize this test.
+	repeated string flags = 4;
+
+	// The raw private key.
+	bytes sk = 5;
+	// The raw public key.
+	bytes pk = 6;
+	// The message.
+	bytes msg = 7;
+	// The signature.
+	bytes sig = 8;
+	// (For Ed25519ctx only) The context string.
+	bytes ctx = 9;
+}
+
+// A set of Ed25519 test vectors.
+message Ed25519Vectors{
+	// The source of the test vectors.
+	string source = 1;
+	// Description of the source.
+	string source_desc = 2;
+	// The URL of the source.
+	string source_url = 3;
+	// Whether these are compliance test vectors or not.
+	bool compliance = 4;
+	// A dictionary of test flags and their description.
+    map<string, string> notes = 5;
+	// The test vectors.
+	repeated Ed25519Test tests = 6;
+
+	// The Ed25519 variant, one of: ed25519, ed25519ctx, ed25519ph.
+	string algorithm = 7;
+	// Whether the test vectors can be used to test signing.
+	bool sign = 8;
+	// Whether the test vectors can be used to test verifying.
+	bool verify = 9;
+}
