@@ -489,7 +489,7 @@ class Results:
         return s.rstrip("\n")
 
     @classmethod
-    def new(cls, desc: str, arg_names: list[str]):
+    def new(cls, desc: str, arg_names: list[str], vectors: Any = None):
         """Creates a new instance of Results for the calling function.
 
         Uses ``sys`` stack frames to determine the calling function's module and name to
@@ -503,6 +503,8 @@ class Results:
                 which ones should be included in the results. Notably, the argument used
                 to pass the implementation should be skipped, as the value is a function
                 pointer, which is not relevant to the results.
+            vectors:
+                The test vectors, if any. Used to automatically add their notes.
 
         Notes:
             There is no reliable way of getting the docstring from the stack frame,
@@ -522,7 +524,10 @@ class Results:
         mod = Path(frame.f_code.co_filename).stem
         func = frame.f_code.co_name
         args = {arg: value for arg, value in frame.f_locals.items() if arg in arg_names}
-        return cls(mod, func, desc, args)
+        c = cls(mod, func, desc, args)
+        if vectors is not None:
+            c.add_notes(vectors.notes)
+        return c
 
     def add(self, data: TestInfo | Any) -> None:
         """Adds a new result from the result data.
@@ -925,6 +930,30 @@ class Console(RichConsole):
 
 
 # --------------------------- Other ---------------------------------------------------
+
+def _load_python_harness(harness: Path):
+    """Imports a Python harness as a module.
+
+    Args:
+        harness:
+            A path to the harness to load.
+
+    Returns:
+        The loaded module. It is reloaded if a module of the same name was loaded
+        previously.
+    """
+    logger.info("Loading Python harness: '%s'", str(harness.name))
+    sys.path.insert(0, str(harness.parent.absolute()))
+    already_imported = harness.stem in sys.modules.keys()
+    try:
+        module_harness = importlib.import_module(harness.stem)
+    except ModuleNotFoundError as error:
+        logger.error("Failed to load harness: '%s'", str(error))
+        raise
+    if already_imported:
+        logger.debug("Reloading module harness: '%s'", harness.stem)
+        module_harness = importlib.reload(module_harness)
+    return module_harness
 
 
 def get_appdata_dir() -> Path:
