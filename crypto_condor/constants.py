@@ -22,6 +22,7 @@ class Primitive(strenum.StrEnum):
     CHACHA20 = "ChaCha20"
     ECDH = "ECDH"
     ECDSA = "ECDSA"
+    ED25519 = "ed25519"
     FALCON = "Falcon"
     HMAC = "HMAC"
     HQC = "HQC"
@@ -53,6 +54,7 @@ class Primitive(strenum.StrEnum):
             SHAKE,
             SLHDSA,
             ChaCha20,
+            ed25519,
         )
 
         match self:
@@ -64,6 +66,8 @@ class Primitive(strenum.StrEnum):
                 return ECDH.Wrapper
             case Primitive.ECDSA:
                 return ECDSA.Wrapper
+            case Primitive.ED25519:
+                return ed25519.Wrapper
             case Primitive.HMAC:
                 return HMAC.Wrapper
             case Primitive.HQC:
@@ -184,6 +188,13 @@ SUPPORTED_MODES: dict[Primitive, Modes] = {
         "output": False,
         "wrapper": True,
         "harness": True,
+    },
+    Primitive.ED25519: {
+        "audit": False,
+        "method": False,
+        "output": True,
+        "wrapper": True,
+        "harness": False,
     },
 }
 """Primitives and their supported CLI modes."""

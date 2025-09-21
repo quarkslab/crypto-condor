@@ -1,0 +1,31 @@
+:tocdepth: 3
+
+.. currentmodule:: crypto_condor.primitives.ed25519
+
+Ed25519
+=======
+
+How to use the :mod:`crypto_condor.primitives.ed25519` module to test
+implementations of :doc:`Ed25519 </method/ed25519>`.
+
+Test signing
+------------
+
+.. autofunction:: test_sign
+
+Test verifying
+--------------
+
+.. autofunction:: test_verify
+
+Protocols
+---------
+
+.. autoprotocol:: Sign
+
+.. autoprotocol:: Verify
+
+Parameters
+----------
+
+.. autoenum:: Variant

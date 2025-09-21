@@ -8,6 +8,7 @@ Primitives
    ChaCha20
    ECDH
    ECDSA
+   Ed25519 <ed25519>
    HMAC
    HQC
    MLDSA
