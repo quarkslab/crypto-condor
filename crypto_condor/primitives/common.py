@@ -939,8 +939,8 @@ def _load_python_harness(harness: Path):
             A path to the harness to load.
 
     Returns:
-        The loaded module. It is reloaded if a module of the same name was loaded
-        previously.
+        The loaded module, or None if an error occured. It is reloaded if a module of
+        the same name was loaded previously.
     """
     logger.info("Loading Python harness: '%s'", str(harness.name))
     sys.path.insert(0, str(harness.parent.absolute()))
@@ -949,7 +949,7 @@ def _load_python_harness(harness: Path):
         module_harness = importlib.import_module(harness.stem)
     except ModuleNotFoundError as error:
         logger.error("Failed to load harness: '%s'", str(error))
-        raise
+        return None
     if already_imported:
         logger.debug("Reloading module harness: '%s'", harness.stem)
         module_harness = importlib.reload(module_harness)
