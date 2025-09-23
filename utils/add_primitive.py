@@ -17,6 +17,8 @@ def _create_primitive(primitive: str):
     template = (
         Path("utils/templates/new-primitive.py")
         .read_text()
+        .replace("CapPLACEHOLDER", primitive.capitalize())
+        .replace("LCPLACEHOLDER", primitive.lower())
         .replace("PLACEHOLDER", primitive)
     )
     Path(ROOT / f"primitives/{primitive}.py").write_text(template)
