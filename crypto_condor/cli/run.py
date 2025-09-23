@@ -811,7 +811,7 @@ def ed25519(
     filename: Annotated[str, _filename] = "",
     debug: Annotated[Optional[bool], _debug] = None,
 ):
-    """Runs a SLH-DSA wrapper.
+    """Runs an Ed25519 wrapper.
 
     Args:
         wrapper:
@@ -829,6 +829,43 @@ def ed25519(
 
     out = filename or None
     rd = ed25519.test_harness(wrapper, compliance, resilience)
+
+    if console.process_results(rd, out, debug_data=debug):
+        raise typer.Exit(0)
+    else:
+        raise typer.Exit(1)
+
+# TODO: expand.
+_x25519_help = "Run an x25519 wrapper."
+
+
+@app.command(name="x25519", no_args_is_help=True, help=_x25519_help)
+@app.command(name="x25519", no_args_is_help=True, help=_x25519_help, hidden=True)
+def x25519(
+    wrapper: Annotated[Path, typer.Argument()],
+    compliance: Annotated[bool, _compliance] = True,
+    resilience: Annotated[bool, _resilience] = False,
+    filename: Annotated[str, _filename] = "",
+    debug: Annotated[Optional[bool], _debug] = None,
+):
+    """Runs a X25519 wrapper.
+
+    Args:
+        wrapper:
+            The wrapper to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+        filename:
+            Name of the file to save results.
+        debug:
+            When saving the results to a file, whether to add the debug data.
+    """
+    from crypto_condor.primitives import x25519
+
+    out = filename or None
+    rd = x25519.test_harness(wrapper, compliance, resilience)
 
     if console.process_results(rd, out, debug_data=debug):
         raise typer.Exit(0)

@@ -33,6 +33,7 @@ class Primitive(strenum.StrEnum):
     SHA = "SHA"
     SHAKE = "SHAKE"
     SLHDSA = "SLHDSA"
+    X25519 = "x25519"
 
     def get_languages(self):
         """Returns the primitive's Wrapper enum.
@@ -55,6 +56,7 @@ class Primitive(strenum.StrEnum):
             SLHDSA,
             ChaCha20,
             ed25519,
+            x25519,
         )
 
         match self:
@@ -86,6 +88,8 @@ class Primitive(strenum.StrEnum):
                 return SHAKE.Wrapper
             case Primitive.SLHDSA:
                 return SLHDSA.Wrapper
+            case Primitive.X25519:
+                return x25519.Wrapper
             case _:
                 return None
 
@@ -196,6 +200,13 @@ SUPPORTED_MODES: dict[Primitive, Modes] = {
         "wrapper": True,
         "harness": False,
     },
+    Primitive.X25519: {
+        "audit": False,
+        "method": False,
+        "output": False,
+        "wrapper": True,
+        "harness": False,
+    }
 }
 """Primitives and their supported CLI modes."""
 

@@ -1,0 +1,19 @@
+:tocdepth: 3
+
+.. currentmodule:: crypto_condor.primitives.x25519
+
+x25519
+======
+
+How to use the :mod:`crypto_condor.primitives.x25519` module to test
+implementations of :doc:`x25519 </method/x25519>`.
+
+Test key exchange
+-----------------
+
+.. autofunction:: test_exchange
+
+Protocols
+---------
+
+.. autoprotocol:: Exchange

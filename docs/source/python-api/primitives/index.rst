@@ -18,3 +18,4 @@ Primitives
    SHA
    SHAKE
    SLH-DSA <SLHDSA>
+   X25519 <x25519>

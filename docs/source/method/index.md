@@ -18,5 +18,6 @@ RSAES
 RSASSA
 SHA
 SHAKE
+X25519 <x25519>
 post-quantum
 :::
