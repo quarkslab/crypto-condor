@@ -62,7 +62,10 @@ if __name__ == "__main__":
     try:
         # FIXME: import vectors here and generate JSON at the end
         generate_json()
-    except Exception:
+    except Exception as error:
+        print(f"[!] Error parsing LCPLACEHOLDER test vectors: {error}")
+        print("[!] Removed LCPLACEHOLDER.imported marker")
         imported_marker.unlink(missing_ok=True)
+        exit(1)
     else:
         imported_marker.touch()
