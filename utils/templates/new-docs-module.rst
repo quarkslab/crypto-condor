@@ -6,5 +6,19 @@ PLACEHOLDER
 ===========
 
 How to use the :mod:`crypto_condor.primitives.PLACEHOLDER` module to test
-implementations of :doc:`PLACEHOLDER <method>`.
+implementations of :doc:`PLACEHOLDER </method/PLACEHOLDER>`.
 
+Test FIXME
+----------
+
+.. autofunction:: FIXME
+
+Protocols
+---------
+
+.. autoprotocol:: FIXME
+
+Parameters
+----------
+
+.. autoenum:: FIXME
