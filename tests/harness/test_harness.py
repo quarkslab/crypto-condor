@@ -32,6 +32,10 @@ ROOT_DIR = Path("tests/harness")
                 reason="OpenSSL limits the size of GCM nonce to 128 bytes"
             ),
         ),
+        "chacha20_openssl_encrypt",
+        "chacha20_openssl_decrypt",
+        "chacha20_poly1305_openssl_encrypt",
+        "chacha20_poly1305_openssl_decrypt",
         "ECDH_point",
         "ECDH_x509",
         "HMAC_digest",

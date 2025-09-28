@@ -10,6 +10,7 @@ protocol.
 :maxdepth: 1
 
 AES <AES>
+ChaCha20 <chacha20>
 ECDH <ECDH>
 HMAC <HMAC>
 HQC <HQC>

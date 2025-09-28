@@ -8,43 +8,27 @@ ChaCha20
 How to use the :mod:`crypto_condor.primitives.ChaCha20` module to test implementations
 of :doc:`ChaCha20 </method/ChaCha20>`.
 
-Supported parameters
---------------------
-
-There are two supported modes of operation: ChaCha20 on its own and the construction
-with Poly1305. They are defined by the :enum:`Mode` enum.
-
-Two operations can be performed: :attr:`~Operation.ENCRYPT` and
-:attr:`~Operation.DECRYPT`. These are defined by the :enum:`Operation` enum.
-
-.. autoenum:: Mode
-
-.. autoenum:: Operation
-
-Test an implementation directly
--------------------------------
-
-.. autofunction:: test
-
-Test the output of an implementation
-------------------------------------
-
-.. note::
-
-    From the CLI you can test the file with the ``test output ChaCha20`` command.
-
-.. autofunction:: verify_file
-
-Run a wrapper
+Test ChaCha20
 -------------
 
-.. note::
+.. autofunction:: test_encrypt
 
-    Available wrappers are defined by the :enum:`Wrapper` enum.
+.. autofunction:: test_decrypt
 
-.. autofunction:: run_wrapper
+.. autofunction:: test_output_encrypt
 
-.. autoenum:: Wrapper
+.. autofunction:: test_output_decrypt
+
+Test ChaCha20-Poly1305
+-----------------------------
+
+.. autofunction:: test_encrypt_poly
+
+.. autofunction:: test_decrypt_poly
+
+.. autofunction:: test_output_encrypt_poly
+
+.. autofunction:: test_output_decrypt_poly
 
 Protocols
 ---------
@@ -53,3 +37,6 @@ Protocols
 
 .. autoprotocol:: Decrypt
 
+.. autoprotocol:: EncryptPoly
+
+.. autoprotocol:: DecryptPoly

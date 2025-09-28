@@ -2,7 +2,6 @@
 
 import logging
 from pathlib import Path
-from subprocess import SubprocessError
 from typing import Annotated, Optional
 
 import strenum
@@ -521,46 +520,37 @@ _chacha20_help = """Run an ChaCha20 wrapper."""
 @app.command(name="ChaCha20", no_args_is_help=True, help=_chacha20_help)
 @app.command(name="chacha20", no_args_is_help=True, help=_chacha20_help, hidden=True)
 def chacha20(
-    language: Annotated[ChaCha20.Wrapper, _language],
-    mode: Annotated[ChaCha20.Mode, _mode],
+    wrapper: Annotated[Path, typer.Argument(help="Path to the Python harness to test")],
+    compliance: Annotated[bool, _compliance] = True,
     resilience: Annotated[bool, _resilience] = True,
-    encrypt: Annotated[bool, _encrypt] = True,
-    decrypt: Annotated[bool, _decrypt] = True,
     filename: Annotated[str, _filename] = "",
-    no_save: Annotated[bool, _no_save] = False,
     debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs an ChaCha20 wrapper.
 
     Args:
-        language: The language of the wrapper.
-        mode: The mode of operation.
-        resilience: Whether to use resilience test vectors.
-        encrypt: Whether to test encryption.
-        decrypt: Whether to test decryption.
-        filename: Name of the file to save results.
-        no_save: Do not save results or prompt the user.
-        debug: When saving the results to a file, whether to add the debug data.
-
-    Notes:
-        - encrypt and decrypt should not be False at the same time.
-        - If resilience if False, no test can be done.
+        wrapper:
+            Path to the harness.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+        filename:
+            Name of the file to save results.
+        debug:
+            When saving the results to a file, whether to add the debug data.
     """
-    if not encrypt and not decrypt:  # pragma: no cover (not needed)
-        console.print("--no-encrypt and --no-decrypt used, no operation to test.")
-        raise typer.Exit(1)
-    if not resilience:  # pragma: no cover (not needed)
-        console.print("--no-resilience used, no test vectors to use.")
+    if not compliance and not resilience:  # pragma: no cover (not needed)
+        console.print(
+            "--no-compliance and --no-resilience used, no test vectors to use."
+        )
         raise typer.Exit(1)
 
-    try:
-        results = ChaCha20.run_wrapper(
-            language, mode, resilience=resilience, encrypt=encrypt, decrypt=decrypt
-        )
-    except (SubprocessError, ValueError, FileNotFoundError) as error:
-        console.print(error)
-        raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save, debug):
+    results = ChaCha20.test_harness_python(wrapper, compliance, resilience)
+
+    out = not bool(filename)
+
+    if console.process_results(results, filename, out, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)

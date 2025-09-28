@@ -1,64 +1,58 @@
-"""Example 1: PyCryptodome with ChaCha20.
+"""Wrapper template to test a ChaCha20 implementation.
 
-An example of how to wrap an ChaCha20 implementation.
+Refer to the documentation for a description of the arguments:
+https://quarkslab.github.io/crypto-condor/latest/wrapper-api/chacha20.html
 
-See the documentation for detailed examples.
+Do not change the arguments of the functions, even if you don't use all of them.
+The tool expects them to be present and will likely fail if one is missing.
+
+To test this wrapper:
+
+    crypto-condor-cli test wrapper chacha20 chacha20_wrapper_example.py
 """
 
-from Crypto.Cipher import ChaCha20
+from Crypto.Cipher import ChaCha20, ChaCha20_Poly1305
 
 
-def encrypt(
-    key: bytes,
-    plaintext: bytes,
-    nonce: bytes,
-    *,
-    init_counter: int = 0,
+def CC_ChaCha20_encrypt(
+    key: bytes, pt: bytes, nonce: bytes, init_counter: int = 0
 ) -> bytes:
-    """Encrypts with ChaCha20.
-
-    Args:
-        key: The symmetric key.
-        plaintext: The input to encrypt.
-        nonce: The nonce used for this operation.
-
-    Keyword Args:
-        init_counter: The position in the keystream to seek before the operation, in
-            bytes.
-
-    Returns:
-        The resulting ciphertext.
-    """
+    """Encrypts with ChaCha20."""
     cipher = ChaCha20.new(key=key, nonce=nonce)
-    if init_counter:
+    if init_counter > 0:
         cipher.seek(64 * init_counter)
-    ciphertext = cipher.encrypt(plaintext)
-    return ciphertext
+    return cipher.encrypt(pt)
 
 
-def decrypt(
-    key: bytes,
-    ciphertext: bytes,
-    nonce: bytes,
-    *,
-    init_counter: int = 0,
+def CC_ChaCha20_decrypt(
+    key: bytes, ct: bytes, nonce: bytes, init_counter: int = 0
 ) -> bytes:
-    """Decrypts with ChaCha20.
-
-    Args:
-        key: The symmetric key.
-        ciphertext: The cipher to decrypt.
-        nonce: The nonce to use for this operation.
-
-    Keyword Args:
-        init_counter: The position in the keystream to seek before the operation, in
-            bytes.
-
-    Returns:
-        The resulting ciphertext.
-    """
+    """Decrypt with ChaCha20."""
     cipher = ChaCha20.new(key=key, nonce=nonce)
-    if init_counter:
+    if init_counter > 0:
         cipher.seek(64 * init_counter)
-    plaintext = cipher.decrypt(ciphertext)
-    return plaintext
+    return cipher.decrypt(ct)
+
+
+def CC_ChaCha20_encrypt_poly(
+    key: bytes, pt: bytes, nonce: bytes, aad: bytes
+) -> tuple[bytes, bytes]:
+    """Encrypts with ChaCha20-Poly1305."""
+    if len(nonce) != 12:
+        raise ValueError("Only RFC 7539 ChaCha20 is supported")
+    cipher = ChaCha20_Poly1305.new(key=key, nonce=nonce)
+    if aad:
+        cipher.update(aad)
+    return cipher.encrypt_and_digest(pt)
+
+
+def CC_ChaCha20_decrypt_poly(
+    key: bytes, ct: bytes, nonce: bytes, tag: bytes, aad: bytes
+) -> bytes:
+    """Decrypts with ChaCha20-Poly1305."""
+    if len(nonce) != 12:
+        raise ValueError("Only RFC 7539 ChaCha20 is supported")
+    cipher = ChaCha20_Poly1305.new(key=key, nonce=nonce)
+    if aad:
+        cipher.update(aad)
+    return cipher.decrypt_and_verify(ct, tag)

@@ -324,11 +324,16 @@ def chacha20(
         filename: Name of the file to save results.
         no_save: Do not save results or prompt the user.
     """
-    try:
-        results = ChaCha20.verify_file(str(input_file), ChaCha20.Mode(mode), operation)
-    except ValueError as error:
-        console.print(error)
-        raise typer.Exit(1) from error
+    match (mode, operation):
+        case (ChaCha20.Mode.CHACHA20, ChaCha20.Operation.ENCRYPT):
+            results = ChaCha20.test_output_encrypt(input_file)
+        case (ChaCha20.Mode.CHACHA20, ChaCha20.Operation.DECRYPT):
+            results = ChaCha20.test_output_decrypt(input_file)
+        case (ChaCha20.Mode.CHACHA20_POLY1305, ChaCha20.Operation.ENCRYPT):
+            results = ChaCha20.test_output_encrypt_poly(input_file)
+        case (ChaCha20.Mode.CHACHA20_POLY1305, ChaCha20.Operation.DECRYPT):
+            results = ChaCha20.test_output_decrypt_poly(input_file)
+
     if console.process_results(results, filename, no_save):
         raise typer.Exit(0)
     else:

@@ -40,8 +40,8 @@ def test_aes_example(tmp_path: Path):
 class TestChaCha20:
     """Tests running ChaCha20 wrappers."""
 
-    @pytest.mark.parametrize("language,example,mode", [("Python", "1", "CHACHA20")])
-    def test_examples(self, language: str, example: str, mode: str, tmp_path: Path):
+    @pytest.mark.parametrize("language,example", [("Python", "1")])
+    def test_examples(self, language: str, example: str, tmp_path: Path):
         """Tests ChaCha20 wrapper examples."""
         with runner.isolated_filesystem(tmp_path):
             get_wrapper_result = runner.invoke(
@@ -58,7 +58,7 @@ class TestChaCha20:
             print(get_wrapper_result.output)
             assert get_wrapper_result.exit_code == 0
 
-            args = ["test", "wrapper", "ChaCha20", language, mode, "--no-save"]
+            args = ["test", "wrapper", "chacha20", "chacha20_wrapper_example.py"]
             result = runner.invoke(app, args)
             print(result.output)
             assert result.exit_code == 0
