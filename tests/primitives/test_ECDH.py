@@ -53,7 +53,7 @@ class EcdhInstance:
 
 
 @pytest.mark.parametrize("curve", [Curve.P256, Curve.P521])
-def test_exchange(curve: Curve):
+def test_deprecated_exchange(curve: Curve):
     """Tests :func:`crypto_condor.primitives.ECDH.test_exchange`."""
     ecdh = EcdhInstance(str(curve))
     rd = ECDH.test_exchange_wycheproof(ecdh, curve)
