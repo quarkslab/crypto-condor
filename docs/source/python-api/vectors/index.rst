@@ -11,7 +11,6 @@ Test vectors come from various sources.
 .. toctree::
    :maxdepth: 1
 
-   ChaCha20
    ECDSA
    RSAES
    RSASSA

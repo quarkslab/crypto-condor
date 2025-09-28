@@ -1,7 +1,6 @@
 {
     "algorithm" : "CHACHA20",
-    "generatorVersion" : "0.8r12",
-    "numberOfTests" : 300,
+    "numberOfTests" : 1,
     "header" : [
       "Test vector from RFC 7539, section 2.4.2 with initial counter",
       "initialized to one. The test vectors are intended for testing",

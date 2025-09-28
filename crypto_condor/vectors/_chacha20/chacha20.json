@@ -1,0 +1,8 @@
+{
+  "CHACHA20": [
+    "chacha20_cc.pb2"
+  ],
+  "CHACHA20-POLY1305": [
+    "chacha20_wycheproof_poly1305.pb2"
+  ]
+}

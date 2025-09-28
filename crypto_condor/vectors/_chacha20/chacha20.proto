@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package crypto_condor;
+
+// A single ChaCha20 test vector.
+message Chacha20Test{
+	// The test ID, unique in its set of vectors.
+	int32 id = 1;
+	// The type of test. One of: valid, invalid, acceptable.
+	string type = 2;
+	// A comment on the test.
+	string comment = 3;
+	// Flags that categorize this test.
+	repeated string flags = 4;
+
+	// The symmetric key.
+	bytes key = 5;
+	// The nonce.
+	bytes nonce = 6;
+	// The plaintext.
+	bytes pt = 7;
+	// The ciphertext.
+	bytes ct = 8;
+	// The associated data.
+	bytes aad = 9;
+	// The MAC tag.
+	bytes tag = 10;
+	// (ChaCha20 only) A position to seek in the keystream before the operation. The
+	// position is in number of bytes.
+	int32 counter = 11;
+
+}
+
+// A set of ChaCha20 test vectors.
+message Chacha20Vectors{
+	// The source of the test vectors.
+	string source = 1;
+	// Description of the source.
+	string source_desc = 2;
+	// The URL of the source.
+	string source_url = 3;
+	// Whether these are compliance test vectors or not.
+	bool compliance = 4;
+	// A dictionary of test flags and their description.
+    map<string, string> notes = 5;
+	// The test vectors.
+	repeated Chacha20Test tests = 6;
+
+	// The mode: either CHACHA20 or CHACHA20-POLY1305.
+    string mode = 7;
+}
