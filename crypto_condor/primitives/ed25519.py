@@ -11,7 +11,6 @@ import attrs
 import strenum
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from enum_tools.documentation import document_enum
 from rich.progress import track
 
 from crypto_condor.primitives.common import (
@@ -57,7 +56,6 @@ class Wrapper(strenum.StrEnum):
     PYTHON = "Python"
 
 
-@document_enum
 class Variant(strenum.StrEnum):
     """Ed25519 variants."""
 
