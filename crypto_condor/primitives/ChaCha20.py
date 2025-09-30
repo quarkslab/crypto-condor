@@ -272,7 +272,7 @@ returned tag = {self.ret_tag.hex() if self.ret_tag is not None else "<none>"}
 
 @attrs.define
 class DecData:
-    """Debug data for :func:`test_decrypt` and :func:`test_decrypt_poly`.
+    """Debug data for :func:`test_decrypt`.
 
     Args:
         key: The symmetric key.
@@ -307,6 +307,45 @@ counter = {self.counter}
 returned pt = {self.ret_pt.hex() if self.ret_pt is not None else "<none>"}
 """
 
+@attrs.define
+class DecPolyData:
+    """Debug data for :func:`test_decrypt_poly`.
+
+    Args:
+        key: The symmetric key.
+        ct: The ciphertext.
+        pt: The plaintext.
+        nonce: The nonce.
+        tag: The MAC tag.
+        aad: The associated data.
+
+    Keyword Args:
+        ret_pt: The plaintext returned by the implementation.
+    """
+
+    key: bytes
+    ct: bytes
+    pt: bytes
+    nonce: bytes
+    tag: bytes
+    aad: bytes
+    ret_pt: bytes | None = None
+
+    @classmethod
+    def from_test(cls, test: Chacha20Test):
+        """Creates a new instance from a test."""
+        return cls(test.key, test.ct, test.pt, test.nonce, test.tag, test.aad)
+
+    def __str__(self) -> str:
+        """Returns a string representation."""
+        return f"""key = {self.key.hex()}
+ct = {self.ct.hex()}
+pt = {self.pt.hex()}
+nonce = {self.nonce.hex()}
+tag = {self.tag.hex()}
+aad = {self.aad.hex()}
+returned pt = {self.ret_pt.hex() if self.ret_pt is not None else "<none>"}
+"""
 
 # -------------------------------------------------------------------------------------
 # Internal functions
@@ -641,7 +680,7 @@ def test_decrypt_poly(
         for test in track(
             vectors.tests, rf"\[ChaPoly]\[{vectors.source}] Test decryption"
         ):
-            data = DecData.from_test(test)
+            data = DecPolyData.from_test(test)
             info = TestInfo.new_from_test(test, vectors.compliance, data)
 
             try:
