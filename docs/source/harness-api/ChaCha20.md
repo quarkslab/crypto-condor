@@ -103,7 +103,7 @@ CC_ChaCha20_encrypt_poly
 Its signature must be:
 
 ```{eval-rst}
-.. c:function:: void CC_ChaCha20_encrypt_poly(\
+.. c:function:: int CC_ChaCha20_encrypt_poly(\
     uint8_t *ciphertext, uint8_t mac[16],\
     const uint8_t *plaintext, size_t text_size,\
     const uint8_t key[32], const uint8_t *nonce, size_t nonce_size,\
@@ -154,7 +154,7 @@ Its signature must be:
 
 ```{eval-rst}
 .. c:function:: int CC_ChaCha20_decrypt_poly(\
-    uint8_t *plainttext, const uint8_t *ciphertext, size_t buffer_size,\
+    uint8_t *plaintext, const uint8_t *ciphertext, size_t text_size,\
     const uint8_t key[32],\
     const uint8_t *nonce, size_t nonce_size,\
     const uint8_t *aad, size_t aad_size,\
