@@ -155,20 +155,19 @@ Its signature must be:
 ```{eval-rst}
 .. c:function:: int CC_ChaCha20_decrypt_poly(\
     uint8_t *plaintext, const uint8_t *ciphertext, size_t text_size,\
-    const uint8_t key[32],\
+    const uint8_t key[32], const uint8_t mac[16],\
     const uint8_t *nonce, size_t nonce_size,\
-    const uint8_t *aad, size_t aad_size,\
-    const uint8_t mac[16])
+    const uint8_t *aad, size_t aad_size)
 
     :param plaintext: **[out]** an allocated buffer to return the resulting plaintext.
     :param ciphertext: **[in]** the ciphertext to decrypt.
     :param text_size: **[in]** the size of the plaintext and ciphertext buffers.
     :param key: **[In]** The 32-byte symmetric key.
+    :param mac: **[In]** The 16-byte MAC tag to verify.
     :param nonce: **[In]** The nonce.
     :param nonce_size: **[In]** The size of the nonce in bytes.
     :param aad: **[In]** The *optional* associated data. NULL if not used.
     :param aad_size: **[In]** The size of the associated data. 0 if not used.
-    :param mac: **[In]** The 16-byte MAC tag to verify.
     :returns: A status value.
     :retval 1: OK.
     :retval 0: The MAC verification failed.
