@@ -91,6 +91,37 @@ def parse_rfc():
     dst.write_bytes(vectors.SerializeToString())
 
 
+def parse_reference():
+    """Parses reference test vectors.
+
+    For the format used, see: https://ed25519.cr.yp.to/python/sign.py
+    """
+    path = VECTORS_DIR / "reference/sign.input"
+    with path.open("r") as file:
+        lines = file.readlines()
+
+    vectors = Ed25519Vectors(
+        source="Reference",
+        source_desc="Reference test vectors for signing and verifying.",
+        source_url="https://ed25519.cr.yp.to/python/sign.input",
+        compliance=True,
+        variant="Ed25519",
+        sign=True,
+        verify=True,
+    )
+
+    for tid, line in enumerate(lines, 1):
+        key, pk, msg, sm, _ = map(bytes.fromhex, line.split(":"))
+        sk = key[:32]
+        sig = sm[:64]
+        vectors.tests.add(
+            id=tid, type="valid", flags=["Valid"], sk=sk, pk=pk, msg=msg, sig=sig
+        )
+
+    dst = PB2_DIR / "ed25519_reference.pb2"
+    dst.write_bytes(vectors.SerializeToString())
+
+
 def generate_json() -> None:
     """Generates the JSON file indexing the vectors."""
     # This is an example of a single level dictionary. Using defaultdict(list) means
@@ -121,6 +152,9 @@ def generate_json() -> None:
         #     vectors[cur.curve] = defaultdict(list)
         # vectors[cur.curve][cur.public_type].append(str(file.name))
 
+    for key, value in vectors.items():
+        vectors[key] = sorted(value)
+
     out = Path("crypto_condor/vectors/_ed25519/ed25519.json")
     with out.open("w") as fp:
         json.dump(vectors, fp, indent=2, sort_keys=True)
@@ -136,6 +170,7 @@ if __name__ == "__main__":
     try:
         parse_wycheproof_ed25519()
         parse_rfc()
+        parse_reference()
         generate_json()
     except Exception as error:
         print(f"[!] Error parsing Ed25519 test vectors: {error}")
