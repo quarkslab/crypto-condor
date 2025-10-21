@@ -13,7 +13,14 @@ Test key exchange
 
 .. autofunction:: test_exchange
 
+Test key generation
+-------------------
+
+.. autofunction:: test_keygen
+
 Protocols
 ---------
 
 .. autoprotocol:: Exchange
+
+.. autoprotocol:: Keygen

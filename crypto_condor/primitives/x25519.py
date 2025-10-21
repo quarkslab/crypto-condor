@@ -27,7 +27,9 @@ from crypto_condor.vectors._x25519.x25519_pb2 import (
     X25519Vectors,
 )
 
-# --------------------------- Module --------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Module
+# -------------------------------------------------------------------------------------
 
 logger = logging.getLogger(__name__)
 
@@ -38,15 +40,19 @@ def __dir__():  # pragma: no cover
         Wrapper.__name__,
         # Protocols
         Exchange.__name__,
+        Keygen.__name__,
         # Test functions
         test_exchange.__name__,
+        test_keygen.__name__,
         # Runners
         test_harness.__name__,
         test_harness_python.__name__,
     ]
 
 
-# --------------------------- Enums ---------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Enums
+# -------------------------------------------------------------------------------------
 
 
 class Wrapper(strenum.StrEnum):
@@ -55,7 +61,9 @@ class Wrapper(strenum.StrEnum):
     PYTHON = "Python"
 
 
-# --------------------------- Vectors -------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Test vectors
+# -------------------------------------------------------------------------------------
 
 
 def _load_vectors(compliance: bool, resilience: bool) -> list[X25519Vectors]:
@@ -96,11 +104,13 @@ def _load_vectors(compliance: bool, resilience: bool) -> list[X25519Vectors]:
     return vectors
 
 
-# --------------------------- Protocols -----------------------------------------------
+# -------------------------------------------------------------------------------------
+# Protocols
+# -------------------------------------------------------------------------------------
 
 
 class Exchange(Protocol):
-    """Represents an X25519 key exchange."""
+    """Represents a function that performs the X25519 key exchange."""
 
     def __call__(self, secret_key: bytes, peer_key: bytes) -> bytes:  # pragma: no cover
         """Performs an X25519 key exchange.
@@ -117,7 +127,21 @@ class Exchange(Protocol):
         ...
 
 
-# --------------------------- Dataclasses----------------------------------------------
+class Keygen(Protocol):
+    """Represents a function that generates X25519 key pairs."""
+
+    def __call__(self) -> tuple[bytes, bytes | None]:  # pragma: no cover
+        """Generates a X25519 key pair.
+
+        Returns:
+            A tuple containing (secret key, public key) or (secret key, None).
+        """
+        ...
+
+
+# -------------------------------------------------------------------------------------
+# Dataclasses
+# -------------------------------------------------------------------------------------
 
 
 @attrs.define
@@ -143,6 +167,34 @@ returned_shared = {self.ret_shared.hex() if self.ret_shared else "<none>"}
         return cls(test.sk, test.pk, test.shared, None)
 
 
+@attrs.define
+class KeygenData:
+    """Debug data for `test_keygen`."""
+
+    sk: bytes
+    pk: bytes | None
+
+    def __str__(self):
+        """Returns a string representation."""
+        return f"""sk = {self.sk.hex()}
+pk = {self.pk.hex() if self.pk is not None else "<none>"}
+"""
+
+
+# -------------------------------------------------------------------------------------
+# Internal functions
+# -------------------------------------------------------------------------------------
+
+
+def _is_clamped(key: bytes) -> bool:
+    """Returns True if the key is clamped.
+
+    X25519 keys are in little endian. Checks if the last three bits are not set and if
+    the first byte starts with 0b01.
+    """
+    return (key[0] & 0x07 == 0) and (key[-1] & 0xC0 == 0x40)
+
+
 # -------------------------------------------------------------------------------------
 # Test functions
 # -------------------------------------------------------------------------------------
@@ -153,7 +205,7 @@ def test_exchange(
 ) -> ResultsDict:
     """Tests a function implementing the X25519 key exchange.
 
-    Calls the `exchange` function to perform a X25519 key exchange.
+    Calls the ``exchange`` function to perform a X25519 key exchange.
 
     Compliance test vectors from RFC 7749 are all valid, the implementation is expected
     to return the correct shared secret.
@@ -294,6 +346,121 @@ def test_output_exchange(output: Path) -> ResultsDict:
     return rd
 
 
+def test_keygen(keygen: Keygen, nbytes: int = 10_000_000) -> ResultsDict:
+    """Tests a function that generates X25519 key pairs.
+
+    This test checks both the correct generation of key pairs, as well as the quality of
+    the randomness of the private keys.
+
+    It calls ``keygen`` to generate enough keys to fill a buffer of length ``nbytes``.
+    If the public key is included, the test checks that the public key corresponds to
+    the private key.
+
+    The private keys are concatenated and tested with
+    :mod:`~crypto_condor.primitives.TestU01`. X25519 keys can be clamped (see the
+    :doc:`method guide </method/x25519>`) but some implementations may store the raw key
+    and clamp it when performing the key exchange. This test first calls ``keygen`` to
+    generate some sample keys and check if they are clamped. If all of them are, the
+    first and last bytes of each key are removed from the input to TestU01. Also, the
+    test checks that all other keys are correctly clamped, marking the individual test
+    as failed if not.
+
+    Args:
+        keygen:
+            The key generation function to test.
+        nbytes:
+            The number of bytes to generate. TestU01 requires at least 100 000 bytes.
+
+    Returns:
+        A :class:`ResultsDict` with two :class:`Results`: one containing the results of
+        generating all the keys and one containing the results from TestU01.
+
+    Raises:
+        ValueError:
+            If ``nbytes`` is less than 100 000.
+    """
+    if nbytes < 100_000:
+        raise ValueError(f"TestU01 requires at least 100 000 bytes, got {nbytes}")
+
+    from math import ceil
+    from crypto_condor.primitives import TestU01
+
+    results = ResultsDict()
+
+    try:
+        testkeys = [keygen() for _ in range(10)]
+    except Exception:
+        logger.exception("Failed to run X25519 keygen, returning empty ResultsDict")
+        return results
+    clamped = all([_is_clamped(key) for key, _ in testkeys])
+
+    nkeys = ceil(nbytes / 30) if clamped else ceil(nbytes / 32)
+    keys = bytes()
+
+    res = Results.new("Tests X25519 key pair generation", ["nbytes"])
+    results.add(res)
+
+    for i in track(range(1, nkeys + 1), "Testing keys"):
+        info = TestInfo.new(i, TestType.VALID)
+
+        try:
+            out = keygen()
+        except Exception as error:
+            info.fail("Failed to run X25519 keygen")
+            res.add(info)
+            continue
+
+        match out:
+            case [bytes() as sk, bytes() as pk]:
+                # Nothing to do, match does the assignment for us.
+                pass
+            case [bytes() as sk, None]:
+                pk = None
+            case [_a, _b]:
+                info.fail(
+                    f"Expected (bytes, bytes | None), got ({type(_a)}, {type(_b)})"
+                )
+                res.add(info)
+                continue
+            case _:
+                info.fail(f"Expected 2 values, got {len(out)}")
+                res.add(info)
+                continue
+
+        info.data = KeygenData(sk, pk)
+
+        if len(sk) != 32:
+            info.fail("Wrong secret key size")
+            res.add(info)
+            continue
+
+        tk = sk
+        if clamped:
+            # If the first sample keys were clamped, all other keys should be too.
+            if not _is_clamped(sk):
+                info.fail("Key is not clamped (other keys were)")
+                res.add(info)
+                continue
+            # If keys are clamped, remove first and last bytes from TestU01 input.
+            tk = tk[1:-1]
+        keys += tk
+
+        if pk is None:
+            info.ok()
+        else:
+            key = X25519PrivateKey.from_private_bytes(sk)
+            if key.public_key().public_bytes_raw() == pk:
+                info.ok()
+            else:
+                info.fail("Wrong public key")
+        res.add(info)
+
+    # Test the keygen output with TestU01.
+    results |= TestU01.test_raw(keys)
+
+    return results
+
+
 # -------------------------------------------------------------------------------------
 # Harnesses
 # -------------------------------------------------------------------------------------
@@ -318,13 +485,21 @@ def test_harness_python(
     if module_harness is None:
         return rd
 
-    for funcname, _ in inspect.getmembers(module_harness, inspect.isfunction):
-        func = getattr(module_harness, funcname)
-        match funcname.split("_"):
+    for name, func in inspect.getmembers(module_harness, inspect.isfunction):
+        match name.split("_"):
             case ["CC", "x25519", "exchange"]:
                 rd |= test_exchange(func, compliance, resilience)
+            case ["CC", "x25519", "keygen"]:
+                rd |= test_keygen(func)
+            case ["CC", "x25519", "keygen", _nbytes]:
+                try:
+                    nbytes = int(_nbytes)
+                except ValueError:
+                    logger.error("Failed to parse %s as int", _nbytes)
+                    continue
+                rd |= test_keygen(func, nbytes)
             case ["CC", "x25519", *_]:
-                logger.warning("Invalid function CC_x25519 %s", funcname)
+                logger.error("Invalid function CC_x25519 %s", name)
                 continue
 
     return rd

@@ -26,3 +26,12 @@ def CC_x25519_exchange(secret_key: bytes, peer_key: bytes) -> bytes:
         The resulting shared secret.
     """
     raise NotImplementedError()
+
+
+def CC_x25519_keygen() -> tuple[bytes, bytes | None]:
+    """Generates a X25519 key pair.
+
+    Returns:
+        A tuple containing (secret key, public key) or (secret key, None).
+    """
+    raise NotImplementedError()

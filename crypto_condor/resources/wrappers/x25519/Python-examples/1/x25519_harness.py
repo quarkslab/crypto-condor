@@ -33,3 +33,12 @@ def CC_x25519_exchange(secret_key: bytes, peer_key: bytes) -> bytes:
     sk = X25519PrivateKey.from_private_bytes(secret_key)
     pk = X25519PublicKey.from_public_bytes(peer_key)
     return sk.exchange(pk)
+
+
+def CC_x25519_keygen_100000() -> tuple[bytes, bytes | None]:
+    """Generates a X25519 key pair.
+
+    Returns:
+        A tuple containing (secret key, public key) or (secret key, None).
+    """
+    return (X25519PrivateKey.generate().private_bytes_raw(), None)
