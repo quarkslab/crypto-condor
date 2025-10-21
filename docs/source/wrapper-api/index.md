@@ -12,6 +12,7 @@ protocol.
 AES <AES>
 ChaCha20 <chacha20>
 ECDH <ECDH>
+Ed25519 <ed25519>
 HMAC <HMAC>
 HQC <HQC>
 SHA <SHA>

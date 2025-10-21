@@ -35,6 +35,7 @@ def __dir__():  # pragma: no cover
         Wrapper.__name__,
         # Protocols
         Sign.__name__,
+        Keygen.__name__,
         # Test functions
         test_sign.__name__,
         test_verify.__name__,
@@ -154,7 +155,7 @@ class Sign(Protocol):
         Returns:
             The Ed25519 signature.
         """
-        ...
+        ...  # pragma: no cover
 
 
 class Verify(Protocol):
@@ -174,7 +175,19 @@ class Verify(Protocol):
         Returns:
             True if the signature is valid, False otherwise.
         """
-        ...
+        ...  # pragma: no cover
+
+
+class Keygen(Protocol):
+    """Represents a function that generated Ed25519 key pairs."""
+
+    def __call__(self) -> tuple[bytes, bytes | None]:
+        """Generates an Ed25519 key pair.
+
+        Returns:
+            A tuple containing (secret_key, public_key) or (secret_key, None).
+        """
+        ...  # pragma: no cover
 
 
 # -------------------------------------------------------------------------------------
@@ -226,6 +239,20 @@ result = {self.ret}
     def from_test(cls, test: Ed25519Test):
         """Returns a new instance from a test."""
         return cls(test.pk, test.msg, test.sig)
+
+
+@attrs.define
+class KeygenData:
+    """Debug data for `test_keygen`."""
+
+    sk: bytes
+    pk: bytes | None
+
+    def __str__(self):
+        """Returns a string representation."""
+        return f"""sk = {self.sk.hex()}
+pk = {self.pk.hex() if self.pk is not None else "<none>"}
+"""
 
 
 # -------------------------------------------------------------------------------------
@@ -436,6 +463,100 @@ def test_output_sign(output: Path) -> ResultsDict:
     return rd
 
 
+def test_keygen(keygen: Keygen, nbytes: int = 10_000_000) -> ResultsDict:
+    """Tests a function that generates Ed25519 key pairs.
+
+    This test checks both the correct generation of key pairs, as well as the quality of
+    the randomness of the private keys.
+
+    It calls ``keygen`` to generate enough keys to fill a buffer of length ``nbytes``.
+    If the public key is included, the test checks that the public key corresponds to
+    the private key.
+
+    The private keys are concatenated and tested with
+    :mod:`~crypto_condor.primitives.TestU01`.
+
+    Args:
+        keygen:
+            The key generation function to test.
+        nbytes:
+            The number of bytes to generate. TestU01 requires at least 100 000 bytes.
+
+    Returns:
+        A :class:`ResultsDict` with two :class:`Results`: one containing the results of
+        generating all the keys and one containing the results from TestU01.
+
+    Raises:
+        ValueError:
+            If ``nbytes`` is less than 100 000.
+    """
+    if nbytes < 100_000:
+        raise ValueError(f"TestU01 requires at least 100 000 bytes, got {nbytes}")
+
+    from math import ceil
+    from crypto_condor.primitives import TestU01
+
+    results = ResultsDict()
+
+    nkeys = ceil(nbytes / 32)
+    keys = bytes()
+
+    res = Results.new("Tests Ed25519 key pair generation", ["nbytes"])
+    results.add(res)
+
+    for i in track(range(1, nkeys + 1), "Testing keys"):
+        info = TestInfo.new(i, TestType.VALID)
+
+        try:
+            out = keygen()
+        except Exception as error:
+            info.fail("Failed to run Ed25519 keygen")
+            res.add(info)
+            continue
+
+        match out:
+            case [bytes() as sk, bytes() as pk]:
+                # Nothing to do, match does the assignment for us.
+                pass
+            case [bytes() as sk, None]:
+                pk = None
+            case [_a, _b]:
+                info.fail(
+                    f"Expected (bytes, bytes | None), got ({type(_a)}, {type(_b)})"
+                )
+                res.add(info)
+                continue
+            case _:
+                info.fail(f"Expected 2 values, got {len(out)}")
+                res.add(info)
+                continue
+
+        info.data = KeygenData(sk, pk)
+
+        if len(sk) != 32:
+            info.fail("Wrong secret key size")
+            res.add(info)
+            continue
+
+        keys += sk
+
+        if pk is None:
+            info.ok()
+        else:
+            info.data.pk = pk
+            key = Ed25519PrivateKey.from_private_bytes(sk)
+            if key.public_key().public_bytes_raw() == pk:
+                info.ok()
+            else:
+                info.fail("Wrong public key")
+        res.add(info)
+
+    # Test the keygen output with TestU01.
+    results |= TestU01.test_raw(keys)
+
+    return results
+
+
 # -------------------------------------------------------------------------------------
 # Harnesses
 # -------------------------------------------------------------------------------------
@@ -458,15 +579,23 @@ def test_harness_python(
 
     rd = ResultsDict()
 
-    for funcname, _ in inspect.getmembers(ed25519_harness, inspect.isfunction):
-        func = getattr(ed25519_harness, funcname)
-        match funcname.split("_"):
+    for name, func in inspect.getmembers(ed25519_harness, inspect.isfunction):
+        match name.split("_"):
             case ["CC", "ed25519", "sign"]:
                 rd |= test_sign(func, compliance, resilience)
             case ["CC", "ed25519", "verify"]:
                 rd |= test_verify(func, compliance, resilience)
+            case ["CC", "ed25519", "keygen"]:
+                rd |= test_keygen(func)
+            case ["CC", "ed25519", "keygen", _nbytes]:
+                try:
+                    nbytes = int(_nbytes)
+                except ValueError:
+                    logger.error("Failed to parse %s as int", _nbytes)
+                    continue
+                rd |= test_keygen(func, nbytes)
             case ["CC", "ed25519", *_]:
-                logger.error("Invalid CC_ed25519 function %s", funcname)
+                logger.error("Invalid CC_ed25519 function %s", name)
                 continue
 
     return rd

@@ -43,3 +43,12 @@ def CC_ed25519_verify(pk: bytes, msg: bytes, sig: bytes) -> bool:
         True if the signature is valid, False otherwise.
     """
     raise NotImplementedError()
+
+
+def CC_ed25519_keygen() -> tuple[bytes, bytes | None]:
+    """Generates an Ed25519 key pair.
+
+    Returns:
+        A tuple containing (secret_key, public_key) or (secret_key, None).
+    """
+    raise NotImplementedError()

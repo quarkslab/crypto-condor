@@ -58,3 +58,12 @@ def CC_ed25519_verify(pk: bytes, msg: bytes, sig: bytes) -> bool:
         raise
     else:
         return True
+
+
+def CC_ed25519_keygen_100000() -> tuple[bytes, bytes | None]:
+    """Generates an Ed25519 key pair.
+
+    Returns:
+        A tuple containing (secret_key, public_key) or (secret_key, None).
+    """
+    return (Ed25519PrivateKey.generate().private_bytes_raw(), None)
