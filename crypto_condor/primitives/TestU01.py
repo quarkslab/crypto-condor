@@ -1,20 +1,79 @@
-"""Module for interacting with TestU01.
+"""This module provides a high-level interface for TestU01.
 
-This module provides the :func:`test_file` function to test a file of random data using
-the NIST battery of tests implemented by TestU01.
+`TestU01 <https://simul.iro.umontreal.ca/testu01/tu01.html>`_.
+is a C library for empirical testing of random number generators. This module exposes
+high-level methods for running the
+`NIST battery of tests <https://csrc.nist.gov/Projects/random-bit-generation/Documentation-and-Software/Guide-to-the-Statistical-Tests>`_
+using the tests implemented by TestU01. This battery is not implemented directly by
+TestU01, |cc| comes bundled with a modified version that defines this battery.
+
+Installation
+------------
+
+The library has to be compiled and installed locally. The installation requires:
+
+* ``make``;
+* a C compiler (``/usr/bin/cc`` by default, can be changed by setting the ``CC``
+  environment variable).
+
+The compilation of the library is done automatically when running any of the test
+function below for the first time. Subsequent runs use the installed version.
+
+For manual installation, see :func:`install_testu01`.
 
 A modified version of TestU01 is bundled with |cc|, which adds the NIST battery from the
-existing tests. This version has to compiled and installed locally: it requires make and
-gcc to compile. Installation is done with :func:`install_testu01`, which should be
-called by any function in this module that uses TestU01.
+existing tests. This version has to compiled and installed locally: it requires ``make``
+and a C compiler (``/usr/bin/cc`` by default, set the ``CC`` environment variable to
+chose another one). The compilation is done automatically when running any of the tests
+for the first time.
+
+Manual installation is done with :func:`install_testu01`, which should be called by any
+function in this module that uses TestU01.
+
+.. important::
+
+   In general you should not need to use these functions: they are called whenever a
+   test involving TestU01 is executed. If the compilation fails, you can `open an issue
+   <https://github.com/quarkslab/crypto-condor/issues>`_.
+
+.. autofunction:: get_testu01_dir
+
+.. autofunction:: install_testu01
+
+
+How much data to generate?
+--------------------------
+
+As a general rule, more data means the tests are more likely to fail if the output is
+not uniformly random. Additionally, some tests will not run if the sample size is too
+small. 100KB enables 27 out of 29 available tests: as such, all functions in this module
+enforce 100KB as the minimum size to generate. The default, and recommended minimum, is
+10MB, which enables all 29 tests.
+
+Test an RNG
+-----------
+
+.. autofunction:: test_file
+
+.. autofunction:: test_generator
+
+.. autofunction:: test_raw
+
+Protocols
+---------
+
+.. autoprotocol:: Generator
 """
 
 import logging
 import os
 import shutil
 import subprocess
+import tempfile
 from importlib import resources
+from math import ceil
 from pathlib import Path
+from typing import Protocol
 
 import attrs
 from rich.progress import Progress
@@ -27,11 +86,15 @@ from crypto_condor.primitives.common import (
     get_appdata_dir,
 )
 
-# Module
+# -------------------------------------------------------------------------------------
+# Module variables
+# -------------------------------------------------------------------------------------
 
 logger = logging.getLogger(__name__)
 
-# Data classes
+# -------------------------------------------------------------------------------------
+# Dataclasses
+# -------------------------------------------------------------------------------------
 
 
 @attrs.frozen
@@ -53,7 +116,27 @@ p-value: {self.pvalue}
 """
 
 
+# -------------------------------------------------------------------------------------
+# Protocols
+# -------------------------------------------------------------------------------------
+
+
+class Generator(Protocol):
+    """Represents a random number generator."""
+
+    def __call__(self) -> bytes:
+        """Generates a random number.
+
+        Returns:
+            A random number encoded as bytes. All values returned by this function must
+            have the same length in bytes.
+        """
+        ...  # pragma: no cover
+
+
+# -------------------------------------------------------------------------------------
 # Internal functions
+# -------------------------------------------------------------------------------------
 
 
 def get_testu01_dir() -> Path:
@@ -69,7 +152,8 @@ def install_testu01(*, debug: bool = False):
     compiles it if not.
 
     Keyword Args:
-        debug: If True, the compilation output is not captured by subprocess, displaying
+        debug:
+            If True, the compilation output is not captured by subprocess, displaying
             the full output on stdout.
     """
     t_dir = get_testu01_dir()
@@ -114,44 +198,49 @@ def install_testu01(*, debug: bool = False):
             raise
 
 
+# -------------------------------------------------------------------------------------
 # Test functions
+# -------------------------------------------------------------------------------------
+
+
+# NOTE for developers: all tests have to ensure that TestU01 is installed by calling
+# install_testu01(). In practice, since test_file() calls install_testu01() and
+# implements the call to TestU01, tests that depend on test_file() can skip this
+# requirement.
 
 
 def test_file(filename: str, *, bit_count: int = 0) -> ResultsDict:
-    """Tests the output of a PRNG using TestU01.
-
-    Our NIST battery requires at least 500 bits.
+    """Tests the output of a random number generator written to a file.
 
     Args:
-        filename: The name of the file to test.
+        filename:
+            The name of the file to test. It must be 100KB at minimum.
 
     Keyword Args:
         bit_count:
-            The number of bits to read. Must be less or equal to the size of the file,
-            and at least 500.
+            This argument is ignored, the entire file will be read.
 
     Returns:
-        A dictionary of results, containing a single :class:`Results`.
+        A dictionary of results, containing a single :class:`Results` with the results
+        of all TestU01 tests.
 
     Raises:
         ValueError:
-            If the bit count is strictly positive and less than 500, or the actual file
-            size if less than 500 bits.
+            If the file is smaller than 100KB.
 
     .. versionchanged:: 2025.03.12
         ``test_file`` now returns `ResultsDict` containing a single `Results` for a
         TestU01 run.
+    .. versionchanged:: FIXME(version)
+        ``bit_count`` is deprecated: the argument is ignored and will be removed in a
+        later version.
     """
-    if 0 < bit_count < 500:
-        raise ValueError("The bit count cannot be less than 500")
-
     file = Path(filename).absolute()
+    fsize = file.stat().st_size
+    if fsize < 100_000:
+        raise ValueError(f"TestU01 requires at least 100 000 bytes, got {fsize}")
 
-    content = file.read_bytes()
-    if len(content) * 8 < 500:
-        raise ValueError(f"The file is too small ({len(content) * 8} < 500 bits)")
-
-    rd = ResultsDict()
+    results = ResultsDict()
 
     # Check that TestU01 is already installed.
     try:
@@ -161,12 +250,7 @@ def test_file(filename: str, *, bit_count: int = 0) -> ResultsDict:
 
     t_dir = get_testu01_dir()
     testu01 = t_dir / "testu01.sh"
-
     args = [str(testu01), str(file)]
-
-    if bit_count > 0:
-        args += [str(bit_count)]
-
     try:
         output = subprocess.check_output(args, cwd=t_dir, text=True)
     except subprocess.CalledProcessError as error:
@@ -184,8 +268,9 @@ def test_file(filename: str, *, bit_count: int = 0) -> ResultsDict:
         "TestU01",
         "test_file",
         "Tests the output of a PRNG with TestU01.",
-        {"filename": filename, "bit_count": bit_count if bit_count else n_bits},
+        {"file name": filename, "file size": fsize},
     )
+    results.add(res)
 
     # The format works as follows:
     #  - A 1 or 2 digits numerical ID, right-padded to three characters.
@@ -258,10 +343,104 @@ def test_file(filename: str, *, bit_count: int = 0) -> ResultsDict:
 
         res.add(info)
 
-    rd.add(res)
-    return rd
+    return results
 
 
-# Block to install TestU01 by running the module as a script.
+def test_raw(raw: bytes) -> ResultsDict:
+    """Tests the output of a random number generator.
+
+    Writes the output to a temporary file and runs TestU01 on it.
+
+    Args:
+        raw:
+            The raw output to test. It must be at least 100 000 bytes long.
+
+    Raises:
+        ValueError:
+            If the length of ``raw`` is less than 100 000 bytes.
+
+    .. versionadded:: FIXME(version)
+    """
+    if len(raw) < 100_000:
+        raise ValueError(f"At least 100 000 bytes required, got {len(raw)} bytes")
+
+    results = ResultsDict()
+    # Use tempfile because the caller is giving a string of bytes, so they can save it
+    # to a file and use test_file() if storing the output is important.
+    with tempfile.NamedTemporaryFile("wb") as file:
+        written = file.write(raw)
+        if written < len(raw):
+            logger.error("Failed to write raw RNG output to file %s", file.name)
+            return results
+        results |= test_file(file.name)
+    return results
+
+
+def test_generator(
+    gen: Generator, nbytes: int = 10_000_000, outfile: str = ""
+) -> ResultsDict:
+    """Tests a random number generator.
+
+    Calls ``gen`` one time to determine the size of the output numbers, then calls
+    ``gen`` to generate enough values to fill an array of ``nbytes``. This output is
+    tested with TestU01.
+
+    Any exceptions raised by ``gen`` are treated as unrecoverable errors and an empty
+    :class:`ResultsDict` is returned.
+
+    Args:
+        gen:
+            The random number generator. Must follow :protocol:`Generator`. Notably,
+            this function expects all values returned by ``gen`` to have the same length
+            in bytes.
+        nbytes:
+            The number of bytes to generate with ``gen``. Must be at least 100 000.
+        outfile:
+            Optional, the name of the file to save the generated output. If empty, the
+            output is not saved.
+
+    Returns:
+        The results of the tests are included in one instance of :class:`Results`, in a
+        :class:`ResultsDict`. The dictionary can be empty if an exception was raised by
+        ``gen``.
+
+    Raises:
+        ValueError:
+            If ``nbytes`` is less than 100 000.
+
+    .. versionadded:: FIXME(version)
+    """
+    results = ResultsDict()
+
+    if nbytes < 100_000:
+        raise ValueError(f"At least 100 000 bytes required, got {nbytes} bytes")
+
+    try:
+        outlen = len(gen())
+    except Exception:
+        logger.exception("Failed to call random generator")
+        return results
+
+    output = bytes()
+
+    n = ceil(nbytes / outlen)
+    for _ in range(n):
+        try:
+            out = gen()
+        except Exception:
+            logger.exception("Failed to call random generator")
+            return results
+        else:
+            output += out
+
+    if outfile:
+        with open(outfile, "wb") as file:
+            file.write(output)
+        return test_file(outfile)
+    else:
+        return test_raw(output)
+
+
+# Install TestU01 when running the module as a script.
 if __name__ == "__main__":
     install_testu01(debug=True)
