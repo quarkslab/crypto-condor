@@ -105,6 +105,7 @@ def parse_reference():
         source_desc="Reference test vectors for signing and verifying.",
         source_url="https://ed25519.cr.yp.to/python/sign.input",
         compliance=True,
+        notes={"Valid": "The test vector is a valid signature."},
         variant="Ed25519",
         sign=True,
         verify=True,
