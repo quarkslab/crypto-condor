@@ -917,7 +917,12 @@ class Console(RichConsole):
                     printer.print("Per-test results")
                     printer.print("----------------")
                     printer.print()
-                    printer.print("\n\n".join([str(r) for r in res.values()]))
+                    printer.print(
+                        "\n\n".join([str(r) for r in res.values()]),
+                        no_wrap=True,
+                        overflow="ignore",
+                        crop=False,
+                    )
                 if debug_data:
                     printer.print()
                     if isinstance(res, ResultsDict):
