@@ -393,26 +393,43 @@ class Results:
     uses :mod:`rich`'s markup to add colours.
 
     Args:
-        module: The name of the primitive module.
-        function: The name of the function used.
-        description: A description of the function.
-        arguments: The name of the arguments passed to the function and their values.
-        valid: A count of valid tests with their results and flags.
-        invalid: A count of invalid tests with their results and flags.
-        acceptable: A count of acceptable tests with their results and flags.
-        notes: Notes explaining the meaning of the flags. Can contain notes of flags
-            that are not used by the tests, they will be omitted from the string
+        module:
+            The name of the primitive module.
+        function:
+            The name of the function used.
+        description:
+            A description of the function.
+        arguments:
+            The name of the arguments passed to the function and their values.
+        source:
+            The source of the test vectors.
+        source_desc:
+            A description of the source.
+        valid:
+            A count of valid tests with their results and flags.
+        invalid:
+            A count of invalid tests with their results and flags.
+        acceptable:
+            A count of acceptable tests with their results and flags.
+        notes:
+            Notes explaining the meaning of the flags. Can contain notes of flags that
+            are not used by the tests, they will be omitted from the string
             representation. Initialized with common flags.
-        data: Information about each individual test, indexed by test ID.
-        _flags: A set of all flags observed. This is used to skip notes associated with
+        data:
+            Information about each individual test, indexed by test ID.
+        _flags:
+            A set of all flags observed. This is used to skip notes associated with
             unused flags for the string representation.
-        _tids: A set of test IDs, used to ensure the uniqueness of the ID.
+        _tids:
+            A set of test IDs, used to ensure the uniqueness of the ID.
     """
 
     module: str
     function: str
     description: str
     arguments: dict[str, Any]
+    source: str = ""
+    source_desc: str = ""
     valid: PassedAndFailed = attrs.field(factory=PassedAndFailed)
     invalid: PassedAndFailed = attrs.field(factory=PassedAndFailed)
     acceptable: PassedAndFailed = attrs.field(factory=PassedAndFailed)
@@ -430,6 +447,8 @@ class Results:
         s = f"Module: [bold blue]{self.module}[/]\n"
         s += f"Function: [bold blue]{self.function}[/]\n"
         s += f"Description: {self.description}\n"
+        if self.source and self.source_desc:
+            s += f"Source: {self.source}\nSource description: {self.source_desc}\n"
         if len(self.arguments) > 0:
             s += "Arguments:\n"
             for arg, val in self.arguments.items():
@@ -525,6 +544,8 @@ class Results:
         c = cls(mod, func, desc, args)
         if vectors is not None:
             c.add_notes(vectors.notes)
+            c.source = vectors.source
+            c.source_desc = vectors.source_desc
         return c
 
     def add(self, data: TestInfo | Any) -> None:
