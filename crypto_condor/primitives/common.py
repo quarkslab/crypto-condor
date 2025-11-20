@@ -958,7 +958,10 @@ class Console(RichConsole):
         return res.check()
 
 
-# --------------------------- Other ---------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Other
+# -------------------------------------------------------------------------------------
+
 
 def _load_python_harness(harness: Path):
     """Imports a Python harness as a module.
@@ -968,7 +971,7 @@ def _load_python_harness(harness: Path):
             A path to the harness to load.
 
     Returns:
-        The loaded module, or None if an error occured. It is reloaded if a module of
+        The loaded module, or None if an error occurred. It is reloaded if a module of
         the same name was loaded previously.
     """
     logger.info("Loading Python harness: '%s'", str(harness.name))
@@ -977,7 +980,7 @@ def _load_python_harness(harness: Path):
     try:
         module_harness = importlib.import_module(harness.stem)
     except ModuleNotFoundError as error:
-        logger.error("Failed to load harness: '%s'", str(error))
+        logger.error("Failed to load harness %s: '%s'", str(harness), str(error))
         return None
     if already_imported:
         logger.debug("Reloading module harness: '%s'", harness.stem)
