@@ -101,14 +101,12 @@ _DEFAULT_NOTES = {
         "Test vectors provided in the specification to test the"
         " correctness of an implementation."
     ),
-    "Compliance/EmptyPlaintext": "Test vector with an empty plaintext.",
-    "Compliance/EmptyCiphertext": "Test vector with an empty ciphertext.",
-    "Resilience/EmptyPlaintext": "Test vector with an empty plaintext.",
-    "Resilience/EmptyCiphertext": "Test vector with an empty ciphertext.",
+    "EmptyPlaintext": "Test vector with an empty plaintext.",
+    "EmptyCiphertext": "Test vector with an empty ciphertext.",
     "NoFlag": "Test vector without flag.",
     "UserInput": "User-provided·vectors.",
     "RandomTest": "Test values are randomly generated.",
-    "Compliance/MonteCarlo": "Test pseudo-random values by consecutively hashing a digest.",  # noqa: E501
+    "MonteCarlo": "Test pseudo-random values by consecutively hashing a digest.",
     "TestU01": "PRNG test with TestU01",
 }
 """Dictionary of commonly used flags and their notes."""
@@ -291,11 +289,11 @@ class TestInfo:
             A new instance of TestInfo with the ``result``, ``err_msg``, and ``data``
             fields set to None.
         """
-        # If there are no flags, add one for Compliance or Resilience.
         if not test.flags:
-            flags = ["Compliance"] if compliance else ["Resilience"]
-        # Otherwise add the correct prefix.
+            # If there are no flags, add a generic one.
+            flags = ["Compliance/Basic"] if compliance else ["Resilience/Basic"]
         else:
+            # Otherwise add a prefix depending on the type of test.
             prefix = "Compliance" if compliance else "Resilience"
             flags = [f"{prefix}/{flag}" for flag in test.flags]
         return cls(test.id, TestType(test.type), flags, None, test.comment, None, data)
@@ -548,7 +546,12 @@ class Results:
             if data.result is None:
                 raise ValueError("The result of test %d is None" % data.id)
             self._tids.add(data.id)
-            self._flags |= set(data.flags)
+            # Add flags but remove the prefix: otherwise it makes matching flags to
+            # notes a tad more annoying.
+            self._flags |= set(
+                flag.removeprefix("Compliance/").removeprefix("Resilience/")
+                for flag in data.flags
+            )
             self.data[data.id] = data
             match data.type:
                 case TestType.VALID:
