@@ -1,10 +1,8 @@
 """The ChaCha20 module."""
 
-import importlib
 import inspect
 import json
 import logging
-import sys
 from importlib import resources
 from pathlib import Path
 from typing import Protocol
@@ -15,7 +13,13 @@ import strenum
 from Crypto.Cipher import ChaCha20, ChaCha20_Poly1305
 from rich.progress import track
 
-from crypto_condor.primitives.common import Results, ResultsDict, TestInfo, TestType
+from crypto_condor.primitives.common import (
+    Results,
+    ResultsDict,
+    TestInfo,
+    TestType,
+    _load_python_harness,
+)
 from crypto_condor.vectors._chacha20.chacha20_pb2 import Chacha20Test, Chacha20Vectors
 from crypto_condor.vectors.chacha20 import Mode
 
@@ -157,7 +161,7 @@ class DecryptPoly(Protocol):
 
     def __call__(
         self, key: bytes, ct: bytes, nonce: bytes, tag: bytes, aad: bytes
-    ) -> bytes | None:
+    ) -> bytes:
         """Decrypts with ChaCha20-Poly1305.
 
         Args:
@@ -307,6 +311,7 @@ counter = {self.counter}
 returned pt = {self.ret_pt.hex() if self.ret_pt is not None else "<none>"}
 """
 
+
 @attrs.define
 class DecPolyData:
     """Debug data for :func:`test_decrypt_poly`.
@@ -346,6 +351,7 @@ tag = {self.tag.hex()}
 aad = {self.aad.hex()}
 returned pt = {self.ret_pt.hex() if self.ret_pt is not None else "<none>"}
 """
+
 
 # -------------------------------------------------------------------------------------
 # Internal functions
@@ -1130,38 +1136,31 @@ def test_harness_python(
     Returns:
         A dictionary of :class:`Results`, at least one per test.
     """
-    rd = ResultsDict()
-    logger.info("Testing Python harness: %s", str(harness.name))
-    sys.path.insert(0, str(harness.parent.absolute()))
-    already_imported = harness.stem in sys.modules.keys()
-    try:
-        module_harness = importlib.import_module(harness.stem)
-    except ModuleNotFoundError:
-        logger.exception("Cannot import wrapper %s", harness.stem)
-        return rd
-    if already_imported:
-        logger.debug("Reloading Python harness: %s", harness.stem)
-        module_harness = importlib.reload(module_harness)
+    results = ResultsDict()
+    chacha_harness = _load_python_harness(harness)
+    if chacha_harness is None:
+        return results
 
-    for name, func in inspect.getmembers(module_harness, inspect.isfunction):
-        match name.split("_"):
-            case ["CC", "ChaCha20", "encrypt"]:
-                rd |= test_encrypt(func, compliance, resilience)
-            case ["CC", "ChaCha20", "decrypt"]:
-                rd |= test_decrypt(func, compliance, resilience)
-            case ["CC", "ChaCha20", "encrypt", "poly"]:
-                rd |= test_encrypt_poly(func, compliance, resilience)
-            case ["CC", "ChaCha20", "decrypt", "poly"]:
-                rd |= test_decrypt_poly(func, compliance, resilience)
-            case ["CC", "ChaCha20", ("encrypt" | "decrypt"), *opt]:
-                logger.error("Invalid harness options: %s", ", ".join(opt))
-            case ["CC", "ChaCha20", op, *_]:
-                logger.error("Invalid harness operation: %s", op)
+    for name, func in inspect.getmembers(chacha_harness, inspect.isfunction):
+        if not name.startswith("CC_ChaCha20_"):
+            continue
+        match name.split("_")[2:]:
+            case ["encrypt"]:
+                results |= test_encrypt(func, compliance, resilience)
+            case ["decrypt"]:
+                results |= test_decrypt(func, compliance, resilience)
+            case ["encrypt", "poly"]:
+                results |= test_encrypt_poly(func, compliance, resilience)
+            case ["decrypt", "poly"]:
+                results |= test_decrypt_poly(func, compliance, resilience)
+            case [("encrypt" | "decrypt"), *opt]:
+                logger.error("Invalid ChaCha20 harness options: %s", ", ".join(opt))
+            case [op, *_]:
+                logger.error("Invalid ChaCha20 harness operation: %s", op)
             case _:
-                # May include other functions, just ignore them.
-                pass
+                continue
 
-    return rd
+    return results
 
 
 # -------------------------------------------------------------------------------------
@@ -1344,24 +1343,26 @@ def test_lib(
         resilience:
             Whether to use resilience test vectors.
     """
-    rd = ResultsDict()
+    results = ResultsDict()
     logger.info("Found harness functions %s", ", ".join(functions))
 
     for function in functions:
-        match function.split("_"):
-            case ["CC", "ChaCha20", "encrypt"]:
-                rd |= _test_harness_enc(ffi, lib, compliance, resilience)
-            case ["CC", "ChaCha20", "decrypt"]:
-                rd |= _test_harness_dec(ffi, lib, compliance, resilience)
-            case ["CC", "ChaCha20", "encrypt", "poly"]:
-                rd |= _test_harness_enc_poly(ffi, lib, compliance, resilience)
-            case ["CC", "ChaCha20", "decrypt", "poly"]:
-                rd |= _test_harness_dec_poly(ffi, lib, compliance, resilience)
-            case ["CC", "ChaCha20", ("encrypt" | "decrypt"), *opt]:
-                logger.error("Invalid harness options: %s", ", ".join(opt))
-            case ["CC", "ChaCha20", op, *_]:
-                logger.error("Invalid harness operation: %s", op)
+        if not function.startswith("CC_ChaCha20_"):
+            continue
+        match function.split("_")[2:]:
+            case ["encrypt"]:
+                results |= _test_harness_enc(ffi, lib, compliance, resilience)
+            case ["decrypt"]:
+                results |= _test_harness_dec(ffi, lib, compliance, resilience)
+            case ["encrypt", "poly"]:
+                results |= _test_harness_enc_poly(ffi, lib, compliance, resilience)
+            case ["decrypt", "poly"]:
+                results |= _test_harness_dec_poly(ffi, lib, compliance, resilience)
+            case [("encrypt" | "decrypt"), *opt]:
+                logger.error("Invalid ChaCha20 harness options: %s", ", ".join(opt))
+            case [op, *_]:
+                logger.error("Invalid ChaCha20 harness operation: %s", op)
             case _:
-                pass
+                continue
 
-    return rd
+    return results
