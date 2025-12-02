@@ -123,7 +123,7 @@ def aes(
 
     match wrapper.suffix:
         case ".py":
-            rd = AES.run_python_wrapper(wrapper, compliance, resilience)
+            rd = AES.test_harness_python(wrapper, compliance, resilience)
         case _:
             console.print(
                 f"There is no AES runner defined for {wrapper.suffix} wrappers"

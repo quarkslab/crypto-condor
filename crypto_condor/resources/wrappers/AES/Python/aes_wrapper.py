@@ -1,17 +1,12 @@
 """Wrapper template to test an AES implementation.
 
-For detailed examples, see the documentation.
-
-In short, you have to complete the `encrypt` and/or `decrypt` functions with the
-code necessary to perform those operations. Then, when using the CLI this
-wrapper will be imported and tested.
-
-Do not change the arguments of the functions, even if you don't use all of them.
-The tool expects them to be present and will likely fail if one is missing.
+Refer to the documentation
+(https://quarkslab.github.io/crypto-condor/latest/wrapper-api/AES.html) for the full
+description of the wrapper API.
 """
 
 
-def CC_AES_CBC_encrypt(
+def CC_AES_encrypt_CBC(
     key: bytes, plaintext: bytes, *, iv: bytes | None = None
 ) -> bytes:
     """Encrypts with AES-CBC.
@@ -29,7 +24,7 @@ def CC_AES_CBC_encrypt(
     raise NotImplementedError()
 
 
-def CC_AES_CBC_decrypt(
+def CC_AES_decrypt_CBC(
     key: bytes, ciphertext: bytes, *, iv: bytes | None = None
 ) -> bytes:
     """Decrypts with AES-CBC.
@@ -47,7 +42,7 @@ def CC_AES_CBC_decrypt(
     raise NotImplementedError()
 
 
-def CC_AES_GCM_encrypt(
+def CC_AES_encrypt_GCM(
     key: bytes,
     plaintext: bytes,
     *,
@@ -72,7 +67,7 @@ def CC_AES_GCM_encrypt(
     raise NotImplementedError()
 
 
-def CC_AES_GCM_decrypt(
+def CC_AES_decrypt_GCM(
     key: bytes,
     ciphertext: bytes,
     *,

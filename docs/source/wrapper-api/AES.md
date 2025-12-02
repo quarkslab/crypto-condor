@@ -27,8 +27,13 @@ To test an implementation of AES encryption, the function must:
 
 ### Naming convention
 
+```{versionchanged} 2025.12.02
+The naming convention has changed from `CC_AES_<mode>_encrypt` to
+`CC_AES_encrypt_<mode>` for a standard ordering across primitives.
 ```
-CC_AES_<mode>_encrypt
+
+```
+CC_AES_encrypt_<mode>
 ```
 
 Where `mode` is one of: `ECB`, `CBC`, `CBCPKCS7`, `CTR`, `CFB8`, `CFB128`, `GCM`, `CCM`.
@@ -36,7 +41,7 @@ Where `mode` is one of: `ECB`, `CBC`, `CBCPKCS7`, `CTR`, `CFB8`, `CFB128`, `GCM`
 This tests all key lengths. A specific one can be indicated:
 
 ```
-CC_AES_<mode>_<length>_encrypt
+CC_AES_encrypt_<mode>_<length>
 ```
 
 Where `length` is one of `128`, `192`, or `256`.
@@ -57,8 +62,13 @@ To test an implementation of AES decryption, the function must:
 
 ### Naming convention
 
+```{versionchanged} 2025.12.02
+The naming convention has changed from `CC_AES_<mode>_decrypt` to
+`CC_AES_decrypt_<mode>` for a standard ordering across primitives.
 ```
-CC_AES_<mode>_decrypt
+
+```
+CC_AES_decrypt_<mode>
 ```
 
 Where `mode` is one of: `ECB`, `CBC`, `CBCPKCS7`, `CTR`, `CFB8`, `CFB128`, `GCM`, `CCM`.
@@ -66,7 +76,7 @@ Where `mode` is one of: `ECB`, `CBC`, `CBCPKCS7`, `CTR`, `CFB8`, `CFB128`, `GCM`
 This tests all key lengths. A specific one can be indicated:
 
 ```
-CC_AES_<mode>_<key length>_decrypt
+CC_AES_decrypt_<mode>_<key length>
 ```
 
 Where `length` is one of `128`, `192`, or `256`.

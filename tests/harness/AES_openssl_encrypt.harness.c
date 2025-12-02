@@ -6,7 +6,7 @@ int encrypt(const EVP_CIPHER *cipher, uint8_t *ciphertext,
             size_t plaintext_size, const uint8_t *key, size_t key_size,
             const uint8_t *iv, size_t iv_size);
 
-int CC_AES_ECB_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
+int CC_AES_encrypt_ECB_256(uint8_t *ciphertext, size_t ciphertext_size,
                            const uint8_t *plaintext, size_t plaintext_size,
                            const uint8_t *key, size_t key_size,
                            const uint8_t *iv, size_t iv_size) {
@@ -14,7 +14,7 @@ int CC_AES_ECB_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
                  plaintext_size, key, key_size, iv, iv_size);
 }
 
-int CC_AES_CBC_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
+int CC_AES_encrypt_CBC_256(uint8_t *ciphertext, size_t ciphertext_size,
                            const uint8_t *plaintext, size_t plaintext_size,
                            const uint8_t *key, size_t key_size,
                            const uint8_t *iv, size_t iv_size) {
@@ -22,7 +22,7 @@ int CC_AES_CBC_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
                  plaintext_size, key, key_size, iv, iv_size);
 }
 
-int CC_AES_CTR_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
+int CC_AES_encrypt_CTR_256(uint8_t *ciphertext, size_t ciphertext_size,
                            const uint8_t *plaintext, size_t plaintext_size,
                            const uint8_t *key, size_t key_size,
                            const uint8_t *iv, size_t iv_size) {
@@ -30,7 +30,7 @@ int CC_AES_CTR_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
                  plaintext_size, key, key_size, iv, iv_size);
 }
 
-int CC_AES_CFB8_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
+int CC_AES_encrypt_CFB8_256(uint8_t *ciphertext, size_t ciphertext_size,
                             const uint8_t *plaintext, size_t plaintext_size,
                             const uint8_t *key, size_t key_size,
                             const uint8_t *iv, size_t iv_size) {
@@ -38,7 +38,7 @@ int CC_AES_CFB8_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
                  plaintext_size, key, key_size, iv, iv_size);
 }
 
-int CC_AES_CFB128_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
+int CC_AES_encrypt_CFB128_256(uint8_t *ciphertext, size_t ciphertext_size,
                               const uint8_t *plaintext, size_t plaintext_size,
                               const uint8_t *key, size_t key_size,
                               const uint8_t *iv, size_t iv_size) {
@@ -47,7 +47,7 @@ int CC_AES_CFB128_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
 }
 
 // CBC-PKCS7 uses padding, unlike the other modes.
-int CC_AES_CBCPKCS7_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
+int CC_AES_encrypt_CBCPKCS7_256(uint8_t *ciphertext, size_t ciphertext_size,
                                 const uint8_t *plaintext, size_t plaintext_size,
                                 const uint8_t *key, size_t key_size,
                                 const uint8_t *iv, size_t iv_size) {

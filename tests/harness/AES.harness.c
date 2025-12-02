@@ -44,7 +44,7 @@ void *get_func(void *handle, const char func_name[]) {
   return func;
 }
 
-void CC_AES_ECB_encrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
+void CC_AES_encrypt_ECB(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
                         size_t key_size, const uint8_t *iv, size_t iv_size) {
   struct AES_ctx ctx;
   void *handle = get_lib_handle("aes.so");
@@ -58,7 +58,7 @@ void CC_AES_ECB_encrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
   enc(&ctx, buffer, buffer_size);
 }
 
-void CC_AES_ECB_decrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
+void CC_AES_decrypt_ECB(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
                         size_t key_size, const uint8_t *iv, size_t iv_size) {
   struct AES_ctx ctx;
   void *handle = get_lib_handle("aes.so");
@@ -72,7 +72,7 @@ void CC_AES_ECB_decrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
   dec(&ctx, buffer, buffer_size);
 }
 
-void CC_AES_CBC_encrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
+void CC_AES_encrypt_CBC(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
                         size_t key_size, const uint8_t *iv, size_t iv_size) {
   struct AES_ctx ctx;
   void *handle = get_lib_handle("aes.so");
@@ -86,7 +86,7 @@ void CC_AES_CBC_encrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
   enc(&ctx, buffer, buffer_size);
 }
 
-void CC_AES_CBC_decrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
+void CC_AES_decrypt_CBC(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
                         size_t key_size, const uint8_t *iv, size_t iv_size) {
   struct AES_ctx ctx;
   void *handle = get_lib_handle("aes.so");
@@ -100,7 +100,7 @@ void CC_AES_CBC_decrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
   dec(&ctx, buffer, buffer_size);
 }
 
-void CC_AES_CTR_encrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
+void CC_AES_encrypt_CTR(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
                         size_t key_size, const uint8_t *iv, size_t iv_size) {
   struct AES_ctx ctx;
   void *handle = get_lib_handle("aes.so");
@@ -114,7 +114,7 @@ void CC_AES_CTR_encrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
   enc(&ctx, buffer, buffer_size);
 }
 
-void CC_AES_CTR_decrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
+void CC_AES_decrypt_CTR(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
                         size_t key_size, const uint8_t *iv, size_t iv_size) {
   struct AES_ctx ctx;
   void *handle = get_lib_handle("aes.so");
@@ -128,7 +128,7 @@ void CC_AES_CTR_decrypt(uint8_t *buffer, size_t buffer_size, const uint8_t *key,
   dec(&ctx, buffer, buffer_size);
 }
 
-void CC_AES_CFB8_encrypt(uint8_t *buffer, size_t buffer_size,
+void CC_AES_encrypt_CFB8(uint8_t *buffer, size_t buffer_size,
                          const uint8_t *key, size_t key_size, const uint8_t *iv,
                          size_t iv_size) {
   struct AES_ctx ctx;
@@ -143,7 +143,7 @@ void CC_AES_CFB8_encrypt(uint8_t *buffer, size_t buffer_size,
   enc(&ctx, buffer, buffer_size, 8);
 }
 
-void CC_AES_CFB8_decrypt(uint8_t *buffer, size_t buffer_size,
+void CC_AES_decrypt_CFB8(uint8_t *buffer, size_t buffer_size,
                          const uint8_t *key, size_t key_size, const uint8_t *iv,
                          size_t iv_size) {
   struct AES_ctx ctx;
@@ -158,7 +158,7 @@ void CC_AES_CFB8_decrypt(uint8_t *buffer, size_t buffer_size,
   dec(&ctx, buffer, buffer_size, 8);
 }
 
-void CC_AES_CFB128_encrypt(uint8_t *buffer, size_t buffer_size,
+void CC_AES_encrypt_CFB128(uint8_t *buffer, size_t buffer_size,
                            const uint8_t *key, size_t key_size,
                            const uint8_t *iv, size_t iv_size) {
   struct AES_ctx ctx;
@@ -173,7 +173,7 @@ void CC_AES_CFB128_encrypt(uint8_t *buffer, size_t buffer_size,
   enc(&ctx, buffer, buffer_size, 128);
 }
 
-void CC_AES_CFB128_decrypt(uint8_t *buffer, size_t buffer_size,
+void CC_AES_decrypt_CFB128(uint8_t *buffer, size_t buffer_size,
                            const uint8_t *key, size_t key_size,
                            const uint8_t *iv, size_t iv_size) {
   struct AES_ctx ctx;

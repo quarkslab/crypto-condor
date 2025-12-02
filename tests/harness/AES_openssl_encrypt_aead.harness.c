@@ -1,6 +1,6 @@
 #include <openssl/evp.h>
 
-int CC_AES_GCM_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
+int CC_AES_encrypt_GCM_256(uint8_t *ciphertext, size_t ciphertext_size,
                            uint8_t *mac, size_t mac_size,
                            const uint8_t *plaintext, size_t plaintext_size,
                            const uint8_t *key, size_t key_size,
@@ -37,7 +37,7 @@ error:
   return 0;
 }
 
-int CC_AES_CCM_256_encrypt(uint8_t *ciphertext, size_t ciphertext_size,
+int CC_AES_encrypt_CCM_256(uint8_t *ciphertext, size_t ciphertext_size,
                            uint8_t *mac, size_t mac_size,
                            const uint8_t *plaintext, size_t plaintext_size,
                            const uint8_t *key, size_t key_size,

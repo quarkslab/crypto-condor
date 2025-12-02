@@ -7,7 +7,7 @@ Usage:
 from Crypto.Cipher import AES
 
 
-def CC_AES_CBC_encrypt(
+def CC_AES_encrypt_CBC(
     key: bytes,
     pt: bytes,
     *,
@@ -17,7 +17,7 @@ def CC_AES_CBC_encrypt(
     return AES.new(key, AES.MODE_CBC, iv=iv).encrypt(pt)
 
 
-def CC_AES_CBC_decrypt(
+def CC_AES_decrypt_CBC(
     key: bytes,
     ct: bytes,
     *,
@@ -27,7 +27,7 @@ def CC_AES_CBC_decrypt(
     return AES.new(key, AES.MODE_CBC, iv=iv).decrypt(ct)
 
 
-def CC_AES_GCM_256_encrypt(
+def CC_AES_encrypt_GCM_256(
     key: bytes,
     pt: bytes,
     *,
@@ -46,7 +46,7 @@ def CC_AES_GCM_256_encrypt(
     return cipher.encrypt_and_digest(pt)
 
 
-def CC_AES_GCM_256_decrypt(
+def CC_AES_decrypt_GCM_256(
     key: bytes,
     ct: bytes,
     *,

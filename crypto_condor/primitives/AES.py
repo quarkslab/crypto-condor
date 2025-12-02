@@ -9,6 +9,7 @@ the :enum:`Mode` enum.
 from __future__ import annotations
 
 import importlib
+import inspect
 import json
 import logging
 import subprocess
@@ -34,6 +35,7 @@ from crypto_condor.primitives.common import (
     ResultsDict,
     TestInfo,
     TestType,
+    _load_python_harness,
     get_appdata_dir,
 )
 from crypto_condor.vectors._aes.aes_pb2 import AesTest, AesVectors
@@ -59,7 +61,7 @@ def __dir__():  # pragma: no cover
         test_output_decrypt.__name__,
         test_lib.__name__,
         # Runners
-        run_python_wrapper.__name__,
+        test_harness_python.__name__,
     ]
 
 
@@ -1598,95 +1600,80 @@ def verify_file(filename: str, mode: Mode, operation: Operation) -> ResultsDict:
         return test_output_decrypt(filename, mode)
 
 
-# --------------------------- Runners -------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Harnesses
+# -------------------------------------------------------------------------------------
 
 
-def run_python_wrapper(
-    wrapper: Path, compliance: bool, resilience: bool
+def _parse_harness_opts(_mode: str, opts: list[str]) -> tuple[Mode, KeyLength] | None:
+    if _mode == "CBCPKCS7":
+        mode = Mode.CBC_PKCS7
+    elif _mode in Mode:
+        mode = Mode(_mode)
+    else:
+        logger.error("Invalid mode %s for AES", _mode)
+        return None
+
+    match opts:
+        case []:
+            return (mode, KeyLength.ALL)
+        case [_klen]:
+            if int(_klen) not in KeyLength:
+                logger.error("Invalid key length %s for AES", _klen)
+                return None
+            return (mode, KeyLength(int(_klen)))
+        case _:
+            logger.error("Invalid options for AES harness: %s", ", ".join(opts))
+            return None
+
+
+def test_harness_python(
+    harness: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
-    """Runs an AES Python wrapper.
+    """Tests a Python harness.
 
     See :doc:`AES wrapper </wrapper-api/AES>` for a description of the wrappers.
 
     Args:
-        wrapper: A path to the wrapper to run. Must be a Python program.
-        compliance: Whether to use compliance test vectors.
-        resilience: Whether to use resilience test vectors.
+        harness:
+            Path to the harness to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
 
     Returns:
         A dictionary of results.
     """
-    logger.info("Running Python AES wrapper: '%s'", str(wrapper.name))
-    sys.path.insert(0, str(wrapper.parent.absolute()))
-    already_imported = wrapper.stem in sys.modules.keys()
-    try:
-        aes_wrapper = importlib.import_module(wrapper.stem)
-    except ModuleNotFoundError as error:
-        logger.error("Can't import wrapper: '%s'", str(error))
-        raise
-    if already_imported:
-        logger.debug("Reloading AES wrapper: '%s'", wrapper.stem)
-        aes_wrapper = importlib.reload(aes_wrapper)
+    results = ResultsDict()
 
-    rd = ResultsDict()
+    aes_harness = _load_python_harness(harness)
+    if aes_harness is None:
+        return results
 
-    for symbol in dir(aes_wrapper):
-        match symbol.split("_"):
-            case ["CC", "AES", _mode, ("encrypt" | "decrypt") as op]:
-                logger.info("Found CC_AES function %s", symbol)
-                try:
-                    mode = Mode(_mode)
-                except ValueError:
-                    logger.error("Unknown mode %s for AES", _mode)
+    for name, func in inspect.getmembers(aes_harness, inspect.isfunction):
+        if not name.startswith("CC_AES_"):
+            continue
+        match name.split("_")[2:]:
+            case ["encrypt", _mode, *opts]:
+                if (parsed := _parse_harness_opts(_mode, opts)) is None:
                     continue
-                if op == "encrypt":
-                    rd |= test_encrypt(
-                        getattr(aes_wrapper, symbol),
-                        mode,
-                        KeyLength.ALL,
-                        compliance=compliance,
-                        resilience=resilience,
-                    )
-                else:
-                    rd |= test_decrypt(
-                        getattr(aes_wrapper, symbol),
-                        mode,
-                        KeyLength.ALL,
-                        compliance=compliance,
-                        resilience=resilience,
-                    )
-            case ["CC", "AES", _mode, _klen, ("encrypt" | "decrypt") as op]:
-                logger.info("Found CC_AES function %s", symbol)
-                try:
-                    mode = Mode(_mode)
-                    klen = KeyLength(int(_klen))
-                except ValueError as error:
-                    logger.error(
-                        "Invalid parameter '%s', skip function %s", str(error), symbol
-                    )
+                mode, klen = parsed
+                results |= test_encrypt(
+                    func, mode, klen, compliance=compliance, resilience=resilience
+                )
+            case ["decrypt", _mode, *opts]:
+                if (parsed := _parse_harness_opts(_mode, opts)) is None:
                     continue
-                if op == "encrypt":
-                    rd |= test_encrypt(
-                        getattr(aes_wrapper, symbol),
-                        mode,
-                        klen,
-                        compliance=compliance,
-                        resilience=resilience,
-                    )
-                else:
-                    rd |= test_decrypt(
-                        getattr(aes_wrapper, symbol),
-                        mode,
-                        klen,
-                        compliance=compliance,
-                        resilience=resilience,
-                    )
-            case ["CC", "AES", *_]:
-                logger.warning("Ignored unknown CC_AES symbol %s", symbol)
+                mode, klen = parsed
+                results |= test_decrypt(
+                    func, mode, klen, compliance=compliance, resilience=resilience
+                )
             case _:
-                pass
+                logger.error("Invalid CC_AES function %s", name)
+                continue
 
-    return rd
+    return results
 
 
 # --------------------------- Lib hook functions --------------------------------------
@@ -1954,59 +1941,38 @@ def test_lib(
 
     results = ResultsDict()
 
-    # First pattern matching to parse both possible conventions (with or without key
-    # size), interpreting the parameters if possible, skipping if not.
-    # Second pattern matching to call the correct function depending on mode (classic
-    # vs. AEAD) and operation.
-    # CBC-PKCS7 is a special case as we would replace the hyphen in its name by an
-    # underscore, which would add more cases. So instead we use CBCPKCS7 and take this
-    # into account before passing the string to Mode.
-    for function in functions:
-        match function.split("_"):
-            case ["CC", "AES", _mode, ("encrypt" | "decrypt") as op]:
-                logger.info("Found CC_AES function %s", function)
-                try:
-                    mode = Mode.CBC_PKCS7 if _mode == "CBCPKCS7" else Mode(_mode)
-                except ValueError as error:
-                    logger.error(
-                        "Invalid parameter '%s', skip function %s", str(error), function
-                    )
-                    continue
-                klen = KeyLength.ALL
-            case ["CC", "AES", _mode, _klen, ("encrypt" | "decrypt") as op]:
-                logger.info("Found CC_AES function %s", function)
-                try:
-                    mode = Mode.CBC_PKCS7 if _mode == "CBCPKCS7" else Mode(_mode)
-                    klen = KeyLength(int(_klen))
-                except ValueError as error:
-                    logger.error(
-                        "Invalid parameter '%s', skip function %s", str(error), function
-                    )
-                    continue
-            case ["CC", "AES", *_]:
-                logger.warning("Ignored unknown CC_AES function '%s'", function)
-                continue
-            case _:
-                continue
+    for func in functions:
+        if not func.startswith("CC_AES_"):
+            continue
 
-        # If the condition is false, it continues searching for a pattern.
-        match (mode, op):
-            case (mode, "encrypt") if mode in Mode.classic_modes():
-                results |= _test_lib_enc(
-                    ffi, lib, function, mode, klen, compliance, resilience
-                )
-            case (mode, "encrypt"):
-                results |= _test_lib_enc_aead(
-                    ffi, lib, function, mode, klen, compliance, resilience
-                )
-            case (mode, "decrypt") if mode in Mode.classic_modes():
-                results |= _test_lib_dec(
-                    ffi, lib, function, mode, klen, compliance, resilience
-                )
-            case (mode, "decrypt"):
-                results |= _test_lib_dec_aead(
-                    ffi, lib, function, mode, klen, compliance, resilience
-                )
+        match func.split("_")[2:]:
+            case ["encrypt", _mode, *opts]:
+                if (parsed := _parse_harness_opts(_mode, opts)) is None:
+                    continue
+                mode, klen = parsed
+                if mode in Mode.classic_modes():
+                    results |= _test_lib_enc(
+                        ffi, lib, func, mode, klen, compliance, resilience
+                    )
+                else:
+                    results |= _test_lib_enc_aead(
+                        ffi, lib, func, mode, klen, compliance, resilience
+                    )
+            case ["decrypt", _mode, *opts]:
+                if (parsed := _parse_harness_opts(_mode, opts)) is None:
+                    continue
+                mode, klen = parsed
+                if mode in Mode.classic_modes():
+                    results |= _test_lib_dec(
+                        ffi, lib, func, mode, klen, compliance, resilience
+                    )
+                else:
+                    results |= _test_lib_dec_aead(
+                        ffi, lib, func, mode, klen, compliance, resilience
+                    )
+            case _:
+                logger.error("Invalid CC_AES function %s", func)
+                continue
 
     return results
 

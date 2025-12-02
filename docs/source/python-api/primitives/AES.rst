@@ -41,9 +41,3 @@ Protocols
 .. autoprotocol:: Encrypt
 
 .. autoprotocol:: Decrypt
-
-Run a wrapper
--------------
-
-.. autofunction:: run_python_wrapper
-
