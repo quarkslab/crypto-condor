@@ -1,14 +1,14 @@
 # ECDH wrappers
 
-## Exchange with coordinates
+## Exchange with point coordinates
 
-`exchange_coord` is a ECDH exchange using the coordinates of the public key of
+`exchange_point` is a ECDH exchange using the coordinates of the public key of
 the peer.
 
 The naming convention is:
 
 ```
-CC_ECDH_exchange_coord_<curve>
+CC_ECDH_exchange_point_<curve>
 ```
 
 Where `curve` is one of:

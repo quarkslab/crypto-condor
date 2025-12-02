@@ -8,7 +8,6 @@ import importlib
 import inspect
 import json
 import logging
-import sys
 import warnings
 from pathlib import Path
 from typing import Protocol
@@ -20,7 +19,13 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from rich.progress import track
 
-from crypto_condor.primitives.common import Results, ResultsDict, TestInfo, TestType
+from crypto_condor.primitives.common import (
+    Results,
+    ResultsDict,
+    TestInfo,
+    TestType,
+    _load_python_harness,
+)
 from crypto_condor.vectors._ecdh.ecdh_pb2 import EcdhTest, EcdhVectors
 from crypto_condor.vectors.ecdh import Curve
 
@@ -362,6 +367,7 @@ def test_exchange_point(
     test: EcdhTest
     for vectors in all_vectors:
         res = Results.new("Tests ECDH exchange with peer point", ["curve"])
+        res.add_notes(vectors.notes)
         rd.add(res, extra_values=[vectors.source])
 
         for test in track(
@@ -438,6 +444,7 @@ def test_exchange_nist(ecdh: ECDH, curve: Curve) -> ResultsDict:
 
     for vectors in all_vectors:
         res = Results.new("Tests ECDH exchange with NIST vectors", ["curve"])
+        res.add_notes(vectors.notes)
         rd.add(res)
 
         for test in track(
@@ -784,77 +791,58 @@ def test_output_exchange(path: Path, curve: Curve) -> ResultsDict:
     return rd
 
 
-# --------------------------- Runners -------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Harnesses
+# -------------------------------------------------------------------------------------
 
 
-def test_wrapper_python(
-    wrapper: Path, compliance: bool, resilience: bool
+def test_harness_python(
+    harness: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
-    """Runs a Python wrapper of ECDH.
+    """Tests an ECDH Python harness.
 
     Args:
-        wrapper:
-            The wrapper to test. The path must be valid.
+        harness:
+            A path to the harness to test.
         compliance:
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
-
-    Returns:
-        The results of :func:`test_exchange_point` and :func:`test_exchange_x509` in a
-        single dictionary.
-
-    Raises:
-        ModuleNotFoundError:
-            If the wrapper could not be loaded.
     """
-    logger.info("Testing Python ECDH wrapper: %s", str(wrapper.name))
-    sys.path.insert(0, str(wrapper.parent.absolute()))
-    already_imported = wrapper.stem in sys.modules.keys()
-    try:
-        ecdh_wrapper = importlib.import_module(wrapper.stem)
-    except ModuleNotFoundError as error:
-        logger.error("Can't import wrapper: %s", str(error))
-        raise
-    if already_imported:
-        logger.debug("Reloading ECDH wrapper module %s", wrapper.stem)
-        ecdh_wrapper = importlib.reload(ecdh_wrapper)
+    results = ResultsDict()
 
-    rd = ResultsDict()
+    module_harness = _load_python_harness(harness)
+    if module_harness is None:
+        return results
 
-    for function, _ in inspect.getmembers(ecdh_wrapper, inspect.isfunction):
-        match function.split("_"):
-            case ["CC", "ECDH", "exchange", "point", _curve]:
-                logger.info("Found CC_ECDH function %s", function)
+    for name, func in inspect.getmembers(module_harness, inspect.isfunction):
+        if not name.startswith("CC_ECDH_"):
+            continue
+
+        match name.split("_")[2:]:
+            case ["exchange", ("point" | "x509") as op, _curve]:
                 try:
                     curve = Curve.from_name(_curve)
-                except ValueError as error:
-                    logger.error("%s, test skipped", str(error))
+                except ValueError:
+                    logger.error("Invalid curve %s for ECDH, skipped %s", _curve, name)
                     continue
-                rd |= test_exchange_point(
-                    getattr(ecdh_wrapper, function),
-                    curve,
-                    compliance=compliance,
-                    resilience=resilience,
-                )
-            case ["CC", "ECDH", "exchange", "x509", _curve]:
-                logger.info("Found CC_ECDH function %s", function)
-                try:
-                    curve = Curve.from_name(_curve)
-                except ValueError as error:
-                    logger.error("%s, test skipped", str(error))
-                    continue
-                rd |= test_exchange_x509(
-                    getattr(ecdh_wrapper, function),
-                    curve,
-                    compliance=compliance,
-                    resilience=resilience,
-                )
-            case ["CC", "ECDH", *_]:
-                logger.warning("Ignored invalid CC_ECDH function %s", function)
+                if op == "point":
+                    results |= test_exchange_point(
+                        func, curve, compliance=compliance, resilience=resilience
+                    )
+                else:
+                    results |= test_exchange_x509(
+                        func, curve, compliance=compliance, resilience=resilience
+                    )
+            case ["exchange", *opts]:
+                logger.error("Invalid options for ECDH exchange: %s", ", ".join(opts))
+                continue
+            case [op, *_]:
+                logger.error("Invalid operation %s for ECDH harness", op)
                 continue
             case _:
-                pass
+                logger.error("Invalid function %s for ECDH harness", name)
+                continue
 
     # NOTE: We no longer get the curve from the CLI arguments and there is no way of
     # inferring it. We could add the curve to the name of the class, updating its
@@ -867,9 +855,9 @@ def test_wrapper_python(
         name, _ = item
         return name == "CC_ECDH"
 
-    classes = inspect.getmembers(ecdh_wrapper, inspect.isclass)
+    classes = inspect.getmembers(module_harness, inspect.isclass)
 
-    if filter(_has_cc_ecdh, classes):
+    if any(filter(_has_cc_ecdh, classes)):
         logger.error("The CC_ECDH class can no longer be tested with a wrapper")
         logger.warning(
             "A new wrapper interface was added for ECDH. It is still possible to test"
@@ -877,7 +865,7 @@ def test_wrapper_python(
             " the wrapper interface for an example of both."
         )
 
-    return rd
+    return results
 
 
 def test_wrapper(
@@ -909,7 +897,7 @@ def test_wrapper(
         raise FileNotFoundError(f"ECDH wrapper not found: {str(wrapper)}")
     match wrapper.suffix:
         case ".py":
-            return test_wrapper_python(wrapper, compliance, resilience)
+            return test_harness_python(wrapper, compliance, resilience)
         case _:
             raise ValueError(
                 f"There is no runner defined for '{wrapper.suffix}' wrappers"
@@ -1008,11 +996,14 @@ def test_lib(
     """
     logger.info("Found harness functions %s", ", ".join(functions))
 
-    rd = ResultsDict()
+    results = ResultsDict()
 
     for function in functions:
-        match function.split("_"):
-            case ["CC", "ECDH", "exchange", "point", _curve]:
+        if not function.startswith("CC_ECDH_"):
+            continue
+
+        match function.split("_")[2:]:
+            case ["exchange", ("point" | "x509") as op, _curve]:
                 try:
                     curve = Curve.from_name(_curve)
                 except ValueError:
@@ -1020,24 +1011,22 @@ def test_lib(
                         "Invalid curve %s for ECDH, skipped %s", _curve, function
                     )
                     continue
-                rd |= _test_harness_exchange_point(
-                    ffi, lib, function, curve, compliance, resilience
-                )
-            case ["CC", "ECDH", "exchange", "x509", _curve]:
-                try:
-                    curve = Curve.from_name(_curve)
-                except ValueError:
-                    logger.error(
-                        "Invalid curve %s for ECDH, skipped %s", _curve, function
+                if op == "point":
+                    results |= _test_harness_exchange_point(
+                        ffi, lib, function, curve, compliance, resilience
                     )
-                    continue
-                rd |= _test_harness_exchange_x509(
-                    ffi, lib, function, curve, compliance, resilience
-                )
-            case ["CC", "ECDH", *_]:
-                logger.warning("Invalid CC_ECDH function %s, skipped", function)
+                else:
+                    results |= _test_harness_exchange_x509(
+                        ffi, lib, function, curve, compliance, resilience
+                    )
+            case ["exchange", *opts]:
+                logger.error("Invalid options for ECDH exchange: %s", ", ".join(opts))
+                continue
+            case [op, *_]:
+                logger.error("Invalid operation %s for ECDH harness", op)
                 continue
             case _:
-                pass
+                logger.error("Invalid function %s for ECDH harness", function)
+                continue
 
-    return rd
+    return results

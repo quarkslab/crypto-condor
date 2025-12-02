@@ -494,8 +494,6 @@ def ecdh(
     """Runs an ECDH wrapper.
 
     Args:
-        lang: The language of the wrapper.
-        curve: The elliptic curve to use.
         wrapper: The name of the wrapper, ECDH_wrapper.py by default.
         compliance: Whether to use compliance test vectors.
         resilience: Whether to use resilience test vectors.

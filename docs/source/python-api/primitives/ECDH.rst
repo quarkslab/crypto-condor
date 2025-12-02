@@ -40,13 +40,6 @@ Protocols
 
 .. autoprotocol:: ECDH
 
-Run a wrapper
--------------
-
-.. autofunction:: test_wrapper
-
-.. autofunction:: test_wrapper_python
-
 Internal vectors
 ----------------
 
