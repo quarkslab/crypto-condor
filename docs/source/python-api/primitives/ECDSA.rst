@@ -26,6 +26,8 @@ Test signing and verifying
 Test key pair generation
 ------------------------
 
+.. autofunction:: test_keygen
+
 .. autofunction:: test_key_pair_gen
 
 Test signatures from a file
@@ -61,7 +63,7 @@ Protocols
 
 .. autoprotocol:: Verify
 
-.. autoprotocol:: KeyGen
+.. autoprotocol:: Keygen
 
 Test vectors
 ------------

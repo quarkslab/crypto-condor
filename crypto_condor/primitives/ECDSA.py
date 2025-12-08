@@ -54,7 +54,7 @@ def __dir__():  # pragma: no cover
         # Protocols
         Verify.__name__,
         Sign.__name__,
-        KeyGen.__name__,
+        Keygen.__name__,
         # Exceptions
         PubKeyImportError.__name__,
         # Test functions
@@ -174,7 +174,7 @@ class Sign(Protocol):
         ...  # pragma: no cover (protocol)
 
 
-class KeyGen(Protocol):
+class Keygen(Protocol):
     """Represents a function that generates ECDSA key pairs."""
 
     def __call__(self) -> KeyPair:
@@ -356,8 +356,8 @@ class KeyGenData:
     """
 
     d: int
-    qx: int | None = None
-    qy: int | None = None
+    qx: int | None
+    qy: int | None
 
     def __str__(self):
         """Returns string representation."""
@@ -519,17 +519,30 @@ def _load_pem_or_der(key: bytes):
         The corresponding :class:`EllipticCurvePrivateKey`.
 
     Raises:
-        ValueError: If the key could not be loaded as either type.
+        ValueError:
+            If the key could not be loaded as either type.
+        TypeError:
+            If the key is not a private elliptic curve key.
     """
     try:
         pem = serialization.load_pem_private_key(key, None)
+        if not isinstance(pem, ec.EllipticCurvePrivateKey):
+            raise TypeError("Not an elliptic curve private key")
         return pem
+    except TypeError:
+        # Re-raise our TypeError.
+        raise
     except Exception:
         # Ignore this error since we are guessing the type of key.
         pass
     try:
         der = serialization.load_der_private_key(key, None)
+        if not isinstance(pem, ec.EllipticCurvePrivateKey):
+            raise TypeError("Not an elliptic curve private key")
         return der
+    except TypeError:
+        # Re-raise our TypeError.
+        raise
     except Exception as error:
         # If the second guess is incorrect too, there's a problem.
         raise ValueError("Failed to load key as PEM or DER") from error
@@ -1063,7 +1076,7 @@ def test_sign_verify_invariant(
 
 
 def test_key_pair_gen(
-    keygen: KeyGen, curve: Curve, num_keys: int = 5000
+    keygen: Keygen, curve: Curve, num_keys: int = 5000
 ) -> ResultsDict:
     """Tests a function that generates ECDSA key pairs.
 
@@ -1073,6 +1086,10 @@ def test_key_pair_gen(
     included, it must match the private key. Finally, all private keys are concatenated
     and tested with :mod:`crypto_condor.primitives.TestU01` to check for potential
     biases.
+
+    .. deprecated:: FIXME(version)
+        This function is being replaced by :func:`test_keygen`, which complies with the
+        newly introduced minimum data size for TestU01.
 
     Args:
         keygen:
@@ -1236,6 +1253,163 @@ def test_key_pair_gen(
 
     rd |= testu01_result
     return rd
+
+
+def test_keygen(keygen: Keygen, curve: Curve, nbytes: int = 10_000_000) -> ResultsDict:
+    """Tests a function that generates ECDSA key pairs.
+
+    Calls ``keygen`` enough times to generate ``nbytes`` of private key material. This
+    test verifies some conditions on the keys:
+
+    * If the private key is an int, the test derives an elliptic curve key.
+    * If the public key coordinates are included, the test derives the public key and
+      checks that the coordinates match.
+    * If the key is in bytes, the test loads it and checks that the public key
+      corresponds to the private key.
+
+    If any of these conditions fail, the individual test for that key is marked as
+    failed. Otherwise, the private key values are converted to bytes, concatenated, and
+    tested with TestU01.
+
+    .. important::
+
+        This aims to look for poor randomness generation **but some tests can fail**:
+        TestU01 checks for uniformly random numbers, elliptic curve private keys are
+        chosen modulo the order of the curve. In particular, the curves for which the
+        size in bits of its order is not a multiple of 8 fail faster if the keys are
+        simply converted from int to bytes. Our approach is to convert to a binary
+        representation, removing the leading zeroes, concatenating in binary form, and
+        then converting to bytes for writing. This is a best-effort attempt to try and
+        distinguish from a correct key generator that fails some tests and a poor
+        entropy source that fails most of them at 100KB of keys.
+
+    Args:
+        keygen:
+            The key generation function to test.
+        curve:
+            The elliptic curve used by ``keygen``. This is used to derive the private
+            key from the private value, or used to verify that the key in DER or PEM
+            format is on the right curve.
+        nbytes:
+            The number of bytes to generate. TestU01 requires at least 100 000 bytes:
+            enough keys are generated to fill a buffer of size ``nbytes`` with the
+            private key values.
+
+    Returns:
+        A dictionary with two :class:`Results`, one with individual tests for each key
+        and one for the tests from TestU01.
+
+    Raises:
+        ValueError:
+            If ``nbytes`` is less than 100 000.
+    """
+    if nbytes < 100_000:
+        raise ValueError(f"TestU01 requires at least 100 000 bytes, got {nbytes}")
+
+    from math import ceil
+
+    from crypto_condor.primitives import TestU01
+
+    # The key size in bytes.
+    ksize = (curve.key_size + 7) // 8
+    # Total number of keys to generate to fill nbytes.
+    nkeys = ceil(nbytes / ksize)
+
+    results = ResultsDict()
+    res = Results.new("Tests correct key pair generation", ["curve", "nbytes"])
+    results.add(res)
+
+    keys = list()
+    ec_curve = curve.get_curve_instance()
+
+    for i in track(range(1, nkeys + 1), "Testing keygen"):
+        info = TestInfo.new(i, TestType.VALID)
+
+        try:
+            out = keygen()
+        except Exception as error:
+            info.fail(f"Failed to run ECDSA keygen: {error}")
+            res.add(info)
+            continue
+
+        # TODO: if public key verification fails, don't add secret key to output?
+        match out:
+            case [int() as d]:
+                data = KeyGenData(d, None, None)
+                try:
+                    sk = ec.derive_private_key(d, ec_curve)
+                except (TypeError, ValueError) as error:
+                    info.fail(f"Failed to derive private key: {error}", data)
+                    res.add(info)
+                    continue
+
+            case [int() as d, int() as qx, int() as qy]:
+                data = KeyGenData(d, qx, qy)
+                try:
+                    sk = ec.derive_private_key(d, ec_curve)
+                except (TypeError, ValueError) as error:
+                    info.fail(f"Failed to derive private key: {error}", data)
+                    res.add(info)
+                    continue
+                # Check the public key.
+                pk = sk.public_key()
+                pk_num = pk.public_numbers()
+                if qx != pk_num.x and qy != pk_num.y:
+                    info.fail("Wrong public coordinates", data)
+                elif qx != pk_num.x:
+                    info.fail("Wrong public x-coordinate", data)
+                elif qy != pk_num.y:
+                    info.fail("Wrong public y-coordinate", data)
+
+            case [bytes() as key]:
+                try:
+                    sk = _load_pem_or_der(key)
+                except (TypeError, ValueError) as error:
+                    # TODO: include the key for debugging.
+                    info.fail(f"Failed to derive private key: {error}")
+                    res.add(info)
+                    continue
+                if sk.curve != ec_curve:
+                    err_msg = (
+                        f"Key is on another curve: expected {str(curve)},"
+                        f" got {sk.curve.name}"
+                    )
+                    info.fail(err_msg)
+                    res.add(info)
+                    continue
+                sk_numbers = sk.private_numbers()
+                d = sk_numbers.private_value
+                pk_numbers = sk_numbers.public_numbers
+                data = KeyGenData(d, pk_numbers.x, pk_numbers.y)
+                # AFAIK, loading a key does not verify that the public part is valid. By
+                # explicitly calling public_key() it will if it's invalid.
+                try:
+                    _ = pk_numbers.public_key()
+                except ValueError:
+                    info.fail(f"Public key is invalid for {str(curve)}", data)
+
+        info.ok(data)
+        res.add(info)
+        keys.append(d)
+
+    if not keys:
+        logger.error("No private keys saved for TestU01, likely from parsing errors")
+        logger.error("Hint: check results with debug data")
+        return results
+
+    match curve:
+        # TODO: review this.
+        case Curve.P521 | Curve.B283 | Curve.B409 | Curve.B571:
+            bits = "".join(bin(key)[2:] for key in keys)
+            if end := len(bits) % 32:
+                bits = bits[:-end]
+            assert len(bits) % 32 == 0, f"{len(bits) = }, {len(bits) % 32 = }"
+            b_keys = bytes(int(bits[i : i + 8], 2) for i in range(0, len(bits), 8))
+        case _:
+            b_keys = b"".join(key.to_bytes(curve.key_size // 8, "big") for key in keys)
+
+    results |= TestU01.test_raw(b_keys)
+    return results
 
 
 # -------------------------------------------------------------------------------------
@@ -1646,7 +1820,7 @@ def test_wrapper_python(
                     params.pk_enc,  # type: ignore
                 )
             case "keygen":
-                rd |= test_key_pair_gen(func, params.curve)
+                rd |= test_keygen(func, params.curve)
             case _:
                 pass
 
