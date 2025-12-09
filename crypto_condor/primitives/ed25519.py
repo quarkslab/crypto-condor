@@ -516,6 +516,8 @@ def test_keygen(keygen: Keygen, nbytes: int = TESTU01_REC) -> ResultsDict:
             res.add(info)
             continue
 
+        sk: bytes
+        pk: bytes | None
         match out:
             case [bytes() as sk, bytes() as pk]:
                 # Nothing to do, match does the assignment for us.
