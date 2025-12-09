@@ -20,6 +20,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from rich.progress import track
 
+from crypto_condor.common import TESTU01_MIN, TESTU01_REC
 from crypto_condor.primitives import TestU01
 from crypto_condor.primitives.common import (
     Results,
@@ -62,7 +63,7 @@ def __dir__():  # pragma: no cover
         test_sign.__name__,
         test_output_sign.__name__,
         test_sign_verify_invariant.__name__,
-        test_key_pair_gen.__name__,
+        test_keygen.__name__,
         # Harnesses
         test_harness_python.__name__,
         # Imported
@@ -1255,7 +1256,7 @@ def test_key_pair_gen(
     return rd
 
 
-def test_keygen(keygen: Keygen, curve: Curve, nbytes: int = 10_000_000) -> ResultsDict:
+def test_keygen(keygen: Keygen, curve: Curve, nbytes: int = TESTU01_REC) -> ResultsDict:
     """Tests a function that generates ECDSA key pairs.
 
     Calls ``keygen`` enough times to generate ``nbytes`` of private key material. This
@@ -1303,7 +1304,7 @@ def test_keygen(keygen: Keygen, curve: Curve, nbytes: int = 10_000_000) -> Resul
         ValueError:
             If ``nbytes`` is less than 100 000.
     """
-    if nbytes < 100_000:
+    if nbytes < TESTU01_MIN:
         raise ValueError(f"TestU01 requires at least 100 000 bytes, got {nbytes}")
 
     from math import ceil
