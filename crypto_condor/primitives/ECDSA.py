@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import importlib
 import inspect
 import json
 import logging
 import tempfile
 import warnings
+from importlib import resources
 from pathlib import Path
 from typing import Protocol, TypeAlias
 
@@ -222,7 +222,7 @@ def _load_vectors(
         logger.error("No test vectors selected (compliance=False, resilience=False)")
         return vectors
 
-    vectors_dir = importlib.resources.files("crypto_condor") / "vectors/_ecdsa"
+    vectors_dir = resources.files("crypto_condor") / "vectors/_ecdsa"
 
     sources_file = vectors_dir / "ecdsa.json"
     with sources_file.open("r") as file:
@@ -314,7 +314,7 @@ class SigGenData:
         s = f"key = {self.key.hex()}\nmsg = {self.msg.hex()}\n"
         if self.sig is not None:
             s += f"expected sig = {self.sig.hex()}\n"
-        s += f"returned sig = {self.ret_sig.hex()}\n"
+        s += f"returned sig = {self.ret_sig.hex() if self.ret_sig else '<none>'}\n"
         return s
 
 
@@ -1168,7 +1168,7 @@ def test_key_pair_gen(
         # Otherwise, d and info must be correctly set after the match.
         match key:
             case int() as d:
-                data = KeyGenData(d)
+                data = KeyGenData(d, None, None)
                 # Only check if d can be used to derive a private key, no public key
                 # check to perform.
                 try:
@@ -1557,10 +1557,6 @@ def test_output_sign(
     """  # noqa: E501
     rd = ResultsDict()
 
-    if pubkey_encoding == PubKeyEncoding.UNCOMPRESSED and curve is None:
-        logger.error("Curve required when using uncompressed points are public keys")
-        return rd
-
     try:
         with open(filename, "r") as file:
             lines = file.readlines()
@@ -1607,10 +1603,14 @@ def test_output_sign(
                     serialization.PublicFormat.SubjectPublicKeyInfo,
                 )
             case PubKeyEncoding.UNCOMPRESSED:
+                if curve is None:
+                    logger.error("Curve required when using uncompressed points")
+                    return rd
                 # TYPE: Ignoring mypy because curve is not be None because of the check
                 # above.
                 pk = ec.EllipticCurvePublicKey.from_encoded_point(
-                    curve.get_curve_instance(), key  # type: ignore
+                    curve.get_curve_instance(),
+                    key,  # type: ignore
                 )
                 key = pk.public_bytes(
                     serialization.Encoding.DER,
