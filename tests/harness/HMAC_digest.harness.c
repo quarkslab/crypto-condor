@@ -25,22 +25,25 @@ int CC_HMAC_digest_sha512(uint8_t *mac, const size_t mac_size,
   return generic_digest("SHA-512", mac, mac_size, key, key_size, msg, msg_size);
 }
 
-int CC_HMAC_digest_sha3_256(uint8_t *mac, const size_t mac_size,
-                          const uint8_t *key, const size_t key_size,
-                          const uint8_t *msg, const size_t msg_size) {
-  return generic_digest("SHA3-256", mac, mac_size, key, key_size, msg, msg_size);
+int CC_HMAC_digest_sha3256(uint8_t *mac, const size_t mac_size,
+                           const uint8_t *key, const size_t key_size,
+                           const uint8_t *msg, const size_t msg_size) {
+  return generic_digest("SHA3-256", mac, mac_size, key, key_size, msg,
+                        msg_size);
 }
 
-int CC_HMAC_digest_sha3_384(uint8_t *mac, const size_t mac_size,
-                          const uint8_t *key, const size_t key_size,
-                          const uint8_t *msg, const size_t msg_size) {
-  return generic_digest("SHA3-384", mac, mac_size, key, key_size, msg, msg_size);
+int CC_HMAC_digest_sha3384(uint8_t *mac, const size_t mac_size,
+                           const uint8_t *key, const size_t key_size,
+                           const uint8_t *msg, const size_t msg_size) {
+  return generic_digest("SHA3-384", mac, mac_size, key, key_size, msg,
+                        msg_size);
 }
 
-int CC_HMAC_digest_sha3_512(uint8_t *mac, const size_t mac_size,
-                          const uint8_t *key, const size_t key_size,
-                          const uint8_t *msg, const size_t msg_size) {
-  return generic_digest("SHA3-512", mac, mac_size, key, key_size, msg, msg_size);
+int CC_HMAC_digest_sha3512(uint8_t *mac, const size_t mac_size,
+                           const uint8_t *key, const size_t key_size,
+                           const uint8_t *msg, const size_t msg_size) {
+  return generic_digest("SHA3-512", mac, mac_size, key, key_size, msg,
+                        msg_size);
 }
 
 int generic_digest(const char *hash, uint8_t *mac, const size_t mac_size,

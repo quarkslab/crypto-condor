@@ -33,25 +33,25 @@ int CC_HMAC_verify_sha512(const uint8_t *mac, const size_t mac_size,
                         msg_size);
 }
 
-int CC_HMAC_verify_sha3_256(const uint8_t *mac, const size_t mac_size,
-                            const size_t md_size, const uint8_t *key,
-                            const size_t key_size, const uint8_t *msg,
-                            const size_t msg_size) {
+int CC_HMAC_verify_sha3256(const uint8_t *mac, const size_t mac_size,
+                           const size_t md_size, const uint8_t *key,
+                           const size_t key_size, const uint8_t *msg,
+                           const size_t msg_size) {
   return generic_verify("SHA3-256", mac, mac_size, md_size, key, key_size, msg,
                         msg_size);
 }
 
-int CC_HMAC_verify_sha3_384(const uint8_t *mac, const size_t mac_size,
-                            const size_t md_size, const uint8_t *key,
-                            const size_t key_size, const uint8_t *msg,
-                            const size_t msg_size) {
+int CC_HMAC_verify_sha3384(const uint8_t *mac, const size_t mac_size,
+                           const size_t md_size, const uint8_t *key,
+                           const size_t key_size, const uint8_t *msg,
+                           const size_t msg_size) {
   return generic_verify("SHA3-384", mac, mac_size, md_size, key, key_size, msg,
                         msg_size);
 }
-int CC_HMAC_verify_sha3_512(const uint8_t *mac, const size_t mac_size,
-                            const size_t md_size, const uint8_t *key,
-                            const size_t key_size, const uint8_t *msg,
-                            const size_t msg_size) {
+int CC_HMAC_verify_sha3512(const uint8_t *mac, const size_t mac_size,
+                           const size_t md_size, const uint8_t *key,
+                           const size_t key_size, const uint8_t *msg,
+                           const size_t msg_size) {
   return generic_verify("SHA3-512", mac, mac_size, md_size, key, key_size, msg,
                         msg_size);
 }

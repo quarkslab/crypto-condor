@@ -69,3 +69,30 @@ class Hash(strenum.StrEnum):
             return cls(f"SHA3-{parts[1]}")
         else:
             raise ValueError(f"Invalid name {'_'.join(parts)}")
+
+    @classmethod
+    def from_name(cls, name: str):
+        """Returns a new instance from a name.
+
+        Compact names such as sha256, sha3384 (SHA3-384) and sha512224 (SHA-512/224) are
+        used for harness function names. This method returns the corresponding instance.
+
+        Raises:
+            ValueError:
+                If the name is invalid.
+        """
+        match name:
+            case "sha1" | "sha224" | "sha256" | "sha384" | "sha512":
+                newname = name.replace("sha", "SHA-")
+            case "sha3256" | "sha3384" | "sha3512":
+                newname = name.replace("sha3", "SHA3-")
+            case "sha512224":
+                newname = "SHA-512/224"
+            case "sha512256":
+                newname = "SHA-512/256"
+            case _:
+                raise ValueError(f"Invalid hash name {name}")
+        if newname not in cls:
+            # Use name for the error message as that's what the user wrote.
+            raise ValueError(f"{name} is not supported for HMAC")
+        return cls(newname)

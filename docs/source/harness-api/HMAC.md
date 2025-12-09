@@ -22,8 +22,9 @@ CC_HMAC_digest_<hash function>
 
 Where `hash function` is one of:
 
-- `sha1`, `sha224`, `sha256`, `sha384`, `sha512`.
-- `sha3_224`, `sha3_256`, `sha3_384`, `sha3_512`.
+- `sha1`.
+- SHA-2 family: `sha224`, `sha256`, `sha384`, `sha512`.
+- SHA-3 family: `sha3224`, `sha3256`, `sha3384`, `sha3512`.
 
 ### Function signature
 
@@ -80,8 +81,9 @@ CC_HMAC_verify_<hash function
 
 Where `hash function` is one of:
 
-- `sha1`, `sha224`, `sha256`, `sha384`, `sha512`.
-- `sha3_224`, `sha3_256`, `sha3_384`, `sha3_512`.
+- `sha1`.
+- SHA-2 family: `sha224`, `sha256`, `sha384`, `sha512`.
+- SHA-3 family: `sha3224`, `sha3256`, `sha3384`, `sha3512`.
 
 ### Function signature
 

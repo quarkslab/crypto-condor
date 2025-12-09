@@ -15,7 +15,6 @@ import importlib
 import inspect
 import json
 import logging
-import sys
 from pathlib import Path
 from typing import Any, Protocol, cast
 
@@ -29,6 +28,7 @@ from crypto_condor.primitives.common import (
     ResultsDict,
     TestInfo,
     TestType,
+    _load_python_harness,
 )
 from crypto_condor.vectors._hmac.hmac_pb2 import HmacTest, HmacVectors
 from crypto_condor.vectors.hmac import Hash
@@ -42,16 +42,11 @@ def __dir__():  # pragma: no cover
         # Enums
         Wrapper.__name__,
         # Protocols
-        HMAC.__name__,
-        HMAC_IUF.__name__,
+        Digest.__name__,
+        Verify.__name__,
         # Tests
-        test_hmac.__name__,
-        test_digest_nist.__name__,
-        test_digest_wycheproof.__name__,
-        test_verify_nist.__name__,
-        test_verify_wycheproof.__name__,
-        # Other
-        is_hmac_iuf.__name__,
+        test_digest.__name__,
+        test_verify.__name__,
         # Imported
         Hash.__name__,
     ]
@@ -1017,75 +1012,73 @@ def test_output_digest(path: Path, hash_function: Hash) -> ResultsDict:
     return rd
 
 
-# --------------------------- Runners -------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Python harness
+# -------------------------------------------------------------------------------------
 
 
-def test_wrapper_python(
-    wrapper: Path, compliance: bool, resilience: bool
+def test_harness_python(
+    harness: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
     """Tests a HMAC Python wrapper.
 
     Args:
-        wrapper:
-            The path to the wrapper.
+        harness:
+            Path to the harness.
         compliance:
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
     """
-    logger.info("Running Python HMAC wrapper: '%s'", str(wrapper.name))
-    sys.path.insert(0, str(wrapper.parent.absolute()))
-    already_imported = wrapper.stem in sys.modules.keys()
-    try:
-        hmac_wrapper = importlib.import_module(wrapper.stem)
-    except ModuleNotFoundError as error:
-        logger.error("Can't import wrapper: '%s'", str(error))
-        raise
-    if already_imported:
-        logger.debug("Reloading HMAC wrapper: '%s'", wrapper.stem)
-        hmac_wrapper = importlib.reload(hmac_wrapper)
+    results = ResultsDict()
+    hmac_harness = _load_python_harness(harness)
+    if hmac_harness is None:
+        return results
 
-    rd = ResultsDict()
+    for name, func in inspect.getmembers(hmac_harness, inspect.isfunction):
+        if not name.startswith("CC_HMAC_"):
+            continue
+        logger.info("Harness function found: %s", name)
 
-    for func, _ in inspect.getmembers(hmac_wrapper, inspect.isfunction):
-        match func.split("_"):
-            case ["CC", "HMAC", "digest", *parts]:
-                logger.info("Found CC_HMAC function %s", func)
+        match name.split("_")[2:]:
+            case ["digest", _algo]:
                 try:
-                    algo = Hash.from_funcname(parts)
+                    algo = Hash.from_name(_algo)
                 except ValueError:
                     logger.error(
-                        "Invalid algorithm %s for HMAC, skipped", "_".join(parts)
+                        "Invalid algorithm %s for HMAC, skipped %s", _algo, name
                     )
                     continue
-                rd |= test_digest(
-                    getattr(hmac_wrapper, func),
+                results |= test_digest(
+                    func,
                     algo,
                     compliance=compliance,
                     resilience=resilience,
                 )
-            case ["CC", "HMAC", "verify", *parts]:
-                logger.info("Found CC_HMAC function %s", func)
+            case ["verify", _algo]:
                 try:
-                    algo = Hash.from_funcname(parts)
+                    algo = Hash.from_name(_algo)
                 except ValueError:
                     logger.error(
-                        "Invalid algorithm %s for HMAC, skipped", "_".join(parts)
+                        "Invalid algorithm %s for HMAC, skipped %s", _algo, name
                     )
                     continue
-                rd |= test_verify(
-                    getattr(hmac_wrapper, func),
+                results |= test_verify(
+                    func,
                     algo,
                     compliance=compliance,
                     resilience=resilience,
                 )
-            case ["CC", "HMAC", *_]:
-                logger.warning("Ignored unknown CC_HMAC function %s", func)
+            case [("digest" | "verify") as op, *rest]:
+                logger.error("Invalid options for HMAC %s: %s", op, "_".join(rest))
+                continue
+            case [op, *_]:
+                logger.error("Invalid operation %s for HMAC", op)
                 continue
             case _:
-                pass
+                continue
 
-    return rd
+    return results
 
 
 def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDict:
@@ -1105,12 +1098,14 @@ def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDi
         raise FileNotFoundError(f"No wrapper named {str(wrapper)} found")
     match wrapper.suffix:
         case ".py":
-            return test_wrapper_python(wrapper, compliance, resilience)
+            return test_harness_python(wrapper, compliance, resilience)
         case _:
             raise ValueError(f"No runner defined for {wrapper.suffix} wrappers")
 
 
-# --------------------------- Harness -------------------------------------------------
+# -------------------------------------------------------------------------------------
+# C harness
+# -------------------------------------------------------------------------------------
 
 
 def _test_harness_digest(
@@ -1196,21 +1191,34 @@ def test_lib(
     rd = ResultsDict()
 
     for func in functions:
-        match func.split("_"):
-            case ["CC", "HMAC", "digest", *parts]:
+        if not func.startswith("CC_HMAC_"):
+            continue
+        logger.info("Harness function found: %s", func)
+        match func.split("_")[2:]:
+            case ["digest", _algo]:
                 try:
-                    algo = Hash.from_funcname(parts)
-                except ValueError as error:
-                    logger.error(str(error))
+                    algo = Hash.from_name(_algo)
+                except ValueError:
+                    logger.error(
+                        "Invalid algorithm %s for HMAC, skipped %s", _algo, func
+                    )
                     continue
                 rd |= _test_harness_digest(ffi, lib, func, algo, compliance, resilience)
-            case ["CC", "HMAC", "verify", *parts]:
+            case ["verify", _algo]:
                 try:
-                    algo = Hash.from_funcname(parts)
-                except ValueError as error:
-                    logger.error(str(error))
+                    algo = Hash.from_name(_algo)
+                except ValueError:
+                    logger.error(
+                        "Invalid algorithm %s for HMAC, skipped %s", _algo, func
+                    )
                     continue
                 rd |= _test_harness_verify(ffi, lib, func, algo, compliance, resilience)
+            case [("digest" | "verify") as op, *rest]:
+                logger.error("Invalid options for HMAC %s: %s", op, "_".join(rest))
+                continue
+            case [op, *_]:
+                logger.error("Invalid operation %s for HMAC", op)
+                continue
             case _:
                 logger.debug("Skipped invalid CC_HMAC function %s", func)
                 continue
