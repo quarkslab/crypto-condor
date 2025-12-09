@@ -64,7 +64,7 @@ def __dir__():  # pragma: no cover
         test_sign_verify_invariant.__name__,
         test_key_pair_gen.__name__,
         # Harnesses
-        test_wrapper_python.__name__,
+        test_harness_python.__name__,
         # Imported
         Curve.__name__,
         Hash.__name__,
@@ -1634,118 +1634,134 @@ def test_output_sign(
 
 
 # -------------------------------------------------------------------------------------
-# Utils
+# Harness parsers
 # -------------------------------------------------------------------------------------
 
 
 @attrs.define
-class FuncParams:
-    """Result from parsing a harness function's name.
+class SignOpts:
+    """Signing options."""
 
-    Args:
-        op:
-            The operation performed.
-        curve:
-            The elliptic curve.
-        algo:
-            The hash algorithm.
-        sk_enc:
-            The private key encoding.
-        pk_enc:
-            The public key encoding.
-        prehash:
-            Whether the messages should be hashed before.
-    """
-
-    op: str
     curve: Curve
-    algo: Hash | None = None
-    sk_enc: KeyEncoding | None = None
-    pk_enc: PubKeyEncoding | None = None
-    prehash: bool = False
+    algo: Hash
+    skenc: KeyEncoding
+    prehash: bool
 
-
-def _parse_function_name(name: str) -> FuncParams | None:
-    """Parses function names to extract the arguments.
-
-    Returns:
-        An instance of :class:`FuncParams` with the results of the parsing, or None if
-        an error occurred. This can include an invalid operation, invalid argument (e.g.
-        invalid curve name), or options other than `prehash`.
-
-    Note:
-        Since the function name is necessary to test harnesses, parsing errors are
-        reported using `logger.error`. Values are tested one by one to have accurate
-        error messages.
-    """
-    match name.split("_"):
-        case ["CC", "ECDSA", "keygen", _curve]:
-            try:
-                curve = Curve.from_name(_curve)
-            except ValueError:
-                logger.error("Invalid curve %s for ECDSA", _curve)
-                return None
-            return FuncParams("keygen", curve)
-
-        case [
-            "CC",
-            "ECDSA",
-            ("sign" | "verify" | "signthenver") as op,
-            _curve,
-            _hash,
-            _enc,
-            *opts,
-        ]:
-            try:
-                curve = Curve.from_name(_curve)
-            except ValueError:
-                logger.error("Invalid curve %s for ECDSA", _curve)
-                return None
-            try:
-                algo = Hash.from_name(_hash)
-            except ValueError:
-                logger.error("Invalid hash function %s for ECDSA", _hash)
-                return None
-
-            if op == "sign":
-                try:
-                    sk_enc = KeyEncoding(_enc)
-                    pk_enc = None
-                except ValueError:
-                    logger.error("Invalid private key encoding %s for ECDSA", _enc)
-                    return None
-            elif op == "verify":
-                try:
-                    sk_enc = None
-                    pk_enc = PubKeyEncoding(_enc)
-                except ValueError:
-                    logger.error("Invalid public key encoding %s for ECDSA", _enc)
-                    return None
-            else:
-                # FIXME: deal with signthenver
-                return None
-
-            if len(opts) >= 2:
-                logger.error("Too many options in ECDSA harness function %s", name)
-                return None
-
-            if not opts:
-                prehash = False
-            elif opts[0] == "prehash":
-                prehash = True
-            else:
-                logger.error(
-                    "Invalid option %s in ECDSA harness function %s", opts[0], name
-                )
-                return None
-
-            return FuncParams(op, curve, algo, sk_enc, pk_enc, prehash)
-
-        case ["CC", "ECDSA", op]:
-            logger.error("Invalid operation %s for ECDSA harness", op)
+    @classmethod
+    def parse(cls, opts: list[str]):
+        """Parses options from the name of a harness function."""
+        if len(opts) < 3 or len(opts) > 4:
+            logger.error(
+                "Invalid number of arguments for signing function (expected 3 or 4)"
+            )
             return None
-        case _:
+        try:
+            curve = Curve.from_name(opts[0])
+            algo = Hash.from_name(opts[1])
+            skenc = KeyEncoding(opts[2])
+        except ValueError as error:
+            logger.error("Invalid signing option: %s", str(error))
             return None
+
+        prehash = (len(opts) == 4) and (opts[3] == "prehash")
+
+        return cls(curve, algo, skenc, prehash)
+
+
+@attrs.define
+class VerifyOpts:
+    """Verifying options."""
+
+    curve: Curve
+    algo: Hash
+    pkenc: PubKeyEncoding
+    prehash: bool
+
+    @classmethod
+    def parse(cls, opts: list[str]):
+        """Parses options from the name of a harness function."""
+        if len(opts) < 3 or len(opts) > 4:
+            logger.error(
+                "Invalid number of arguments for signing function (expected 3 or 4)"
+            )
+            return None
+        try:
+            curve = Curve.from_name(opts[0])
+            algo = Hash.from_name(opts[1])
+            pkenc = PubKeyEncoding(opts[2])
+        except ValueError as error:
+            logger.error("Invalid verifying option: %s", str(error))
+            return None
+
+        prehash = (len(opts) == 4) and (opts[3] == "prehash")
+
+        return cls(curve, algo, pkenc, prehash)
+
+
+@attrs.define
+class KeygenOpts:
+    """Key generation options."""
+
+    curve: Curve
+    nbytes: int
+
+    @classmethod
+    def parse(cls, opts: list[str]):
+        """Parses options from the name of a harness function."""
+        if len(opts) < 1 or len(opts) > 2:
+            logger.error(
+                "Invalid number of arguments for signing function (expected 1 or 2)"
+            )
+            return None
+
+        try:
+            curve = Curve.from_name(opts[0])
+        except ValueError as error:
+            logger.error("Invalid key generation option: %s", str(error))
+            return None
+
+        nbytes = TESTU01_REC
+        if len(opts) == 2:
+            try:
+                nbytes = int(opts[1])
+                if nbytes < 0:
+                    raise ValueError("nbytes must be a positive int")
+                if nbytes < TESTU01_MIN:
+                    raise ValueError("nbytes must be at least %d", TESTU01_MIN)
+            except ValueError as error:
+                logger.error("Invalid key generation option: %s", str(error))
+                return None
+
+        return cls(curve, nbytes)
+
+
+@attrs.define
+class SignVerOpts:
+    """Sign-then-verify options."""
+
+    curve: Curve
+    algo: Hash
+    skenc: KeyEncoding
+    pkenc: PubKeyEncoding
+
+    @classmethod
+    def parse(cls, opts: list[str]):
+        """Parses options from the name of a harness function."""
+        if len(opts) != 4:
+            logger.error(
+                "Invalid number of arguments for sign-then-verify function (expected 4)"
+            )
+            return None
+        try:
+            curve = Curve.from_name(opts[0])
+            algo = Hash.from_name(opts[1])
+            skenc = KeyEncoding(opts[2])
+            pkenc = PubKeyEncoding(opts[3])
+        except ValueError as error:
+            logger.error("Invalid sign-then-verify option: %s", str(error))
+            return None
+
+        return cls(curve, algo, skenc, pkenc)
 
 
 # -------------------------------------------------------------------------------------
@@ -1753,78 +1769,88 @@ def _parse_function_name(name: str) -> FuncParams | None:
 # -------------------------------------------------------------------------------------
 
 
-def test_wrapper_python(
-    wrapper: Path, compliance: bool, resilience: bool
+def test_harness_python(
+    harness: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
-    """Tests a Python SHA wrapper.
+    """Tests a Python harness.
 
     Args:
-        wrapper:
-            A path to the wrapper to test.
+        harness:
+            Path to the harness.
         compliance:
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
+
+    Returns:
+        A dictionary of results.
     """
-    ecdsa_wrapper = _load_python_harness(wrapper)
+    results = ResultsDict()
+    ecdsa_harness = _load_python_harness(harness)
+    if ecdsa_harness is None:
+        return results
 
-    rd = ResultsDict()
-
-    for name, func in inspect.getmembers(ecdsa_wrapper, inspect.isfunction):
-        params = _parse_function_name(name)
-        if params is None:
-            # Error message should have been emitted by _parse_function_name so we just
-            # continue.
+    for name, func in inspect.getmembers(ecdsa_harness, inspect.isfunction):
+        if not name.startswith("CC_ECDSA_"):
             continue
-        match params.op:
-            case "sign":
-                rd |= test_sign(
+        logger.info("Harness function found: %s", name)
+        match name.split("_")[2:]:
+            case ["sign", *opts]:
+                if (parsed := SignOpts.parse(opts)) is None:
+                    continue
+                results |= test_sign(
                     func,
-                    params.curve,
-                    params.algo,  # type: ignore
-                    params.sk_enc,  # type: ignore
-                    pre_hashed=params.prehash,
+                    parsed.curve,
+                    parsed.algo,
+                    parsed.skenc,
+                    pre_hashed=parsed.prehash,
                     compliance=compliance,
                     resilience=resilience,
                 )
-            case "verify":
-                rd |= test_verify(
+
+            case ["verify", *opts]:
+                if (parsed := VerifyOpts.parse(opts)) is None:
+                    continue
+                results |= test_verify(
                     func,
-                    params.curve,
-                    params.algo,  # type: ignore
-                    params.pk_enc,  # type: ignore
-                    pre_hashed=params.prehash,
+                    parsed.curve,
+                    parsed.algo,
+                    parsed.pkenc,
+                    pre_hashed=parsed.prehash,
                     compliance=compliance,
                     resilience=resilience,
                 )
-            case "signthenver":
-                sign_name = f"CC_ECDSA_sign_{str(params.curve)}_{str(params.algo)}_{str(params.sk_enc)}"  # noqa: E501
-                ver_name = f"CC_ECDSA_verify_{str(params.curve)}_{str(params.algo)}_{str(params.pk_enc)}"  # noqa: E501
-                if params.prehash:
-                    sign_name += "_prehash"
-                    ver_name += "_prehash"
-                sign_func = getattr(ecdsa_wrapper, sign_name, None)
-                ver_func = getattr(ecdsa_wrapper, ver_name, None)
-                if sign_func is None:
+
+            case ["keygen", *opts]:
+                if (parsed := KeygenOpts.parse(opts)) is None:
+                    continue
+                results |= test_keygen(func, parsed.curve, parsed.nbytes)
+
+            case ["signthenver", *opts]:
+                if (parsed := SignVerOpts.parse(opts)) is None:
+                    continue
+                sign_name = f"CC_ECDSA_sign_{str(parsed.curve)}_{str(parsed.algo)}_{str(parsed.skenc)}"  # noqa: E501
+                ver_name = f"CC_ECDSA_verify_{str(parsed.curve)}_{str(parsed.algo)}_{str(parsed.pkenc)}"  # noqa: E501
+                if (sign_func := getattr(ecdsa_harness, sign_name, None)) is None:
                     logger.error("Did not find %s to test sign-then-verify", sign_name)
                     continue
-                if ver_func is None:
+                if (ver_func := getattr(ecdsa_harness, ver_name, None)) is None:
                     logger.error("Did not find %s to test sign-then-verify", ver_name)
                     continue
-                rd |= test_sign_verify_invariant(
+                results |= test_sign_verify_invariant(
                     sign_func,
                     ver_func,
-                    params.curve,
-                    params.algo,  # type: ignore
-                    params.sk_enc,  # type: ignore
-                    params.pk_enc,  # type: ignore
+                    parsed.curve,
+                    parsed.algo,
+                    parsed.skenc,
+                    parsed.pkenc,
                 )
-            case "keygen":
-                rd |= test_keygen(func, params.curve)
-            case _:
-                pass
 
-    return rd
+            case [op, *_]:
+                logger.error("Invalid ECDSA operation %s", op)
+                continue
+
+    return results
 
 
 # -------------------------------------------------------------------------------------
@@ -1836,7 +1862,7 @@ def _test_harness_sign(
     ffi: cffi.FFI,
     lib,
     function: str,
-    params: FuncParams,
+    params: SignOpts,
     compliance: bool,
     resilience: bool,
 ):
@@ -1876,8 +1902,8 @@ def _test_harness_sign(
     return test_sign(
         _sign,
         params.curve,
-        params.algo,  # type: ignore
-        params.sk_enc,  # type: ignore
+        params.algo,
+        params.skenc,
         pre_hashed=params.prehash,
         compliance=compliance,
         resilience=resilience,
@@ -1888,7 +1914,7 @@ def _test_harness_verify(
     ffi: cffi.FFI,
     lib,
     function: str,
-    params: FuncParams,
+    params: VerifyOpts,
     compliance: bool,
     resilience: bool,
 ):
@@ -1918,8 +1944,8 @@ def _test_harness_verify(
     return test_verify(
         _verify,
         params.curve,
-        params.algo,  # type: ignore
-        params.pk_enc,  # type: ignore
+        params.algo,
+        params.pkenc,
         pre_hashed=params.prehash,
         compliance=compliance,
         resilience=resilience,
@@ -1943,41 +1969,36 @@ def test_lib(
         resilience:
             Whether to use resilience test vectors.
     """
-    logger.info("Found ECDSA harness functions: %s", ", ".join(functions))
+    results = ResultsDict()
 
-    rd = ResultsDict()
-
-    for function in functions:
-        params = _parse_function_name(function)
-        if params is None:
+    for func in functions:
+        if not func.startswith("CC_ECDSA_"):
             continue
-        match params.op:
-            case "sign":
-                rd |= _test_harness_sign(
-                    ffi, lib, function, params, compliance, resilience
-                )
-            case "verify":
-                rd |= _test_harness_verify(
-                    ffi, lib, function, params, compliance, resilience
-                )
-            case "signthenver":
-                sign_name = f"CC_ECDSA_sign_{str(params.curve)}_{str(params.algo)}_{str(params.sk_enc)}"  # noqa: E501
-                ver_name = f"CC_ECDSA_verify_{str(params.curve)}_{str(params.algo)}_{str(params.pk_enc)}"  # noqa: E501
-                if params.prehash:
-                    sign_name += "_prehash"
-                    ver_name += "_prehash"
-                if sign_name not in functions:
-                    logger.error("Did not find %s to test sign-then-verify", sign_name)
+        logger.info("Harness function found: %s", func)
+        match func.split("_")[2:]:
+            case ["sign", *opts]:
+                if (parsed := SignOpts.parse(opts)) is None:
                     continue
-                if ver_name not in functions:
-                    logger.error("Did not find %s to test sign-then-verify", ver_name)
+                results |= _test_harness_sign(
+                    ffi, lib, func, parsed, compliance, resilience
+                )
+            case ["verify", *opts]:
+                if (parsed := VerifyOpts.parse(opts)) is None:
                     continue
-                # FIXME: finish this.
-            case "keygen":
-                # TODO
-                pass
+                results |= _test_harness_verify(
+                    ffi, lib, func, parsed, compliance, resilience
+                )
+            case ["keygen", *opts]:
+                logger.error("Not yet supported")
+                continue
+            case ["signthenver", *opts]:
+                logger.error("Not yet supported")
+                continue
+            case [op, *_]:
+                logger.error("Invalid ECDSA operation %s", op)
+                continue
 
-    return rd
+    return results
 
 
 # -------------------------------------------------------------------------------------
@@ -2005,6 +2026,6 @@ def test_harness(harness: Path, compliance: bool, resilience: bool) -> ResultsDi
 
     match harness.suffix:
         case ".py":
-            return test_wrapper_python(harness, compliance, resilience)
+            return test_harness_python(harness, compliance, resilience)
         case _:
             raise ValueError(f"No test for '{harness.suffix}' harness")
