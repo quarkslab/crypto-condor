@@ -13,6 +13,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from rich.progress import track
 
+from crypto_condor.common import TESTU01_MIN, TESTU01_REC
 from crypto_condor.primitives.common import (
     Results,
     ResultsDict,
@@ -463,7 +464,7 @@ def test_output_sign(output: Path) -> ResultsDict:
     return rd
 
 
-def test_keygen(keygen: Keygen, nbytes: int = 10_000_000) -> ResultsDict:
+def test_keygen(keygen: Keygen, nbytes: int = TESTU01_REC) -> ResultsDict:
     """Tests a function that generates Ed25519 key pairs.
 
     This test checks both the correct generation of key pairs, as well as the quality of
@@ -490,10 +491,11 @@ def test_keygen(keygen: Keygen, nbytes: int = 10_000_000) -> ResultsDict:
         ValueError:
             If ``nbytes`` is less than 100 000.
     """
-    if nbytes < 100_000:
+    if nbytes < TESTU01_MIN:
         raise ValueError(f"TestU01 requires at least 100 000 bytes, got {nbytes}")
 
     from math import ceil
+
     from crypto_condor.primitives import TestU01
 
     results = ResultsDict()
@@ -510,7 +512,7 @@ def test_keygen(keygen: Keygen, nbytes: int = 10_000_000) -> ResultsDict:
         try:
             out = keygen()
         except Exception as error:
-            info.fail("Failed to run Ed25519 keygen")
+            info.fail(f"Failed to run Ed25519 keygen: {error}")
             res.add(info)
             continue
 
