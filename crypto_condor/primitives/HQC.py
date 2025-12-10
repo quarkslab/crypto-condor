@@ -4,7 +4,6 @@ import importlib
 import inspect
 import json
 import logging
-import sys
 from pathlib import Path
 from typing import Protocol
 
@@ -13,7 +12,13 @@ import cffi
 import strenum
 from rich.progress import track
 
-from crypto_condor.primitives.common import Results, ResultsDict, TestInfo, TestType
+from crypto_condor.primitives.common import (
+    Results,
+    ResultsDict,
+    TestInfo,
+    TestType,
+    _load_python_harness,
+)
 from crypto_condor.vectors._hqc.hqc_pb2 import HqcTest, HqcVectors
 from crypto_condor.vectors.hqc import Paramset
 
@@ -35,7 +40,7 @@ def __dir__():  # pragma: no cover
         test_lib.__name__,
         # Runners
         test_wrapper.__name__,
-        test_wrapper_python.__name__,
+        test_harness_python.__name__,
         # Imported
         Paramset.__name__,
     ]
@@ -354,80 +359,64 @@ def test_invariant(encaps: Encaps, decaps: Decaps, paramset: Paramset) -> Result
 # --------------------------- Runners -------------------------------------------------
 
 
-def test_wrapper_python(
-    wrapper: Path, compliance: bool, resilience: bool
+def test_harness_python(
+    harness: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
     """Tests a Python wrapper.
 
     Args:
-        wrapper:
-            A path to the wrapper to test.
+        harness:
+            Path to the harness to test.
         compliance:
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
     """
-    logger.info("Running Python HQC wrapper: '%s'", str(wrapper.name))
-    sys.path.insert(0, str(wrapper.parent.absolute()))
-    already_imported = wrapper.stem in sys.modules.keys()
-    try:
-        hqc_wrapper = importlib.import_module(wrapper.stem)
-    except ModuleNotFoundError as error:
-        logger.error("Can't import wrapper: '%s'", str(error))
-        raise
-    if already_imported:
-        logger.debug("Reloading HQC wrapper: '%s'", wrapper.stem)
-        hqc_wrapper = importlib.reload(hqc_wrapper)
+    results = ResultsDict()
+    hqc_harness = _load_python_harness(harness)
+    if hqc_harness is None:
+        return results
 
-    rd = ResultsDict()
+    for name, func in inspect.getmembers(hqc_harness, inspect.isfunction):
+        if not name.startswith("CC_HQC_"):
+            continue
+        logger.info("Harness function found: %s", name)
 
-    for func, _ in inspect.getmembers(hqc_wrapper, inspect.isfunction):
-        match func.split("_"):
-            case ["CC", "HQC", _, "encaps"]:
-                logger.info("Found %s, currently ignored", func)
+        match name.split("_")[2:]:
+            case ["encaps", *_]:
+                logger.warning("HQC encaps is not supported yet, skipped %s", name)
                 continue
-            case ["CC", "HQC", _pset, "decaps"]:
-                logger.info("Found %s", func)
+            case ["decaps", _pset]:
                 try:
-                    paramset = Paramset(f"HQC-{_pset}")
+                    paramset = Paramset.from_name(_pset)
                 except ValueError:
-                    logger.error(
-                        "Invalid parameter set %s for HQC, function skipped", _pset
-                    )
+                    logger.error("Invalid parameter set %s, skipped %s", _pset, name)
                     continue
-                decaps = getattr(hqc_wrapper, func)
-                rd |= test_decaps(decaps, paramset)
-            case ["CC", "HQC", _pset, "invariant"]:
-                logger.info("Found CC_HQC function %s", func)
+                results |= test_decaps(func, paramset)
+            case ["invariant", _pset]:
                 try:
-                    paramset = Paramset(f"HQC-{_pset}")
+                    paramset = Paramset.from_name(_pset)
                 except ValueError:
+                    logger.error("Invalid parameter set %s, skipped %s", _pset, name)
+                    continue
+                encaps_name = f"CC_HQC_encaps_{_pset}"
+                decaps_name = f"CC_HQC_decaps_{_pset}"
+                if (encaps := getattr(hqc_harness, encaps_name, None)) is None:
                     logger.error(
-                        "Invalid parameter set %s for HQC, function skipped", _pset
+                        "Missing %s to test invariant, skipped %s", encaps_name, name
                     )
                     continue
-                encaps_name = f"CC_HQC_{_pset}_encaps"
-                decaps_name = f"CC_HQC_{_pset}_decaps"
-                encaps = getattr(hqc_wrapper, encaps_name, None)
-                decaps = getattr(hqc_wrapper, decaps_name, None)
-                if encaps is None:
+                if (decaps := getattr(hqc_harness, decaps_name, None)) is None:
                     logger.error(
-                        "Did not find %s to test invariant, test skipped", encaps_name
+                        "Missing %s to test invariant, skipped %s", encaps_name, name
                     )
                     continue
-                if decaps is None:
-                    logger.error(
-                        "Did not find %s to test invariant, test skipped", decaps_name
-                    )
-                    continue
-                rd |= test_invariant(encaps, decaps, paramset)
-            case ["CC", "HQC", *_]:
-                logger.warning("Ignored invalid function %s", func)
+                results |= test_invariant(encaps, decaps, paramset)
+            case [op, *_]:
+                logger.error("Invalid HQC operation %s, skipped %s", op, name)
                 continue
-            case _:
-                pass
 
-    return rd
+    return results
 
 
 def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDict:
@@ -452,7 +441,7 @@ def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDi
 
     match wrapper.suffix:
         case ".py":
-            return test_wrapper_python(wrapper, compliance, resilience)
+            return test_harness_python(wrapper, compliance, resilience)
         case _:
             raise ValueError(f"No runner for '{wrapper.suffix}' wrappers")
 
@@ -563,36 +552,34 @@ def test_lib(
             Whether to use resilience test vectors.
     """
     logger.info("Found harness functions %s", ", ".join(functions))
-
-    rd = ResultsDict()
+    results = ResultsDict()
 
     for func in functions:
-        match func.split("_"):
-            case ["CC", "HQC", _, "encaps"]:
-                logger.debug("Found function %s, currently ignored", func)
+        if not func.startswith("CC_HQC_"):
+            continue
+        logger.info("Harness function found: %s", func)
+
+        match func.split("_")[2:]:
+            case ["encaps", *_]:
+                logger.warning("HQC encaps is not supported yet, skipped %s", func)
                 continue
-            case ["CC", "HQC", _pset, "decaps"]:
-                logger.info("Found CC_HQC function %s", func)
+            case ["decaps", _pset]:
                 try:
-                    paramset = Paramset(f"HQC-{_pset}")
+                    paramset = Paramset.from_name(_pset)
                 except ValueError:
-                    logger.error(
-                        "Invalid parameter set %s for HQC, function skipped", _pset
-                    )
+                    logger.error("Invalid parameter set %s, skipped %s", _pset, func)
                     continue
-                rd |= _test_harness_decaps(
+                results |= _test_harness_decaps(
                     ffi, lib, func, paramset, compliance, resilience
                 )
-            case ["CC", "HQC", _pset, "invariant"]:
+            case ["invariant", _pset]:
                 try:
-                    paramset = Paramset(f"HQC-{_pset}")
+                    paramset = Paramset.from_name(_pset)
                 except ValueError:
-                    logger.error(
-                        "Invalid parameter set %s for HQC, function skipped", _pset
-                    )
+                    logger.error("Invalid parameter set %s, skipped %s", _pset, func)
                     continue
-                encaps_name = f"CC_HQC_{_pset}_encaps"
-                decaps_name = f"CC_HQC_{_pset}_decaps"
+                encaps_name = f"CC_HQC_encaps_{_pset}"
+                decaps_name = f"CC_HQC_decaps_{_pset}"
                 if encaps_name not in functions:
                     logger.error(
                         "Did not find %s to test invariant, test skipped", encaps_name
@@ -603,10 +590,11 @@ def test_lib(
                         "Did not find %s to test invariant, test skipped", decaps_name
                     )
                     continue
-                rd |= _test_harness_invariant(
+                results |= _test_harness_invariant(
                     ffi, lib, encaps_name, decaps_name, paramset, compliance, resilience
                 )
-            case _:
-                logger.warning("Ignored invalid CC_HQC function %s", func)
+            case [op, *_]:
+                logger.error("Invalid HQC operation %s, skipped %s", op, func)
+                continue
 
-    return rd
+    return results

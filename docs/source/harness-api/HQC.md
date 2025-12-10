@@ -12,10 +12,10 @@ encapsulation/decapsulation invariant for now.
 The naming convention for the encapsulation function is:
 
 ```
-CC_HQC_<paramset>_encaps
+CC_HQC_encaps_<paramset>
 ```
 
-Where `paramset` is one of: `128`, `192`, `256`.
+Where `paramset` is one of: `hqc128`, `hqc192`, `hqc256`.
 
 The harness function must have the following signature:
 
@@ -43,10 +43,10 @@ The harness function must have the following signature:
 The naming convention for the decapsulation function is:
 
 ```
-CC_HQC_<paramset>_decaps
+CC_HQC_decaps_<paramset>
 ```
 
-Where `paramset` is one of: `128`, `192`, `256`.
+Where `paramset` is one of: `hqc128`, `hqc192`, `hqc256`.
 
 The harness function must have the following signature:
 
@@ -77,10 +77,10 @@ the following function **and** a harness for both encapsulation and
 decapsulation, as detailed above.
 
 ```
-CC_HQC_<paramset>_invariant
+CC_HQC_invariant_<paramset>
 ```
 
-Where `paramset` is one of: `128`, `192`, `256`.
+Where `paramset` is one of: `hqc128`, `hqc192`, `hqc256`.
 
 The function is a stub to indicate {{ cc }} to test the invariant, no operations
 are actually performed with it.
@@ -92,13 +92,13 @@ are actually performed with it.
 For example:
 
 ```c
-int CC_HQC_128_encaps(...) {
+int CC_HQC_encaps_hqc128(...) {
     ...
 }
 
-int CC_HQC_128_decaps(...) {
+int CC_HQC_decaps_hqc128(...) {
     ...
 }
 
-void CC_HQC_128_invariant() {};
+void CC_HQC_invariant_hqc128() {};
 ```

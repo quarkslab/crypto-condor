@@ -51,3 +51,14 @@ class Paramset(strenum.StrEnum):
     def ss_size(self):
         """The size of the shared secret in bytes."""
         return self._ss_size_
+
+    @classmethod
+    def from_name(cls, name: str):
+        """Returns an instance from a harness function name.
+
+        Raises:
+            ValueError: If the parameter set name is invalid.
+        """
+        if name in {"hqc128", "hqc192", "hqc256"}:
+            return cls(name.replace("hqc", "HQC-"))
+        raise ValueError(f"Invalid parameter set: {name}")
