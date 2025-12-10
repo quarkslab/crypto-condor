@@ -373,7 +373,7 @@ class TestSha:
     """Class to group test of the 'verify SHA' subcommand."""
 
     @staticmethod
-    def generate_data(algo: SHA.Algorithm, out: Path, *, failed: int = 0) -> int:
+    def generate_data(algo: SHA.Hash, out: Path, *, failed: int = 0) -> int:
         """Generates data to verify from SHA vectors.
 
         Args:
@@ -407,8 +407,8 @@ class TestSha:
         out.write_text("\n".join(data))
         return len(data)
 
-    @pytest.mark.parametrize("algorithm", SHA.Algorithm)
-    def test_correct_implementation(self, algorithm: SHA.Algorithm, tmp_path: Path):
+    @pytest.mark.parametrize("algorithm", SHA.Hash)
+    def test_correct_implementation(self, algorithm: SHA.Hash, tmp_path: Path):
         """Tests the `verify SHA` command."""
         src = tmp_path / f"{str(algorithm).replace('/', '_')}_ok.txt"
         try:

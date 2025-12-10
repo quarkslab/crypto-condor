@@ -6,8 +6,8 @@ from cryptography.hazmat.primitives import hashes
 from crypto_condor.primitives import SHA
 
 
-@pytest.mark.parametrize("hash_algo", SHA.Algorithm)
-def test_sha(hash_algo: SHA.Algorithm):
+@pytest.mark.parametrize("hash_algo", SHA.Hash)
+def test_sha(hash_algo: SHA.Hash):
     """Tests :func:`crypto_condor.primitives.SHA.test_sha`.
 
     Uses :mod:`cryptography.hazmat.primitives.hashes`.
@@ -43,8 +43,7 @@ def test_sha(hash_algo: SHA.Algorithm):
         digest.update(data)
         return digest.finalize()
 
-    hash_algorithm = SHA.Algorithm(hash_algo)
-    results_dict = SHA.test_digest(_hash, hash_algorithm)
+    results_dict = SHA.test_digest(_hash, hash_algo)
 
     for results in results_dict.values():
         assert results.check(empty_as_fail=True)

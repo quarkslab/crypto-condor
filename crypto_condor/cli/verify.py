@@ -263,7 +263,7 @@ The format of the file is:
 def sha(
     input_file: Annotated[Path, _input_file],
     algorithm: Annotated[
-        SHA.Algorithm,
+        SHA.Hash,
         typer.Argument(help="The hash algorithm to test.", show_default=False),
     ],
     filename: Annotated[str, _filename] = "",

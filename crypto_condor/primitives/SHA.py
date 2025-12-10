@@ -4,8 +4,6 @@ import importlib
 import inspect
 import json
 import logging
-import subprocess
-import sys
 import warnings
 from pathlib import Path
 from typing import Protocol
@@ -31,9 +29,10 @@ from crypto_condor.primitives.common import (
     ResultsDict,
     TestInfo,
     TestType,
+    _load_python_harness,
 )
 from crypto_condor.vectors._sha.sha_pb2 import ShaTest, ShaVectors
-from crypto_condor.vectors.SHA import Algorithm
+from crypto_condor.vectors.SHA import Hash
 
 logger = logging.getLogger(__name__)
 
@@ -49,11 +48,11 @@ def __dir__():  # pragma: no cover
         test_output_digest.__name__,
         # Wrapper
         test_wrapper.__name__,
-        test_wrapper_python.__name__,
+        test_harness_python.__name__,
         # Harness
         test_lib.__name__,
         # Imported
-        Algorithm.__name__,
+        Hash.__name__,
     ]
 
 
@@ -64,7 +63,6 @@ class Wrapper(strenum.StrEnum):
     """Defines the available wrappers."""
 
     PYTHON = "Python"
-    C = "C"
 
 
 # --------------------------- Protocols -----------------------------------------------
@@ -162,7 +160,7 @@ reference md = {self.ref_md.hex()}
 # --------------------------- Internal ------------------------------------------------
 
 
-def _sha(algorithm: Algorithm, msg: bytes) -> bytes:
+def _sha(algorithm: Hash, msg: bytes) -> bytes:
     """Hashes a message.
 
     Args:
@@ -202,7 +200,7 @@ def _sha(algorithm: Algorithm, msg: bytes) -> bytes:
             raise ValueError("Unknown hash algorithm %s" % str(algorithm))
 
 
-def _load_vectors(algo: Algorithm) -> list[ShaVectors]:
+def _load_vectors(algo: Hash) -> list[ShaVectors]:
     """Loads SHA vectors.
 
     Args:
@@ -238,7 +236,7 @@ def _load_vectors(algo: Algorithm) -> list[ShaVectors]:
 
 def test(
     hash_function: HashFunction,
-    hash_algorithm: Algorithm,
+    hash_algorithm: Hash,
     *,
     compliance: bool = True,
     resilience: bool = False,
@@ -278,7 +276,7 @@ def test(
 
 def test_digest(
     digest: HashFunction,
-    algorithm: Algorithm,
+    algorithm: Hash,
     *,
     compliance: bool = True,
     resilience: bool = False,
@@ -447,17 +445,19 @@ def test_digest(
     return rd
 
 
-# --------------------------- Wrappers ------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Python harness
+# -------------------------------------------------------------------------------------
 
 
-def test_wrapper_python(
-    wrapper: Path, compliance: bool, resilience: bool
+def test_harness_python(
+    harness: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
     """Tests a Python SHA wrapper.
 
     Args:
-        wrapper:
-            A path to the wrapper to test.
+        harness:
+            Path to the harness to test.
         compliance:
             Whether to use compliance test vectors.
         resilience:
@@ -465,42 +465,33 @@ def test_wrapper_python(
 
     .. versionadded:: 2025.03.12
     """
-    logger.info("Running Python SHA wrapper: '%s'", str(wrapper.name))
-    sys.path.insert(0, str(wrapper.parent.absolute()))
-    already_imported = wrapper.stem in sys.modules.keys()
-    try:
-        sha_wrapper = importlib.import_module(wrapper.stem)
-    except ModuleNotFoundError as error:
-        logger.error("Can't import wrapper: '%s'", str(error))
-        raise
-    if already_imported:
-        logger.debug("Reloading SHA wrapper: '%s'", wrapper.stem)
-        sha_wrapper = importlib.reload(sha_wrapper)
+    results = ResultsDict()
+    sha_harness = _load_python_harness(harness)
+    if sha_harness is None:
+        return results
 
-    rd = ResultsDict()
+    for name, func in inspect.getmembers(sha_harness, inspect.isfunction):
+        if not name.startswith("CC_SHA_"):
+            continue
+        logger.info("Harness function found: %s", name)
 
-    for func, _ in inspect.getmembers(sha_wrapper, inspect.isfunction):
-        match func.split("_"):
-            case ["CC", "SHA", *_algo, "digest"]:
-                logger.info("Found CC_SHA function %s", func)
+        match name.split("_")[2:]:
+            case ["digest", _algo]:
                 try:
-                    algo = Algorithm.from_wrapper(_algo)
+                    algo = Hash.from_name(_algo)
                 except ValueError:
-                    logger.error("Invalid algorithm %s for SHA, skipped", _algo)
+                    logger.error(
+                        "Invalid algorithm %s for SHA, skipped %s", _algo, name
+                    )
                     continue
-                rd |= test_digest(
-                    getattr(sha_wrapper, func),
-                    algo,
-                    compliance=compliance,
-                    resilience=resilience,
+                results |= test_digest(
+                    func, algo, compliance=compliance, resilience=resilience
                 )
-            case ["CC", "SHA", *_]:
-                logger.warning("Ignored unknown CC_SHA function %s", func)
+            case [op, *_]:
+                logger.error("Invalid operation %s for SHA, skipped %s", op, name)
                 continue
-            case _:
-                pass
 
-    return rd
+    return results
 
 
 def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDict:
@@ -528,48 +519,17 @@ def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDi
 
     match wrapper.suffix:
         case ".py":
-            return test_wrapper_python(wrapper, compliance, resilience)
+            return test_harness_python(wrapper, compliance, resilience)
         case _:
             raise ValueError(f"No runner for '{wrapper.suffix}' wrappers")
 
 
-def _run_sha_c_wrapper(wrapper: Path, algorithm: Algorithm) -> ResultsDict:
-    """Runs the C SHA wrapper.
-
-    Args:
-        wrapper:
-            The executable wrapper to test.
-        algorithm:
-            The SHA algorithm to test.
-    """
-
-    def sha(data: bytes) -> bytes:
-        args = [str(wrapper.absolute()), "--input", data.hex()]
-        match algorithm:
-            case "SHA-1":
-                args += ["--digest-length", "20"]
-            case "SHA-224" | "SHA-512/224" | "SHA3-224":
-                args += ["--digest-length", "28"]
-            case "SHA-256" | "SHA-512/256" | "SHA3-256":
-                args += ["--digest-length", "32"]
-            case "SHA-384" | "SHA3-384":
-                args += ["--digest-length", "48"]
-            case "SHA-512" | "SHA3-512":
-                args += ["--digest-length", "64"]
-            case _:
-                raise ValueError("Unsupported algorithm %s" % algorithm)
-        r = subprocess.run(args, capture_output=True, text=True)
-        if r.returncode != 0:
-            raise ValueError(
-                "Subprocess failed running SHA wrapper (err: %s)" % r.returncode
-            )
-        digest = bytes.fromhex(r.stdout.rstrip())
-        return digest
-
-    return test(sha, algorithm)
+# -------------------------------------------------------------------------------------
+# Test output
+# -------------------------------------------------------------------------------------
 
 
-def verify_file(filename: str, hash_algorithm: Algorithm) -> ResultsDict:
+def verify_file(filename: str, hash_algorithm: Hash) -> ResultsDict:
     r"""Verifies SHA hashes.
 
     Tests hashes from a file. The file must follow the format described below.
@@ -602,7 +562,7 @@ def verify_file(filename: str, hash_algorithm: Algorithm) -> ResultsDict:
     return test_output_digest(filename, hash_algorithm)
 
 
-def test_output_digest(filename: str, algorithm: Algorithm) -> ResultsDict:
+def test_output_digest(filename: str, algorithm: Hash) -> ResultsDict:
     r"""Tests a file of SHA hashes.
 
     The messages and the corresponding hashes are read from the file. The messages are
@@ -691,7 +651,7 @@ def _test_lib_digest(
     ffi: cffi.FFI,
     lib,
     function: str,
-    algorithm: Algorithm,
+    algorithm: Hash,
     compliance: bool,
     resilience: bool,
 ) -> ResultsDict:
@@ -739,18 +699,25 @@ def test_lib(
 
     results = ResultsDict()
 
-    for function in functions:
-        match function.split("_"):
-            case ["CC", "SHA", *parts, "digest"]:
+    for name in functions:
+        if not name.startswith("CC_SHA_"):
+            continue
+        logger.info("Harness function found: %s", name)
+
+        match name.split("_")[2:]:
+            case ["digest", _algo]:
                 try:
-                    algo = Algorithm.from_wrapper(parts)
+                    algo = Hash.from_name(_algo)
                 except ValueError:
-                    logger.error("Invalid algorithm SHA_%s", "_".join(parts))
+                    logger.error(
+                        "Invalid algorithm %s for SHA, skipped %s", _algo, name
+                    )
                     continue
                 results |= _test_lib_digest(
-                    ffi, lib, function, algo, compliance, resilience
+                    ffi, lib, name, algo, compliance, resilience
                 )
-            case _:
-                logger.debug("Ignoring unknown CC_SHA function %s", function)
+            case [op, *_]:
+                logger.error("Invalid operation %s for SHA, skipped %s", op, name)
+                continue
 
     return results

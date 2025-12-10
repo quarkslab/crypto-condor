@@ -11,26 +11,23 @@ How to use the :mod:`crypto_condor.primitives.SHA` module to test implementation
 Supported parameters
 --------------------
 
-The supported algorithms are defined by the :enum:`Algorithm` enum.
+The supported algorithms are defined by the :enum:`Hash` enum.
 
-.. autoenum:: Algorithm
+.. autoenum:: Hash
 
 Test an implementation directly
 -------------------------------
+
+.. autofunction:: test_digest
 
 .. autofunction:: test
 
 Test the output of an implementation
 ------------------------------------
 
+.. autofunction:: test_output_digest
+
 .. autofunction:: verify_file
-
-Test a wrapper
---------------
-
-.. autofunction:: test_wrapper
-
-.. autofunction:: test_wrapper_python
 
 Protocols
 ---------

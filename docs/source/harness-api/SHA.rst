@@ -17,14 +17,13 @@ Naming convention
 
 .. code::
 
-   CC_<algorithm>_digest
+   CC_SHA_digest_<algorithm>
 
 Where ``algorithm`` is one of:
 
-* ``SHA_1``
-* ``SHA_224``, ``SHA_256``, ``SHA_384``, ``SHA_512``.
-    * ``SHA_512_224`` and ``SHA_512_256``.
-* ``SHA_3_224``, ``SHA_3_256``, ``SHA_3_384``, ``SHA_3_512``.
+* `sha1`.
+* SHA-2 family: `sha224`, `sha256`, `sha384`, `sha512`, `sha512224` (SHA-512/224), `sha512256` (SHA-512/256).
+* SHA-3 family: `sha3224`, `sha3256`, `sha3384`, `sha3512`.
 
 Function signature
 ^^^^^^^^^^^^^^^^^^

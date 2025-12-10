@@ -6,28 +6,28 @@
 int generic_digest(uint8_t *digest, const uint8_t *input,
                    const size_t input_size, const char *name);
 
-int CC_SHA_256_digest(uint8_t *digest, const size_t digest_size,
-                      const uint8_t *input, const size_t input_size) {
+int CC_SHA_digest_sha256(uint8_t *digest, const size_t digest_size,
+                         const uint8_t *input, const size_t input_size) {
   return generic_digest(digest, input, input_size, "SHA256");
 }
 
-int CC_SHA_384_digest(uint8_t *digest, const size_t digest_size,
-                      const uint8_t *input, const size_t input_size) {
+int CC_SHA_digest_sha384(uint8_t *digest, const size_t digest_size,
+                         const uint8_t *input, const size_t input_size) {
   return generic_digest(digest, input, input_size, "SHA384");
 }
 
-int CC_SHA_512_digest(uint8_t *digest, const size_t digest_size,
-                      const uint8_t *input, const size_t input_size) {
+int CC_SHA_digest_sha512(uint8_t *digest, const size_t digest_size,
+                         const uint8_t *input, const size_t input_size) {
   return generic_digest(digest, input, input_size, "SHA512");
 }
 
-int CC_SHA_512_224_digest(uint8_t *digest, const size_t digest_size,
-                      const uint8_t *input, const size_t input_size) {
+int CC_SHA_digest_sha512224(uint8_t *digest, const size_t digest_size,
+                            const uint8_t *input, const size_t input_size) {
   return generic_digest(digest, input, input_size, "SHA512-224");
 }
 
-int CC_SHA_3_384_digest(uint8_t *digest, const size_t digest_size,
-                      const uint8_t *input, const size_t input_size) {
+int CC_SHA_digest_sha3384(uint8_t *digest, const size_t digest_size,
+                          const uint8_t *input, const size_t input_size) {
   return generic_digest(digest, input, input_size, "SHA3-384");
 }
 

@@ -8,7 +8,7 @@ Usage:
 """
 
 
-def CC_SHA_256_digest(data: bytes) -> bytes:
+def CC_SHA_digest_sha256(data: bytes) -> bytes:
     """Wrapper function for a SHA-256 implementation.
 
     Args:
@@ -20,7 +20,7 @@ def CC_SHA_256_digest(data: bytes) -> bytes:
     raise NotImplementedError
 
 
-def CC_SHA_3_384_digest(data: bytes) -> bytes:
+def CC_SHA_digest_sha3384(data: bytes) -> bytes:
     """Wrapper function for a SHA3-384 implementation.
 
     Args:
@@ -32,7 +32,7 @@ def CC_SHA_3_384_digest(data: bytes) -> bytes:
     raise NotImplementedError
 
 
-def CC_SHA_512_224_digest(data: bytes) -> bytes:
+def CC_SHA_digest_sha512224(data: bytes) -> bytes:
     """Wrapper function for a SHA-512/224 implementation.
 
     Args:
