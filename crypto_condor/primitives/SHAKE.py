@@ -4,7 +4,6 @@ import importlib
 import inspect
 import json
 import logging
-import sys
 import warnings
 from pathlib import Path
 from typing import Protocol
@@ -15,7 +14,13 @@ import strenum
 from cryptography.hazmat.primitives import hashes
 from rich.progress import track
 
-from crypto_condor.primitives.common import Results, ResultsDict, TestInfo, TestType
+from crypto_condor.primitives.common import (
+    Results,
+    ResultsDict,
+    TestInfo,
+    TestType,
+    _load_python_harness,
+)
 from crypto_condor.vectors._shake.shake_pb2 import ShakeTest, ShakeVectors
 
 logger = logging.getLogger(__name__)
@@ -24,18 +29,19 @@ logger = logging.getLogger(__name__)
 def __dir__():  # pragma: no cover
     return [
         # Enums
-        Orientation.__name__,
         Algorithm.__name__,
         Wrapper.__name__,
         # Protocols
         Xof.__name__,
         # Functions
         test.__name__,
-        run_python_wrapper.__name__,
+        test_harness_python.__name__,
     ]
 
 
-# --------------------------- Enums ---------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Enums
+# -------------------------------------------------------------------------------------
 
 
 class Algorithm(strenum.StrEnum):
@@ -44,12 +50,20 @@ class Algorithm(strenum.StrEnum):
     SHAKE128 = "SHAKE128"
     SHAKE256 = "SHAKE256"
 
+    @classmethod
+    def from_name(cls, name: str):
+        """Returns a new instance from a harness function name.
 
-class Orientation(strenum.StrEnum):
-    """Orientation of the implementation."""
-
-    BIT = "bit"
-    BYTE = "byte"
+        Raises:
+            ValueError: If the algorithm is invalid.
+        """
+        match name:
+            case "shake128":
+                return cls.SHAKE128
+            case "shake256":
+                return cls.SHAKE256
+            case _:
+                raise ValueError(f"Invalid algorithm for SHAKE: {name}")
 
 
 class Wrapper(strenum.StrEnum):
@@ -58,7 +72,9 @@ class Wrapper(strenum.StrEnum):
     PYTHON = "Python"
 
 
-# --------------------------- Protocols -----------------------------------------------
+# -------------------------------------------------------------------------------------
+# Protocols
+# -------------------------------------------------------------------------------------
 
 
 class Xof(Protocol):
@@ -80,7 +96,9 @@ class Xof(Protocol):
         ...  # pragma: no cover (protocol)
 
 
-# --------------------------- Dataclasses ---------------------------------------------
+# -------------------------------------------------------------------------------------
+# Dataclasses
+# -------------------------------------------------------------------------------------
 
 
 @attrs.define
@@ -124,10 +142,12 @@ class ShakeMcData:
         return s
 
 
-# --------------------------- Test functions ------------------------------------------
+# -------------------------------------------------------------------------------------
+# Internal functions
+# -------------------------------------------------------------------------------------
 
 
-def _load_vectors(algo: Algorithm, orient: Orientation) -> list[ShakeVectors]:
+def _load_vectors(algo: Algorithm) -> list[ShakeVectors]:
     """Loads vectors for a given algorithm and orientation.
 
     Returns:
@@ -140,7 +160,7 @@ def _load_vectors(algo: Algorithm, orient: Orientation) -> list[ShakeVectors]:
     with sources_file.open("r") as file:
         sources = json.load(file)
 
-    for filename in sources[algo][orient]:
+    for filename in sources[algo]["byte"]:
         vectors_file = vectors_dir / "pb2" / filename
         _vec = ShakeVectors()
         logger.debug("Loading SHAKE vectors from %s", str(filename))
@@ -168,10 +188,14 @@ def _left_most_bits(output: bytes, n: int) -> bytes:
         return output + b"\0" * ((n - output_len) // 8)
 
 
+# -------------------------------------------------------------------------------------
+# Test functions
+# -------------------------------------------------------------------------------------
+
+
 def test(
     xof: Xof,
     algorithm: Algorithm,
-    orientation: Orientation = Orientation.BYTE,
     *,
     compliance: bool = True,
     resilience: bool = False,
@@ -181,8 +205,6 @@ def test(
     Args:
         xof: The function to test.
         algorithm: The algorithm of the XOF to test.
-        orientation: The orientation of the implementation, either bit- or
-            byte-oriented. Byte-oriented by default.
 
     Keyword Args:
         compliance: Whether to use compliance test vectors.
@@ -195,15 +217,12 @@ def test(
         Will be removed in a future version, use :func:`test_digest` instead.
     """
     warnings.warn("Use test_digest instead", DeprecationWarning, stacklevel=1)
-    return test_digest(
-        xof, algorithm, orientation, compliance=compliance, resilience=resilience
-    )
+    return test_digest(xof, algorithm, compliance=compliance, resilience=resilience)
 
 
 def test_digest(
     xof: Xof,
     algorithm: Algorithm,
-    orientation: Orientation = Orientation.BYTE,
     *,
     compliance: bool = True,
     resilience: bool = False,
@@ -213,8 +232,6 @@ def test_digest(
     Args:
         xof: The function to test.
         algorithm: The algorithm of the XOF to test.
-        orientation: The orientation of the implementation, either bit- or
-            byte-oriented. Byte-oriented by default.
 
     Keyword Args:
         compliance: Whether to use compliance test vectors.
@@ -246,7 +263,7 @@ def test_digest(
     """
     rd = ResultsDict()
 
-    all_vectors = _load_vectors(algorithm, orientation)
+    all_vectors = _load_vectors(algorithm)
     if not all_vectors:
         logger.error("No SHAKE test vectors for %s", str(algorithm))
         return rd
@@ -258,7 +275,7 @@ def test_digest(
         if not resilience and not vectors.compliance:
             continue
 
-        res = Results.new("Tests a SHAKE implementation", ["algorithm", "orientation"])
+        res = Results.new("Tests a SHAKE implementation", ["algorithm"])
         rd.add(res)
 
         for test in track(
@@ -390,63 +407,53 @@ def test_output_digest(output: Path, algorithm: Algorithm) -> ResultsDict:
     return rd
 
 
-# --------------------------- Runners -------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Python harness
+# -------------------------------------------------------------------------------------
 
 
-def run_python_wrapper(wrapper: Path, compliance: bool, resilience: bool):
-    """Runs the Python SHAKE wrapper.
+def test_harness_python(harness: Path, compliance: bool, resilience: bool):
+    """Tests a Python harness.
 
     Args:
-        wrapper: A path to wrapper to run.
-        compliance: Whether to use compliance test vectors.
-        resilience: Whether to use resilience test vectors.
+        harness:
+            Path to the harness to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
     """
-    logger.info("Running Python SHAKE wrapper: '%s'", str(wrapper.name))
-    sys.path.insert(0, str(wrapper.parent.absolute()))
-    already_imported = wrapper.stem in sys.modules.keys()
-    try:
-        shake_wrapper = importlib.import_module(wrapper.stem)
-    except ModuleNotFoundError as error:
-        logger.error("Can't import wrapper: '%s'", str(error))
-        raise
-    if already_imported:
-        logger.debug("Reloading SHAKE wrapper: '%s'", wrapper.stem)
-        shake_wrapper = importlib.reload(shake_wrapper)
+    results = ResultsDict()
+    if (shake_harness := _load_python_harness(harness)) is None:
+        return results
 
-    rd = ResultsDict()
+    for name, func in inspect.getmembers(shake_harness, inspect.isfunction):
+        if not name.startswith("CC_SHAKE_"):
+            continue
+        logger.info("Harness function found: %s", name)
 
-    for function, _ in inspect.getmembers(shake_wrapper, inspect.isfunction):
-        match function.split("_"):
-            case ["CC", "SHAKE", _algo, "digest"]:
-                logger.info("Found CC_SHAKE function %s", function)
+        match name.split("_")[2:]:
+            case ["digest", _algo]:
                 try:
-                    algo = Algorithm(f"SHAKE{_algo}")
+                    algo = Algorithm.from_name(_algo)
                 except ValueError:
-                    logger.error("Invalid algorithm %s for SHAKE, skip", _algo)
+                    logger.error(
+                        "Invalid algorithm %s for SHAKE, skipped %s", _algo, name
+                    )
                     continue
-                rd |= test_digest(
-                    getattr(shake_wrapper, function), algo, Orientation.BYTE
+                results |= test_digest(
+                    func, algo, compliance=compliance, resilience=resilience
                 )
-            case ["CC", "SHAKE", _algo, "digest", "bit"]:
-                logger.info("Found CC_SHAKE function %s", function)
-                try:
-                    algo = Algorithm(f"SHAKE{_algo}")
-                except ValueError:
-                    logger.error("Invalid algorithm %s for SHAKE, skip", _algo)
-                    continue
-                rd |= test_digest(
-                    getattr(shake_wrapper, function), algo, Orientation.BIT
-                )
-            case ["CC", "SHAKE", *_]:
-                logger.warning("Ignored unknown CC_SHAKE function %s", function)
+            case [op, *_]:
+                logger.error("Invalid operation %s for SHAKE, skipped %s", op, name)
                 continue
-            case _:
-                pass
 
-    return rd
+    return results
 
 
-# --------------------------- Lib hook functions --------------------------------------
+# -------------------------------------------------------------------------------------
+# C harness
+# -------------------------------------------------------------------------------------
 
 
 def _test_lib_digest(
@@ -454,7 +461,6 @@ def _test_lib_digest(
     lib,
     function: str,
     algorithm: Algorithm,
-    orientation: Orientation,
     compliance: bool,
     resilience: bool,
 ) -> ResultsDict:
@@ -479,9 +485,7 @@ def _test_lib_digest(
             raise ValueError(f"{function} returned {retval}")
         return bytes(buf)
 
-    return test_digest(
-        _shake, algorithm, orientation, compliance=compliance, resilience=resilience
-    )
+    return test_digest(_shake, algorithm, compliance=compliance, resilience=resilience)
 
 
 def test_lib(
@@ -503,35 +507,27 @@ def test_lib(
     """
     logger.info("Found harness functions %s", ", ".join(functions))
 
-    rd = ResultsDict()
+    results = ResultsDict()
 
-    for function in functions:
-        match function.split("_"):
-            case ["CC", "SHAKE", bits, "digest"]:
-                if bits == "128":
-                    algorithm = Algorithm.SHAKE128
-                elif bits == "256":
-                    algorithm = Algorithm.SHAKE256
-                else:
-                    logger.error("Invalid value for SHAKE security level: %s", bits)
-                    logger.warning("Ignoring function %s", function)
+    for name in functions:
+        if not name.startswith("CC_SHAKE_"):
+            continue
+        logger.info("Harness function found: %s", name)
+
+        match name.split("_")[2:]:
+            case ["digest", _algo]:
+                try:
+                    algo = Algorithm.from_name(_algo)
+                except ValueError:
+                    logger.error(
+                        "Invalid algorithm %s for SHAKE, skipped %s", _algo, name
+                    )
                     continue
-                orientation = Orientation.BYTE
-            case ["CC", "SHAKE", bits, "digest", "bit"]:
-                if bits == "128":
-                    algorithm = Algorithm.SHAKE128
-                elif bits == "256":
-                    algorithm = Algorithm.SHAKE256
-                else:
-                    logger.error("Invalid value for SHAKE security level: %s", bits)
-                    logger.warning("Ignoring function %s", function)
-                    continue
-                orientation = Orientation.BIT
-            case _:
-                logger.debug("Ignoring unknown CC_SHAKE function %s", function)
+                results |= _test_lib_digest(
+                    ffi, lib, name, algo, compliance, resilience
+                )
+            case [op, *_]:
+                logger.error("Invalid operation %s for SHAKE, skipped %s", op, name)
                 continue
-        rd |= _test_lib_digest(
-            ffi, lib, function, algorithm, orientation, compliance, resilience
-        )
 
-    return rd
+    return results

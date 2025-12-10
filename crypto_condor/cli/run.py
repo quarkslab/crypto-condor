@@ -267,7 +267,7 @@ def shake(
 
     match wrapper.suffix:
         case ".py":
-            rd = SHAKE.run_python_wrapper(wrapper, compliance, resilience)
+            rd = SHAKE.test_harness_python(wrapper, compliance, resilience)
         case _:
             console.print(f"There are no runners for {wrapper.stem} wrappers")
             raise typer.Exit(1)

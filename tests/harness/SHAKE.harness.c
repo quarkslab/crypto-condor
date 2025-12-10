@@ -33,12 +33,12 @@ clean:
   return -1;
 }
 
-int CC_SHAKE_128_digest(uint8_t *digest, const size_t digest_size,
-                        const uint8_t *input, const size_t input_size) {
+int CC_SHAKE_digest_shake128(uint8_t *digest, const size_t digest_size,
+                             const uint8_t *input, const size_t input_size) {
   return generic_digest(digest, digest_size, input, input_size, "SHAKE-128");
 }
 
-int CC_SHAKE_256_digest(uint8_t *digest, const size_t digest_size,
-                        const uint8_t *input, const size_t input_size) {
+int CC_SHAKE_digest_shake256(uint8_t *digest, const size_t digest_size,
+                             const uint8_t *input, const size_t input_size) {
   return generic_digest(digest, digest_size, input, input_size, "SHAKE-256");
 }

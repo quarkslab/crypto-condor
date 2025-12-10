@@ -16,8 +16,8 @@ To test a function that implements `digest`, create a function with one of the
 following names:
 
 ```
-CC_SHAKE_128_digest
-CC_SHAKE_256_digest
+CC_SHAKE_digest_shake128
+CC_SHAKE_digest_shake256
 ```
 
 ### Protocol

@@ -16,15 +16,13 @@ Test digest
 Naming convention
 ^^^^^^^^^^^^^^^^^
 
-To test a SHAKE implementation, the function must conform to one of these conventions:
+To test a SHAKE implementation, create a function with one of the following names:
 
 .. code::
 
-    CC_SHAKE_128_digest[_bit]
+   CC_SHAKE_digest_shake128
 
-    CC_SHAKE_256_digest[_bit]
-
-``bit`` is an **optional** parameter. If present, the implementation is considered to be bit-oriented. By default, it is considered byte-oriented.
+   CC_SHAKE_digest_shake256
 
 Function signature
 ^^^^^^^^^^^^^^^^^^
