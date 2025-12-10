@@ -583,7 +583,7 @@ def mldsa(
 
     match wrapper.suffix:
         case ".py":
-            results = MLDSA.run_python_wrapper(wrapper, compliance, resilience)
+            results = MLDSA.test_harness_python(wrapper, compliance, resilience)
         case _:
             console.print(
                 "There is no ML-DSA runner defined for %s wrappers" % wrapper.suffix

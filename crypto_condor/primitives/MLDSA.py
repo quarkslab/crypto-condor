@@ -1,6 +1,7 @@
 """Module for testing ML-DSA implementations."""
 
 import importlib
+import inspect
 import json
 import logging
 import shutil
@@ -20,6 +21,7 @@ from crypto_condor.primitives.common import (
     ResultsDict,
     TestInfo,
     TestType,
+    _load_python_harness,
     get_appdata_dir,
 )
 from crypto_condor.vectors._mldsa.mldsa_pb2 import MldsaTest, MldsaVectors
@@ -40,7 +42,7 @@ def __dir__():  # pragma: no cover
         test_sign.__name__,
         test_verify.__name__,
         # Runners
-        run_python_wrapper.__name__,
+        test_harness_python.__name__,
     ]
 
 
@@ -49,6 +51,10 @@ def __dir__():  # pragma: no cover
 
 class Paramset(strenum.StrEnum):
     """The parameter sets for ML-DSA."""
+
+    ML_DSA_44 = "ML-DSA-44"
+    ML_DSA_65 = "ML-DSA-65"
+    ML_DSA_87 = "ML-DSA-87"
 
     def __new__(cls, value):
         """Override __new__ to add custom properties."""
@@ -93,9 +99,16 @@ class Paramset(strenum.StrEnum):
         """The equivalent Dilithium parameter set."""
         return self._dilithium_
 
-    ML_DSA_44 = "ML-DSA-44"
-    ML_DSA_65 = "ML-DSA-65"
-    ML_DSA_87 = "ML-DSA-87"
+    @classmethod
+    def from_name(cls, name: str):
+        """Returns an instance from a harness function name.
+
+        Raises:
+            ValueError: If the parameter set is invalid.
+        """
+        if name not in {"mldsa44", "mldsa65", "mldsa87"}:
+            raise ValueError(f"Invalid parameter set: {name}")
+        return cls(name.replace("mldsa", "ML-DSA-"))
 
 
 class Wrapper(strenum.StrEnum):
@@ -669,51 +682,48 @@ def test_output_sign(output: Path, paramset: Paramset) -> ResultsDict:
 # --------------------------- Runners -------------------------------------------------
 
 
-def run_python_wrapper(
-    wrapper: Path, compliance: bool, resilience: bool
+def test_harness_python(
+    harness: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
-    """Runs a ML-DSA Python wrapper.
+    """Runs a ML-DSA Python harness.
 
     Args:
-        wrapper: A path to the wrapper to run. Must be a Python program.
-        compliance: Whether to use compliance test vectors.
-        resilience: Whether to use resilience test vectors.
+        harness:
+            Path to the harness.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
 
     Returns:
         A dictionary of results.
     """
-    logger.info("Running Python ML-DSA wrapper: %s", str(wrapper.name))
-    sys.path.insert(0, str(wrapper.parent.absolute()))
-    already_imported = wrapper.stem in sys.modules.keys()
-    try:
-        mldsa_wrapper = importlib.import_module(wrapper.stem)
-    except ModuleNotFoundError as error:
-        logger.error("Can't import wrapper: %s", str(error))
-        raise
-    if already_imported:
-        logger.debug("Reloading ML-DSA wrapper: %s", wrapper.stem)
-        mldsa_wrapper = importlib.reload(mldsa_wrapper)
+    results = ResultsDict()
+    mldsa_harness = _load_python_harness(harness)
+    if mldsa_harness is None:
+        return results
 
-    rd = ResultsDict()
-    for symbol in dir(mldsa_wrapper):
-        match symbol.split("_"):
-            case ["CC", "MLDSA", _pset, ("sign" | "verify") as op]:
-                logger.info("Found CC_MLKEM function %s", symbol)
+    for name, func in inspect.getmembers(mldsa_harness, inspect.isfunction):
+        if not name.startswith("CC_MLDSA_"):
+            continue
+        logger.info("Harness function found: %s", name)
+
+        match name.split("_")[2:]:
+            case [("sign" | "verify") as op, _pset]:
                 try:
-                    paramset = Paramset(f"ML-DSA-{_pset}")
+                    paramset = Paramset.from_name(_pset)
                 except ValueError:
-                    logger.error("Unknown parameter set ML-DSA-%s for ML-DSA", _pset)
+                    logger.error("Invalid parameter set %s, skipped %s", _pset, name)
                     continue
                 if op == "sign":
-                    rd |= test_sign(getattr(mldsa_wrapper, symbol), paramset)
+                    results |= test_sign(func, paramset)
                 else:
-                    rd |= test_verify(getattr(mldsa_wrapper, symbol), paramset)
-            case ["CC", "MLDSA", *_]:
-                logger.warning("Ignored unknown CC_MLDSA function %s", symbol)
-            case _:
-                pass
+                    results |= test_verify(func, paramset)
+            case [op, *_]:
+                logger.error("Invalid ML-DSA operation %s, skipped %s", op, name)
+                continue
 
-    return rd
+    return results
 
 
 # --------------------------- Harness -------------------------------------------------
@@ -803,25 +813,29 @@ def test_lib(
     """
     logger.info("Found harness functions %s", ", ".join(functions))
 
-    rd = ResultsDict()
+    results = ResultsDict()
 
-    for function in functions:
-        match function.split("_"):
-            case ["CC", "MLDSA", pset, ("sign" | "verify") as op]:
+    for name in functions:
+        if not name.startswith("CC_MLDSA_"):
+            continue
+        logger.info("Harness function found: %s", name)
+
+        match name.split("_")[2:]:
+            case [("sign" | "verify") as op, _pset]:
                 try:
-                    paramset = Paramset(f"ML-DSA-{pset}")
+                    paramset = Paramset.from_name(_pset)
                 except ValueError:
-                    logger.error(
-                        "Unknown param set %s, skipped function %s", pset, function
-                    )
+                    logger.error("Invalid parameter set %s, skipped %s", _pset, name)
                     continue
                 if op == "sign":
-                    rd |= _test_harness_sign(ffi, lib, function, paramset)
+                    results |= _test_harness_sign(ffi, lib, name, paramset)
                 else:
-                    rd |= _test_harness_verify(ffi, lib, function, paramset)
-            case _:
-                logger.warning("Ignored unknown CC_MLDSA function %s", function)
-    return rd
+                    results |= _test_harness_verify(ffi, lib, name, paramset)
+            case [op, *_]:
+                logger.error("Invalid ML-DSA operation %s, skipped %s", op, name)
+                continue
+
+    return results
 
 
 if __name__ == "__main__":
