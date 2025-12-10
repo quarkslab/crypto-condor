@@ -1,6 +1,7 @@
 """Module for testing ML-KEM implementations."""
 
 import importlib
+import inspect
 import json
 import logging
 import shutil
@@ -20,6 +21,7 @@ from crypto_condor.primitives.common import (
     ResultsDict,
     TestInfo,
     TestType,
+    _load_python_harness,
     get_appdata_dir,
 )
 from crypto_condor.vectors._mlkem.mlkem_pb2 import MlkemTest, MlkemVectors
@@ -40,7 +42,7 @@ def __dir__():  # pragma: no cover
         test_encaps.__name__,
         test_decaps.__name__,
         # Runners
-        run_python_wrapper.__name__,
+        test_harness_python.__name__,
     ]
 
 
@@ -49,6 +51,10 @@ def __dir__():  # pragma: no cover
 
 class Paramset(strenum.StrEnum):
     """The parameter sets for ML-KEM."""
+
+    MLKEM512 = "ML-KEM-512"
+    MLKEM768 = "ML-KEM-768"
+    MLKEM1024 = "ML-KEM-1024"
 
     def __new__(cls, value):
         """Override __new__ to add custom properties."""
@@ -84,9 +90,16 @@ class Paramset(strenum.StrEnum):
         """The ciphertext size of the parameter set in bytes."""
         return self._ct_size_
 
-    MLKEM512 = "ML-KEM-512"
-    MLKEM768 = "ML-KEM-768"
-    MLKEM1024 = "ML-KEM-1024"
+    @classmethod
+    def from_name(cls, name: str):
+        """Returns an instance from a harness function name.
+
+        Raises:
+            ValueError: If the parameter set is invalid.
+        """
+        if name not in {"mlkem512", "mlkem768", "mlkem1024"}:
+            raise ValueError(f"Invalid parameter set for ML-KEM: {name}")
+        return cls(name.replace("mlkem", "ML-KEM-"))
 
 
 class Wrapper(strenum.StrEnum):
@@ -653,51 +666,48 @@ def test_output_encaps(output: Path, paramset: Paramset) -> ResultsDict:
 # --------------------------- Runners -------------------------------------------------
 
 
-def run_python_wrapper(
-    wrapper: Path, compliance: bool, resilience: bool
+def test_harness_python(
+    harness: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
-    """Runs a ML-KEM Python wrapper.
+    """Tests a ML-KEM Python harness.
 
     Args:
-        wrapper: A path to the wrapper to run. Must be a Python program.
-        compliance: Whether to use compliance test vectors.
-        resilience: Whether to use resilience test vectors.
+        harness:
+            Path to the harness.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
 
     Returns:
         A dictionary of results.
     """
-    logger.info("Running Python ML-KEM wrapper: '%s'", str(wrapper.name))
-    sys.path.insert(0, str(wrapper.parent.absolute()))
-    already_imported = wrapper.stem in sys.modules.keys()
-    try:
-        mlkem_wrapper = importlib.import_module(wrapper.stem)
-    except ModuleNotFoundError as error:
-        logger.error("Can't import wrapper: '%s'", str(error))
-        raise
-    if already_imported:
-        logger.debug("Reloading ML-KEM wrapper: '%s'", wrapper.stem)
-        mlkem_wrapper = importlib.reload(mlkem_wrapper)
+    results = ResultsDict()
+    mlkem_harness = _load_python_harness(harness)
+    if mlkem_harness is None:
+        return results
 
-    rd = ResultsDict()
-    for symbol in dir(mlkem_wrapper):
-        match symbol.split("_"):
-            case ["CC", "MLKEM", _pset, ("encaps" | "decaps") as op]:
-                logger.info("Found CC_MLKEM function '%s'", symbol)
+    for name, func in inspect.getmembers(mlkem_harness, inspect.isfunction):
+        if not name.startswith("CC_MLKEM_"):
+            continue
+        logger.info("Harness function found: %s")
+
+        match name.split("_")[2:]:
+            case [("encaps" | "decaps") as op, _pset]:
                 try:
-                    paramset = Paramset(f"ML-KEM-{_pset}")
+                    paramset = Paramset.from_name(_pset)
                 except ValueError:
-                    logger.error("Unknown parameter set ML-KEM-%s for ML-KEM", _pset)
+                    logger.error("Invalid parameter set %s, skipped %s", _pset, name)
                     continue
                 if op == "encaps":
-                    rd |= test_encaps(getattr(mlkem_wrapper, symbol), paramset)
+                    results |= test_encaps(func, paramset)
                 else:
-                    rd |= test_decaps(getattr(mlkem_wrapper, symbol), paramset)
-            case ["CC", "MLKEM", *_]:
-                logger.warning("Ignored unknown CC_MLKEM symbol %s", symbol)
-            case _:
-                pass
+                    results |= test_decaps(func, paramset)
+            case [op, *_]:
+                logger.error("Invalid ML-KEM operation %s, skipped %s", op, name)
+                continue
 
-    return rd
+    return results
 
 
 # --------------------------- Harness -------------------------------------------------
@@ -792,28 +802,29 @@ def test_lib(
     """
     logger.info("Found harness functions %s", ", ".join(functions))
 
-    rd = ResultsDict()
+    results = ResultsDict()
 
-    for function in functions:
-        match function.split("_"):
-            case ["CC", "MLKEM", _pset, ("encaps" | "decaps") as op]:
+    for name in functions:
+        if not name.startswith("CC_MLKEM_"):
+            continue
+        logger.info("Harness function found: %s")
+
+        match name.split("_")[2:]:
+            case [("encaps" | "decaps") as op, _pset]:
                 try:
-                    paramset = Paramset(f"ML-KEM-{_pset}")
+                    paramset = Paramset.from_name(_pset)
                 except ValueError:
-                    logger.error(
-                        "Unknown parameter set '%s', skipped function %s",
-                        _pset,
-                        function,
-                    )
+                    logger.error("Invalid parameter set %s, skipped %s", _pset, name)
                     continue
                 if op == "encaps":
-                    rd |= _test_harness_encaps(ffi, lib, function, paramset)
+                    results |= _test_harness_encaps(ffi, lib, name, paramset)
                 else:
-                    rd |= _test_harness_decaps(ffi, lib, function, paramset)
-            case _:
-                logger.warning("Ignoring unknown CC_MLKEM function %s", function)
+                    results |= _test_harness_decaps(ffi, lib, name, paramset)
+            case [op, *_]:
+                logger.error("Invalid ML-KEM operation %s, skipped %s", op, name)
+                continue
 
-    return rd
+    return results
 
 
 if __name__ == "__main__":

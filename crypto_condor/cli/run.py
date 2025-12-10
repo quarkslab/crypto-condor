@@ -542,7 +542,7 @@ def mlkem(
 
     match wrapper.suffix:
         case ".py":
-            results = MLKEM.run_python_wrapper(wrapper, compliance, resilience)
+            results = MLKEM.test_harness_python(wrapper, compliance, resilience)
         case _:
             console.print(
                 "There is no ML-KEM runner defined for %s wrappers" % wrapper.suffix

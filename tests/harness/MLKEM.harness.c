@@ -29,7 +29,7 @@ void *get_func(void *handle, const char func_name[]) {
   return func;
 }
 
-void CC_MLKEM_512_encaps(uint8_t *ct, size_t ct_sz, uint8_t *ss,
+void CC_MLKEM_encaps_mlkem512(uint8_t *ct, size_t ct_sz, uint8_t *ss,
                               size_t ss_sz, const uint8_t *pk, size_t pk_sz) {
 
   void *handle = get_lib_handle("ML-KEM-512-ref.so");
@@ -38,7 +38,7 @@ void CC_MLKEM_512_encaps(uint8_t *ct, size_t ct_sz, uint8_t *ss,
   enc(ct, ss, pk);
   dlclose(handle);
 }
-void CC_MLKEM_768_encaps(uint8_t *ct, size_t ct_sz, uint8_t *ss,
+void CC_MLKEM_encaps_mlkem768(uint8_t *ct, size_t ct_sz, uint8_t *ss,
                               size_t ss_sz, const uint8_t *pk, size_t pk_sz) {
 
   void *handle = get_lib_handle("ML-KEM-768-ref.so");
@@ -47,7 +47,7 @@ void CC_MLKEM_768_encaps(uint8_t *ct, size_t ct_sz, uint8_t *ss,
   enc(ct, ss, pk);
   dlclose(handle);
 }
-void CC_MLKEM_1024_encaps(uint8_t *ct, size_t ct_sz, uint8_t *ss,
+void CC_MLKEM_encaps_mlkem1024(uint8_t *ct, size_t ct_sz, uint8_t *ss,
                                size_t ss_sz, const uint8_t *pk, size_t pk_sz) {
 
   void *handle = get_lib_handle("ML-KEM-1024-ref.so");
@@ -59,7 +59,7 @@ void CC_MLKEM_1024_encaps(uint8_t *ct, size_t ct_sz, uint8_t *ss,
 
 /* DECAPSULATE */
 
-void CC_MLKEM_512_decaps(uint8_t *ss, size_t ss_sz, const uint8_t *ct,
+void CC_MLKEM_decaps_mlkem512(uint8_t *ss, size_t ss_sz, const uint8_t *ct,
                               size_t ct_sz, const uint8_t *sk, size_t sk_sz) {
 
   void *handle = get_lib_handle("ML-KEM-512-ref.so");
@@ -68,7 +68,7 @@ void CC_MLKEM_512_decaps(uint8_t *ss, size_t ss_sz, const uint8_t *ct,
   dec(ss, ct, sk);
   dlclose(handle);
 }
-void CC_MLKEM_768_decaps(uint8_t *ss, size_t ss_sz, const uint8_t *ct,
+void CC_MLKEM_decaps_mlkem768(uint8_t *ss, size_t ss_sz, const uint8_t *ct,
                               size_t ct_sz, const uint8_t *sk, size_t sk_sz) {
 
   void *handle = get_lib_handle("ML-KEM-768-ref.so");
@@ -77,7 +77,7 @@ void CC_MLKEM_768_decaps(uint8_t *ss, size_t ss_sz, const uint8_t *ct,
   dec(ss, ct, sk);
   dlclose(handle);
 }
-void CC_MLKEM_1024_decaps(uint8_t *ss, size_t ss_sz, const uint8_t *ct,
+void CC_MLKEM_decaps_mlkem1024(uint8_t *ss, size_t ss_sz, const uint8_t *ct,
                                size_t ct_sz, const uint8_t *sk, size_t sk_sz) {
 
   void *handle = get_lib_handle("ML-KEM-1024-ref.so");

@@ -7,7 +7,7 @@ Kyber submission.
 from crypto_condor.primitives import MLKEM
 
 
-def CC_MLKEM_512_encaps(pk: bytes) -> tuple[bytes, bytes]:
+def CC_MLKEM_encaps_mlkem512(pk: bytes) -> tuple[bytes, bytes]:
     """Generates and encapsulates a shared secret.
 
     Args:
@@ -19,7 +19,7 @@ def CC_MLKEM_512_encaps(pk: bytes) -> tuple[bytes, bytes]:
     return MLKEM._encaps(MLKEM.Paramset.MLKEM512, pk)
 
 
-def CC_MLKEM_512_decaps(sk: bytes, ct: bytes) -> bytes:
+def CC_MLKEM_decaps_mlkem512(sk: bytes, ct: bytes) -> bytes:
     """Decapsulates a shared secret.
 
     Args:
@@ -32,7 +32,7 @@ def CC_MLKEM_512_decaps(sk: bytes, ct: bytes) -> bytes:
     return MLKEM._decaps(MLKEM.Paramset.MLKEM512, sk, ct)
 
 
-def CC_MLKEM_768_encaps(pk: bytes) -> tuple[bytes, bytes]:
+def CC_MLKEM_encaps_mlkem768(pk: bytes) -> tuple[bytes, bytes]:
     """Generates and encapsulates a shared secret.
 
     Args:
@@ -44,7 +44,7 @@ def CC_MLKEM_768_encaps(pk: bytes) -> tuple[bytes, bytes]:
     return MLKEM._encaps(MLKEM.Paramset.MLKEM768, pk)
 
 
-def CC_MLKEM_768_decaps(sk: bytes, ct: bytes) -> bytes:
+def CC_MLKEM_decaps_mlkem768(sk: bytes, ct: bytes) -> bytes:
     """Decapsulates a shared secret.
 
     Args:
@@ -57,7 +57,7 @@ def CC_MLKEM_768_decaps(sk: bytes, ct: bytes) -> bytes:
     return MLKEM._decaps(MLKEM.Paramset.MLKEM768, sk, ct)
 
 
-def CC_MLKEM_1024_encaps(pk: bytes) -> tuple[bytes, bytes]:
+def CC_MLKEM_encaps_mlkem1024(pk: bytes) -> tuple[bytes, bytes]:
     """Generates and encapsulates a shared secret.
 
     Args:
@@ -69,7 +69,7 @@ def CC_MLKEM_1024_encaps(pk: bytes) -> tuple[bytes, bytes]:
     return MLKEM._encaps(MLKEM.Paramset.MLKEM1024, pk)
 
 
-def CC_MLKEM_1024_decaps(sk: bytes, ct: bytes) -> bytes:
+def CC_MLKEM_decaps_mlkem1024(sk: bytes, ct: bytes) -> bytes:
     """Decapsulates a shared secret.
 
     Args:
