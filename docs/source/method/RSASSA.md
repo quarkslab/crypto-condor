@@ -15,7 +15,7 @@ RSA is a public-key cryptosystem whose security relies on the factorization prob
     - Before 2031: modulus $\ge 2048$ bits long.
     - From 2031: modulus $\ge 3072$ bits long.
     - size(secret exponents) = size(modulus).
-    - For encryption, public exponents $> 65536.
+    - For encryption, public exponents $> 65536$.
 - - {ref}`RecommandationFactorisation <rsaes-rec-factorisation>`
   -
     - Modulus $\ge 3072$ bits long.
