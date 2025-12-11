@@ -4,7 +4,7 @@ The :mod:`crypto_condor.primitives.ECDH` module can test implementations of the
 :doc:`ECDH key exchange </method/ECDH>`.
 """
 
-import importlib
+import importlib.resources
 import inspect
 import json
 import logging

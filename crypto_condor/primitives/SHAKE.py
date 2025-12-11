@@ -1,6 +1,6 @@
 """Module to test SHAKE implementations."""
 
-import importlib
+import importlib.resources
 import inspect
 import json
 import logging

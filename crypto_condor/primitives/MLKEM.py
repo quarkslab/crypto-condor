@@ -1,13 +1,12 @@
 """Module for testing ML-KEM implementations."""
 
-import importlib
+import importlib.resources
 import inspect
 import json
 import logging
 import shutil
 import subprocess
 import sys
-from importlib import resources
 from pathlib import Path
 from typing import Protocol
 
@@ -142,7 +141,7 @@ def _get_shared_lib_dir() -> Path:
                 f"Unsupported platform {sys.platform}, can't get appdata directory"
             )
 
-    rsc = resources.files("crypto_condor") / "primitives/_mlkem"
+    rsc = importlib.resources.files("crypto_condor") / "primitives/_mlkem"
     install = False
 
     if not lib_dir.is_dir():

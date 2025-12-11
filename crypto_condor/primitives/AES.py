@@ -8,7 +8,7 @@ the :enum:`Mode` enum.
 
 from __future__ import annotations
 
-import importlib
+import importlib.resources
 import inspect
 import json
 import logging
@@ -16,7 +16,6 @@ import subprocess
 import sys
 import zipfile
 import zlib
-from importlib import resources
 from pathlib import Path
 from typing import Any, Literal, Protocol, overload
 
@@ -103,7 +102,7 @@ def _get_aes_lib() -> tuple[cffi.FFI | None, _cffi_backend.Lib | None]:
     if _AES_LIB_COMPILATION_FAILED:
         return None, None
 
-    rsc = resources.files("crypto_condor") / "primitives/_aes"
+    rsc = importlib.resources.files("crypto_condor") / "primitives/_aes"
     lib_zip = rsc / "AES.zip"
 
     lib_dir = get_appdata_dir() / "AES"

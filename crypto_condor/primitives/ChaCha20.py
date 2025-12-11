@@ -1,9 +1,9 @@
 """The ChaCha20 module."""
 
+import importlib.resources
 import inspect
 import json
 import logging
-from importlib import resources
 from pathlib import Path
 from typing import Protocol
 
@@ -366,7 +366,7 @@ def _load_vectors(
     Returns:
         A list of vectors.
     """
-    vectors_dir = resources.files("crypto_condor") / "vectors/_chacha20"
+    vectors_dir = importlib.resources.files("crypto_condor") / "vectors/_chacha20"
     vectors = list()
 
     sources_file = vectors_dir / "chacha20.json"

@@ -1,6 +1,6 @@
 """Module for SLH-DSA."""
 
-import importlib
+import importlib.resources
 import inspect
 import json
 import logging

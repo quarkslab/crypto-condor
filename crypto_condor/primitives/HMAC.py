@@ -11,7 +11,7 @@ to select which the modes to test and test vectors to use.
 """
 
 import hmac
-import importlib
+import importlib.resources
 import inspect
 import json
 import logging

@@ -1,6 +1,6 @@
 """Module for the SHA-1, SHA-2, and SHA-3 primitives."""
 
-import importlib
+import importlib.resources
 import inspect
 import json
 import logging

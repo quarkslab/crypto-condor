@@ -1,13 +1,12 @@
 """Module for testing ML-DSA implementations."""
 
-import importlib
+import importlib.resources
 import inspect
 import json
 import logging
 import shutil
 import subprocess
 import sys
-from importlib import resources
 from pathlib import Path
 from typing import Protocol
 
@@ -150,7 +149,7 @@ def _get_shared_lib_dir() -> Path:
             raise ValueError(
                 f"Unsupported platform {sys.platform}, can't get appdata directory"
             )
-    rsc = resources.files("crypto_condor") / "primitives/_mldsa"
+    rsc = importlib.resources.files("crypto_condor") / "primitives/_mldsa"
     install = False
 
     if not lib_dir.is_dir():

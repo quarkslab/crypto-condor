@@ -1,9 +1,9 @@
 """Module for Ed25519."""
 
+import importlib.resources
 import inspect
 import json
 import logging
-from importlib import resources
 from pathlib import Path
 from typing import Protocol
 
@@ -100,7 +100,7 @@ def _load_vectors(
         A list of vectors.
     """
     vectors: list[Ed25519Vectors] = list()
-    vectors_dir = resources.files("crypto_condor") / "vectors/_ed25519"
+    vectors_dir = importlib.resources.files("crypto_condor") / "vectors/_ed25519"
 
     sources_file = vectors_dir / "ed25519.json"
     with sources_file.open("r") as file:

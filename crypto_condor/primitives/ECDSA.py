@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import importlib.resources
 import inspect
 import json
 import logging
 import tempfile
 import warnings
-from importlib import resources
 from pathlib import Path
 from typing import Protocol, TypeAlias
 
@@ -222,7 +222,7 @@ def _load_vectors(
         logger.error("No test vectors selected (compliance=False, resilience=False)")
         return vectors
 
-    vectors_dir = resources.files("crypto_condor") / "vectors/_ecdsa"
+    vectors_dir = importlib.resources.files("crypto_condor") / "vectors/_ecdsa"
 
     sources_file = vectors_dir / "ecdsa.json"
     with sources_file.open("r") as file:
