@@ -1300,9 +1300,7 @@ def _test_harness_dec_poly(
     )
     lib_dec = getattr(lib, fname)
 
-    def dec(
-        key: bytes, ct: bytes, nonce: bytes, tag: bytes, aad: bytes
-    ) -> bytes | None:
+    def dec(key: bytes, ct: bytes, nonce: bytes, tag: bytes, aad: bytes) -> bytes:
         c_key = ffi.new("uint8_t[]", key)
         c_ct = ffi.new("uint8_t[]", ct)
         c_pt = ffi.new(f"uint8_t[{len(ct)}]")
