@@ -1,8 +1,7 @@
 """Module for RSAES."""
 
-import importlib
+import inspect
 import logging
-import sys
 from pathlib import Path
 from typing import Protocol
 
@@ -10,10 +9,19 @@ import attrs
 import strenum
 from rich.progress import track
 
-from crypto_condor.primitives.common import DebugInfo, Results, ResultsDict, TestType
+from crypto_condor.primitives.common import (
+    DebugInfo,
+    Results,
+    ResultsDict,
+    TestType,
+    _load_python_harness,
+)
 from crypto_condor.vectors.RSAES import Hash, RsaDecVectors, Scheme
 
-# --------------------------- Module --------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Module
+# -------------------------------------------------------------------------------------
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,14 +36,17 @@ def __dir__():  # pragma: no cover
         # Functions
         test_decrypt_pkcs.__name__,
         test_decrypt_oaep.__name__,
-        run_rsaes_wrapper.__name__,
+        # Harnesses
+        test_harness_python.__name__,
         # Imported
         Scheme.__name__,
         Hash.__name__,
     ]
 
 
-# --------------------------- Enums ---------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Enums
+# -------------------------------------------------------------------------------------
 
 
 class Wrapper(strenum.StrEnum):
@@ -44,7 +55,9 @@ class Wrapper(strenum.StrEnum):
     PYTHON = "Python"
 
 
-# --------------------------- Protocols -----------------------------------------------
+# -------------------------------------------------------------------------------------
+# Protocols
+# -------------------------------------------------------------------------------------
 
 
 class DecryptPkcs(Protocol):
@@ -80,7 +93,11 @@ class DecryptOaep(Protocol):
         ...  # pragma: no cover (protocol)
 
 
-# --------------------------- Data classes --------------------------------------------
+# -------------------------------------------------------------------------------------
+# Data classes
+# -------------------------------------------------------------------------------------
+
+
 @attrs.define
 class DecryptData:
     """Class for storing decrypt debug data.
@@ -114,7 +131,11 @@ result = {self.result.hex() if self.result else "<empty>"}
         return s
 
 
-# --------------------------- Test functions ------------------------------------------
+# -------------------------------------------------------------------------------------
+# Test functions
+# -------------------------------------------------------------------------------------
+
+
 def test_decrypt_pkcs(decrypt_function: DecryptPkcs) -> ResultsDict:
     """Tests a function that decrypts RSAES-PKCS1-v1_5 ciphertexts.
 
@@ -252,77 +273,88 @@ def test_decrypt_oaep(
     return results_dict
 
 
-# --------------------------- Runners -------------------------------------------------
-def _run_rsaes_python_wrapper(
-    scheme: Scheme, hash_algorithm: Hash | None, mgf_hash: Hash | None
+# -------------------------------------------------------------------------------------
+# Harness parsers
+# -------------------------------------------------------------------------------------
+
+
+@attrs.define
+class OaepOpts:
+    """RSAES-OAEP options."""
+
+    algo: Hash
+    mgf_algo: Hash | None
+
+    @classmethod
+    def parse(cls, opts: list[str]):
+        """Parses options from the name of a harness function."""
+        if len(opts) not in {1, 2}:
+            logger.error(
+                "Invalid number of options, got %d, expected 1 or 2", len(opts)
+            )
+            return None
+        try:
+            algo = Hash.from_name(opts[0])
+        except ValueError as error:
+            logger.error("Invalid hash function: %s", str(error))
+            return None
+
+        if len(opts) == 1:
+            return cls(algo, None)
+
+        try:
+            mgf_algo = Hash.from_name(opts[1])
+        except ValueError as error:
+            logger.error("Invalid hash function: %s", str(error))
+            return None
+
+        return cls(algo, mgf_algo)
+
+
+# -------------------------------------------------------------------------------------
+# Python harness
+# -------------------------------------------------------------------------------------
+
+
+def test_harness_python(
+    harness: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
-    """Runs the Python RSAES wrapper.
+    """Tests a Python harness.
 
     Args:
-        scheme: The RSA encryption scheme to test.
-        hash_algorithm: (RSAES-OAEP only) The hash algorithm used.
-        mgf_hash: (RSAES-OAEP only) The hash algorithm to use with MGF1.
-    """
-    wrapper = Path.cwd() / "rsaes_wrapper.py"
-    if not wrapper.is_file():
-        raise FileNotFoundError("Can't find rsaes_wrapper.py in the current directory.")
-
-    logger.debug("Running Python RSAES wrapper")
-
-    # Add CWD to the path, at the beginning in case this is called more than
-    # once, since the previous CWD would have priority.
-    sys.path.insert(0, str(Path.cwd()))
-
-    # Before importing the wrapper we check if it's already in the loaded
-    # modules, in which case we want to reload it or we would be testing the
-    # wrapper loaded previously.
-    imported = "rsaes_wrapper" in sys.modules.keys()
-
-    # Import it normally.
-    try:
-        rsaes_wrapper = importlib.import_module("rsaes_wrapper")
-    except ModuleNotFoundError as error:
-        logger.debug(error)
-        raise FileNotFoundError("Can't load the wrapper!") from error
-
-    # Then reload it if necessary.
-    if imported:
-        logger.debug("Reloading the RSAES Python wrapper")
-        rsaes_wrapper = importlib.reload(rsaes_wrapper)
-
-    if scheme == Scheme.PKCS:
-        rd = test_decrypt_pkcs(rsaes_wrapper.pkcs_decrypt)
-    else:
-        if hash_algorithm is None:
-            raise ValueError("RSAES-OAEP requires hash_algorithm")
-        rd = test_decrypt_oaep(rsaes_wrapper.oaep_decrypt, hash_algorithm, mgf_hash)
-
-    # To de-clutter the path, remove the CWD.
-    sys.path.remove(str(Path.cwd()))
-
-    return rd
-
-
-def run_rsaes_wrapper(
-    language: Wrapper,
-    scheme: Scheme,
-    hash_algorithm: Hash | None = None,
-    mgf_hash: Hash | None = None,
-):
-    """Runs the corresponding wrapper.
-
-    Args:
-        language: The language of the wrapper to run.
-        scheme: The RSA encryption scheme to test.
-        hash_algorithm: The hash algorithm used.
-        mgf_hash: (RSAES-OAEP only) The hash algorithm to use with MGF1.
+        harness:
+            Path to the harness.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
 
     Returns:
-        Returns the value returned by :func:`test_decrypt_pkcs` or
-        :func:`test_decrypt_oaep`.
+        A dictionary of results.
     """
-    match language:
-        case Wrapper.PYTHON:
-            return _run_rsaes_python_wrapper(scheme, hash_algorithm, mgf_hash)
-        case _:  # pragma: no cover (mypy)
-            raise ValueError("Unsupported language %s" % language)
+    results = ResultsDict()
+    rsa_harness = _load_python_harness(harness)
+    if rsa_harness is None:
+        return results
+
+    for name, func in inspect.getmembers(rsa_harness, inspect.isfunction):
+        if not name.startswith("CC_RSAES_"):
+            continue
+        logger.info("Harness function found: %s", name)
+
+        match name.split("_")[2:]:
+            case ["encrypt", *_]:
+                pass
+            case ["decrypt", "pkcs"]:
+                results |= test_decrypt_pkcs(func)
+            case ["decrypt", "oaep", *opts]:
+                if (parsed := OaepOpts.parse(opts)) is None:
+                    continue
+                results |= test_decrypt_oaep(func, parsed.algo, parsed.mgf_algo)
+            case [op, *_]:
+                logger.error(
+                    "Invalid operation %s for RSA harness, skipped %s", op, name
+                )
+                continue
+
+    return results

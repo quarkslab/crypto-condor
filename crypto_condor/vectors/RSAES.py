@@ -8,11 +8,16 @@ from typing import TypedDict
 import attrs
 import strenum
 
-# --------------------------- Module --------------------------------------------------
+from crypto_condor.common import CommonHash
+
 logger = logging.getLogger(__name__)
 
 
-# --------------------------- Enums ---------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Enums
+# -------------------------------------------------------------------------------------
+
+
 class Scheme(strenum.StrEnum):
     """RSA encryption schemes."""
 
@@ -20,7 +25,7 @@ class Scheme(strenum.StrEnum):
     PKCS = "RSAES-PKCS1-v1_5"
 
 
-class Hash(strenum.StrEnum):
+class Hash(CommonHash):
     """Available hash functions."""
 
     SHA_1 = "SHA-1"
@@ -30,13 +35,12 @@ class Hash(strenum.StrEnum):
     SHA_512 = "SHA-512"
     SHA_512_224 = "SHA-512/224"
     SHA_512_256 = "SHA-512/256"
-    SHA3_224 = "SHA3-224"
-    SHA3_256 = "SHA3-256"
-    SHA3_384 = "SHA3-384"
-    SHA3_512 = "SHA3-512"
 
 
-# --------------------------- Files ---------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Wycheproof files
+# -------------------------------------------------------------------------------------
+
 _WYCHEPROOF_ENC_PKCS_FILES = [
     "rsa_pkcs1_2048_test.json",
     "rsa_pkcs1_3072_test.json",
@@ -94,7 +98,11 @@ _WYCHEPROOF_ENC_OAEP_FILES: dict[str, dict[str, list[str]]] = {
 """Available Wycheproof vectors, indexed by hash function then by MGF1 hash function."""
 
 
-# --------------------------- Wycheproof ----------------------------------------------
+# -------------------------------------------------------------------------------------
+# Wycheproof classes
+# -------------------------------------------------------------------------------------
+
+
 class RsaWycheproofEncTest(TypedDict):
     """Represents a single Wycheproof decryption test."""
 
@@ -165,7 +173,11 @@ def load_wycheproof_vectors(
     return vectors
 
 
-# --------------------------- Vectors -------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Test vectors
+# -------------------------------------------------------------------------------------
+
+
 @attrs.frozen
 class RsaDecVectors:
     """RSA vectors for ciphertext decryption.

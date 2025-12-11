@@ -183,48 +183,17 @@ class TestRSASSA:
 class TestRSAES:
     """Test RSAES wrappers."""
 
-    @pytest.mark.parametrize(
-        "example,scheme,sha,mgf_sha",
-        [
-            ("1", "RSAES-PKCS1-v1_5", "SHA-256", None),
-            ("2", "RSAES-OAEP", "SHA-256", "SHA-256"),
-            ("3", "RSAES-OAEP", "SHA-256", "SHA-1"),
-        ],
-    )
-    def test_examples(self, example: str, scheme: str, sha: str, mgf_sha: str | None):
-        """Tests the RSAES wrapper examples."""
+    def test_example(self):
+        """Tests the RSAES wrapper example."""
         with runner.isolated_filesystem():
             wrap_result = runner.invoke(
-                app,
-                [
-                    "get-wrapper",
-                    "RSAES",
-                    "--language",
-                    "Python",
-                    "--example",
-                    example,
-                    "--force",
-                ],
+                app, "get-wrapper RSAES --language Python --example 1 --force"
             )
             if wrap_result.exit_code != 0:
                 warnings.warn("Could not get wrapper example", stacklevel=0)
                 return
 
-            args = [
-                "test",
-                "wrapper",
-                "RSAES",
-                "Python",
-                scheme,
-                "--sha",
-                sha,
-                "--no-save",
-            ]
-
-            if mgf_sha is not None:
-                args += ["--mgf-sha", mgf_sha]
-
-            result = runner.invoke(app, args)
+            result = runner.invoke(app, "test wrapper RSAES rsaes_wrapper_example.py")
             print(result.output)
             assert result.exit_code == 0
 

@@ -10,7 +10,6 @@ import typer
 from crypto_condor.primitives import (
     MLDSA,
     MLKEM,
-    RSAES,
     RSASSA,
     SHA,
     ChaCha20,
@@ -353,53 +352,32 @@ Tests implementations of RSA encryption schemes RSAES-PKCS1-v1_5 and RSAES-OAEP.
 @app.command(name="RSAES", no_args_is_help=True, help=_rsaes_help)
 @app.command(name="rsaes", no_args_is_help=True, help=_rsaes_help, hidden=True)
 def rsaes(
-    language: Annotated[RSAES.Wrapper, _language],
-    scheme: Annotated[
-        RSAES.Scheme,
-        typer.Argument(
-            help="The encryption scheme to test.",
-            show_default=False,
-            case_sensitive=False,
-        ),
-    ],
-    sha: Annotated[
-        Optional[RSAES.Hash],
-        typer.Option(
-            help="(RSAES-OAEP only) The SHA algorithm to use.",
-            show_default=False,
-            case_sensitive=False,
-        ),
-    ] = None,
-    mgf_sha: Annotated[
-        Optional[RSAES.Hash],
-        typer.Option(
-            "--mgf-sha",
-            help="(RSAES-OAEP only) The SHA algorithm to use with MGF1.",
-            show_default=False,
-            case_sensitive=False,
-        ),
-    ] = None,
+    wrapper: Annotated[Path, typer.Argument(help="FIXME")],
+    compliance: Annotated[bool, _compliance] = True,
+    resilience: Annotated[bool, _resilience] = False,
     filename: Annotated[str, _filename] = "",
-    no_save: Annotated[bool, _no_save] = False,
     debug: Annotated[Optional[bool], _debug] = None,
 ):
-    """Runs a RSAES wrapper.
+    """Runs an RSA wrapper.
 
     Args:
-        language: The language of the wrapper to run.
-        scheme: The RSA scheme to test.
-        sha: The SHA to use in RSAES-OAEP.
-        mgf_sha: The SHA to use with MGF1 in RSAES-OAEP.
-        filename: Name of the file to save results.
-        no_save: Do not save results or prompt the user.
-        debug: When saving the results to a file, whether to add the debug data.
+        wrapper:
+            The wrapper to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+        filename:
+            Name of the file to save results.
+        debug:
+            When saving the results to a file, whether to add the debug data.
     """
-    try:
-        results = RSAES.run_rsaes_wrapper(language, scheme, sha, mgf_sha)
-    except Exception as error:
-        logger.error(error)
-        raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save, debug):
+    from crypto_condor.primitives import RSAES
+
+    out = filename or None
+    results = RSAES.test_harness_python(wrapper, compliance, resilience)
+
+    if console.process_results(results, out, debug_data=debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
