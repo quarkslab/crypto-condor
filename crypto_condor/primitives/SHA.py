@@ -316,7 +316,7 @@ def test_digest(
 
         We define the parameters to test.
 
-        >>> algorithm = SHA.Algorithm.SHA_256
+        >>> algorithm = SHA.Hash.SHA_256
 
         And call :func:`test` on our function and selected parameters.
 
@@ -600,7 +600,7 @@ def test_output_digest(filename: str, algorithm: Hash) -> ResultsDict:
 
         >>> import random
         >>> filename = "/tmp/crypto-condor-test/SHA-256-verify.txt"
-        >>> algorithm = SHA.Algorithm.SHA_256
+        >>> algorithm = SHA.Hash.SHA_256
         >>> with open(filename, "w") as file:
         ...     for i in range(20):
         ...         message = random.randbytes(64)
