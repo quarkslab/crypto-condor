@@ -246,7 +246,7 @@ def test_file(filename: str, *, bit_count: int = 0) -> ResultsDict:
     try:
         install_testu01()
     except subprocess.CalledProcessError:
-        return rd
+        return results
 
     t_dir = get_testu01_dir()
     testu01 = t_dir / "testu01.sh"
@@ -255,14 +255,14 @@ def test_file(filename: str, *, bit_count: int = 0) -> ResultsDict:
         output = subprocess.check_output(args, cwd=t_dir, text=True)
     except subprocess.CalledProcessError as error:
         logger.error("Error running TestU01: %s", error.stdout)
-        return rd
+        return results
 
     lines = output.split("\n")
 
     # Example:
     # Size: 1600000 bytes = 12800000 bits
-    parts = lines[0].split(" = ")
-    n_bits = int(parts[1].split(" ")[0])
+    # parts = lines[0].split(" = ")
+    # n_bits = int(parts[1].split(" ")[0])
 
     res = Results(
         "TestU01",
