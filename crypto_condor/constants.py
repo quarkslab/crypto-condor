@@ -1,4 +1,15 @@
-"""Global constants."""
+"""Global constants.
+
+.. autoclass:: Modes
+
+.. autoenum:: Primitive
+
+.. autodata:: SUPPORTED_MODES
+    :no-value:
+
+.. autodata:: SUPPORTED_PRIMITIVES
+    :no-value:
+"""
 
 from typing import TypedDict
 
@@ -206,7 +217,7 @@ SUPPORTED_MODES: dict[Primitive, Modes] = {
         "output": False,
         "wrapper": True,
         "harness": False,
-    }
+    },
 }
 """Primitives and their supported CLI modes."""
 

@@ -77,7 +77,7 @@ html_favicon = "_static/favicon.ico"
 autodoc_typehints = "description"
 autodoc_typehints_description_target = "documented"
 autodoc_default_options = {
-    "no-value": True,
+    # "no-value": True,
     # "members": True,
     "member-order": "groupwise",
 }
