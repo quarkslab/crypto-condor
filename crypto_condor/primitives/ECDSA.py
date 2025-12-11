@@ -1364,7 +1364,7 @@ def test_keygen(keygen: Keygen, curve: Curve, nbytes: int = TESTU01_REC) -> Resu
 
             case [bytes() as key]:
                 try:
-                    sk = _load_pem_or_der(key)
+                    sk = _load_pem_or_der(key)  # type: ignore
                 except (TypeError, ValueError) as error:
                     # TODO: include the key for debugging.
                     info.fail(f"Failed to derive private key: {error}")
