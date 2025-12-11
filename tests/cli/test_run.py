@@ -147,35 +147,15 @@ class TestShake:
 class TestRSASSA:
     """Test RSASSA wrappers."""
 
-    @pytest.mark.parametrize(
-        "example,scheme,sha,mgf_sha",
-        [
-            ("1", "RSASSA-PKCS1-v1_5", "SHA-256", None),
-            ("2", "RSASSA-PSS", "SHA-256", "SHA-256"),
-        ],
-    )
-    def test_rsa_examples(
-        self, example: str, scheme: str, sha: str, mgf_sha: str | None
-    ):
-        """Tests the RSA wrapper examples."""
+    def test_example(self):
+        """Tests the RSA wrapper example."""
         with runner.isolated_filesystem():
             wrap_result = runner.invoke(
-                app,
-                [
-                    "get-wrapper",
-                    "RSASSA",
-                    "--language",
-                    "Python",
-                    "--example",
-                    example,
-                    "--force",
-                ],
+                app, "get-wrapper RSASSA --language Python --example 1 --force"
             )
             assert wrap_result.exit_code == 0, "Could not get wrapper example"
-            args = ["test", "wrapper", "RSASSA", "Python", scheme, sha, "--no-save"]
-            if mgf_sha is not None:
-                args += ["--mgf-sha", mgf_sha]
-            result = runner.invoke(app, args)
+
+            result = runner.invoke(app, "test wrapper RSASSA rsassa_wrapper_example.py")
             print(result.output)
             assert result.exit_code == 0
 

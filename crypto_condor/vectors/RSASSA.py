@@ -8,17 +8,18 @@ from typing import TypedDict
 import attrs
 import strenum
 
+from crypto_condor.common import CommonHash
 from crypto_condor.vectors._rsa.rsa_pb2 import (
     RsaNistSigGenVectors,
     RsaNistSigVerVectors,
 )
 
-# --------------------------- Module --------------------------------------------------
-
 logger = logging.getLogger(__name__)
 
 
-# --------------------------- Enums ---------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Enums
+# -------------------------------------------------------------------------------------
 
 
 class Scheme(strenum.StrEnum):
@@ -28,8 +29,8 @@ class Scheme(strenum.StrEnum):
     PSS = "RSASSA-PSS"
 
 
-class Hash(strenum.StrEnum):
-    """A list of available hash functions."""
+class Hash(CommonHash):
+    """Available hash functions."""
 
     SHA_1 = "SHA-1"
     SHA_224 = "SHA-224"
@@ -44,7 +45,10 @@ class Hash(strenum.StrEnum):
     SHA3_512 = "SHA3-512"
 
 
-# --------------------------- Vector files --------------------------------------------
+# -------------------------------------------------------------------------------------
+# Vector files
+# -------------------------------------------------------------------------------------
+
 _NIST_SIGGEN_PKCS_FILES = {
     "SHA-224": [
         "rsa_signature_2048_sha224.dat",

@@ -93,7 +93,7 @@ class CommonHash(StrEnum):
     if the hash function is not in the derived enum.
     """
 
-    def __init__(self, value):
+    def __init__(self, value: str):
         """Override __init__ to add custom properties."""
         self._value_ = value
         match value:
@@ -108,6 +108,7 @@ class CommonHash(StrEnum):
             case "SHA-512" | "SHA3-512":
                 self._digest_size_ = 512
         self._sha3_ = value.startswith("SHA3-")
+        self._harness_name_ = value.lower().replace("-", "").replace("/", "")
 
     @property
     def digest_size(self) -> int:
@@ -115,9 +116,14 @@ class CommonHash(StrEnum):
         return self._digest_size_
 
     @property
-    def sha3(self):
+    def sha3(self) -> bool:
         """True if the algorithm is a SHA-3 algorithm."""
         return self._sha3_
+
+    @property
+    def harness_name(self) -> str:
+        """Returns the name of the hash function as used in harnesses."""
+        return self._harness_name_
 
     @classmethod
     def from_name(cls, name: str):

@@ -10,7 +10,6 @@ import typer
 from crypto_condor.primitives import (
     MLDSA,
     MLKEM,
-    RSASSA,
     SHA,
     ChaCha20,
 )
@@ -286,57 +285,32 @@ Tests implementations of RSA signature schemes RSASSA-PKCS1-v1_5 and RSASSA-PSS.
 @app.command(name="RSASSA", no_args_is_help=True, help=_rsassa_help)
 @app.command(name="rsassa", no_args_is_help=True, help=_rsassa_help, hidden=True)
 def rsassa(
-    language: Annotated[RSASSA.Wrapper, _language],
-    scheme: Annotated[
-        RSASSA.Scheme,
-        typer.Argument(
-            help=("The signature scheme to test."),
-            show_default=False,
-            case_sensitive=False,
-        ),
-    ],
-    sha: Annotated[
-        RSASSA.Hash,
-        typer.Argument(
-            help="The SHA algorithm to use for signatures.",
-            show_default=False,
-            case_sensitive=False,
-        ),
-    ],
-    mgf_sha: Annotated[
-        Optional[RSASSA.Hash],
-        typer.Option(
-            "--mgf-sha",
-            help="(RSASSA-PSS only) The SHA algorithm to use with MGF1.",
-            show_default=False,
-            case_sensitive=False,
-        ),
-    ] = None,
-    sign: Annotated[bool, _sign] = True,
-    verify: Annotated[bool, _verify] = True,
+    wrapper: Annotated[Path, typer.Argument(help="FIXME")],
+    compliance: Annotated[bool, _compliance] = True,
+    resilience: Annotated[bool, _resilience] = False,
     filename: Annotated[str, _filename] = "",
-    no_save: Annotated[bool, _no_save] = False,
     debug: Annotated[Optional[bool], _debug] = None,
 ):
     """Runs an RSA wrapper.
 
     Args:
-        language: The language of the wrapper to run.
-        scheme: The RSA scheme to test.
-        sha: The SHA to use.
-        mgf_sha: (RSASSA-PSS only) The SHA to use with MGF1.
-        sign: Whether to test the signing function.
-        verify: Whether to test the verifying function.
-        filename: Name of the file to save results.
-        no_save: Do not save results or prompt the user.
-        debug: When saving the results to a file, whether to add the debug data.
+        wrapper:
+            The wrapper to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
+        filename:
+            Name of the file to save results.
+        debug:
+            When saving the results to a file, whether to add the debug data.
     """
-    try:
-        results = RSASSA.run_wrapper(language, scheme, sha, mgf_sha, sign, verify)
-    except Exception as error:
-        logger.error(error)
-        raise typer.Exit(1) from error
-    if console.process_results(results, filename, no_save, debug):
+    from crypto_condor.primitives import RSASSA
+
+    out = filename or None
+    results = RSASSA.test_harness_python(wrapper, compliance, resilience)
+
+    if console.process_results(results, out, debug_data=debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)

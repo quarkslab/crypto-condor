@@ -1,8 +1,7 @@
 """Module for RSASSA."""
 
-import importlib
+import inspect
 import logging
-import sys
 from pathlib import Path
 from typing import Protocol
 
@@ -23,7 +22,13 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import pss
 from rich.progress import track
 
-from crypto_condor.primitives.common import DebugInfo, Results, ResultsDict, TestType
+from crypto_condor.primitives.common import (
+    DebugInfo,
+    Results,
+    ResultsDict,
+    TestType,
+    _load_python_harness,
+)
 from crypto_condor.vectors.RSASSA import (
     Hash,
     RsaSigGenVectors,
@@ -31,7 +36,6 @@ from crypto_condor.vectors.RSASSA import (
     Scheme,
 )
 
-# --------------------------- Module --------------------------------------------------
 logger = logging.getLogger(__name__)
 
 
@@ -48,14 +52,17 @@ def __dir__():  # pragma: no cover
         test_sign.__name__,
         test_verify_pkcs.__name__,
         test_verify_pss.__name__,
-        run_wrapper.__name__,
+        # Harness
+        test_harness_python.__name__,
         # Imported
         Hash.__name__,
         Scheme.__name__,
     ]
 
 
-# --------------------------- Enums ---------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Enums
+# -------------------------------------------------------------------------------------
 
 
 class Wrapper(strenum.StrEnum):
@@ -64,7 +71,9 @@ class Wrapper(strenum.StrEnum):
     PYTHON = "Python"
 
 
-# --------------------------- Protocols -----------------------------------------------
+# -------------------------------------------------------------------------------------
+# Protocols
+# -------------------------------------------------------------------------------------
 
 
 class Sign(Protocol):
@@ -122,7 +131,11 @@ class VerifyPss(Protocol):
         ...  # pragma: no cover (protocol)
 
 
-# ---------------------- Dataclasses---------------------------------------------
+# -------------------------------------------------------------------------------------
+# Dataclasses
+# -------------------------------------------------------------------------------------
+
+
 @attrs.define
 class SignData:
     """Class for storing sign debug data.
@@ -184,7 +197,11 @@ signature = {self.sig.hex()}
         return s
 
 
-# --------------------------- Internal ------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Internal functions
+# -------------------------------------------------------------------------------------
+
+
 def _get_hash(hash_algorithm: Hash, msg: bytes):
     """Gets a :mod:`Crypto.Hash` object.
 
@@ -195,7 +212,7 @@ def _get_hash(hash_algorithm: Hash, msg: bytes):
     Returns:
         A :mod:`Crypto.Hash` object.
     """
-    match hash_algorithm:
+    match str(hash_algorithm):
         case "SHA-1":
             return SHA1.new(msg)
         case "SHA-224":
@@ -226,7 +243,11 @@ def _digest(hash_algorithm: Hash, msg: bytes) -> bytes:
     return h.digest()
 
 
-# --------------------------- Test functions ------------------------------------------
+# -------------------------------------------------------------------------------------
+# Test functions
+# -------------------------------------------------------------------------------------
+
+
 def _test_sign_pss(
     sign_function: Sign,
     hash_algorithm: Hash,
@@ -740,97 +761,122 @@ def test_verify_pss(
     return results_dict
 
 
-# --------------------------- Runners -------------------------------------------------
-def _run_rsa_python_wrapper(
-    scheme: Scheme,
-    hash_algorithm: Hash,
-    mgf_hash: Hash | None,
-    run_sign: bool,
-    run_verify: bool,
+# -------------------------------------------------------------------------------------
+# Harness parsers
+# -------------------------------------------------------------------------------------
+
+
+@attrs.define
+class SignOpts:
+    """RSA signing options."""
+
+    algo: Hash
+
+    @classmethod
+    def parse(cls, opts: list[str]):
+        """Parses options from the name of a harness function."""
+        if len(opts) != 1:
+            logger.error("Invalid number of options: got %d, expected 1", len(opts))
+            return None
+        try:
+            algo = Hash.from_name(opts[0])
+        except ValueError:
+            logger.error("Invalid hash function %s", opts[0])
+            return None
+        return cls(algo)
+
+
+@attrs.define
+class VerifyPssOpts:
+    """RSASSA-PSS verify options.
+
+    PSS uses a masking function (MGF) that uses a hash function, which can be different
+    from the one used to hash the message. But the test vectors that we have only use
+    the same hash for both, so we do not parse the MGF hash for now.
+    """
+
+    algo: Hash
+    mgf_algo: Hash | None
+
+    @classmethod
+    def parse(cls, opts: list[str]):
+        """Parses options from the name of a harness function."""
+        if len(opts) != 1:
+            logger.error("Invalid number of options: got %d, expected 1", len(opts))
+            return None
+        try:
+            algo = Hash.from_name(opts[0])
+        except ValueError:
+            logger.error("Invalid hash function %s", opts[0])
+            return None
+
+        return cls(algo, None)
+
+
+# -------------------------------------------------------------------------------------
+# Python harness
+# -------------------------------------------------------------------------------------
+
+
+def test_harness_python(
+    harness: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
-    """Runs the Python RSA wrapper.
+    """Tests an Ed25519 Python harness.
 
     Args:
-        scheme: The RSA signature scheme to test.
-        hash_algorithm: The hash algorithm used.
-        mgf_hash: (RSASSA-PSS only) The hash algorithm to use with MGF1.
-        run_sign: Whether to test signature generation.
-        run_verify: Whether to test signature verification.
-
-    Returns:
-        The results of :func:`test_sign`, :func:`test_verify_pss`, or
-        :func:`test_verify_pkcs` depending on the options used.
+        harness:
+            A path to the harness to test.
+        compliance:
+            Whether to use compliance test vectors.
+        resilience:
+            Whether to use resilience test vectors.
     """
-    wrapper = Path.cwd() / "rsa_wrapper.py"
-    if not wrapper.is_file():
-        raise FileNotFoundError("Can't find rsa_wrapper.py in the current directory.")
+    results = ResultsDict()
+    if (rsa_harness := _load_python_harness(harness)) is None:
+        return results
 
-    logger.debug("Running Python RSA wrapper")
+    for name, func in inspect.getmembers(rsa_harness, inspect.isfunction):
+        if not name.startswith("CC_RSASSA_"):
+            continue
+        logger.info("Harness function found: %s", name)
 
-    # Add CWD to the path, at the beginning in case this is called more than
-    # once, since the previous CWD would have priority.
-    sys.path.insert(0, str(Path.cwd()))
+        match name.split("_")[2:]:
+            case ["sign", "pkcs", *opts]:
+                if (parsed := SignOpts.parse(opts)) is None:
+                    logger.warning("Parsing error, skipped %s", name)
+                    continue
+                results |= test_sign(func, Scheme.PKCS, parsed.algo)
 
-    # Before importing the wrapper we check if it's already in the loaded
-    # modules, in which case we want to reload it or we would be testing the
-    # wrapper loaded previously.
-    imported = "rsa_wrapper" in sys.modules.keys()
+            case ["sign", "pss", *opts]:
+                if (parsed := SignOpts.parse(opts)) is None:
+                    logger.warning("Parsing error, skipped %s", name)
+                    continue
+                results |= test_sign(func, Scheme.PSS, parsed.algo)
 
-    # Import it normally.
-    try:
-        rsa_wrapper = importlib.import_module("rsa_wrapper")
-    except ModuleNotFoundError as error:
-        logger.debug(error)
-        raise FileNotFoundError("Can't load the wrapper!") from error
+            case ["verify", "pkcs", *opts]:
+                if (parsed := SignOpts.parse(opts)) is None:
+                    logger.warning("Parsing error, skipped %s", name)
+                    continue
+                results |= test_verify_pkcs(func, parsed.algo, compliance, resilience)
 
-    # Then reload it if necessary.
-    if imported:
-        logger.debug("Reloading the RSA Python wrapper")
-        rsa_wrapper = importlib.reload(rsa_wrapper)
+            case ["verify", "pss", *opts]:
+                if (parsed := VerifyPssOpts.parse(opts)) is None:
+                    logger.warning("Parsing error, skipped %s", name)
+                    continue
+                results |= test_verify_pss(
+                    func, parsed.algo, parsed.mgf_algo, compliance, resilience
+                )
 
-    results_dict = ResultsDict()
-    if run_sign:
-        results_dict |= test_sign(rsa_wrapper.sign, scheme, hash_algorithm)
-    if run_verify:
-        if scheme == Scheme.PKCS:
-            results_dict |= test_verify_pkcs(rsa_wrapper.pkcs_verify, hash_algorithm)
-        else:
-            results_dict |= test_verify_pss(
-                rsa_wrapper.pss_verify, hash_algorithm, mgf_hash
-            )
+            case [("sign" | "verify"), scheme, *_]:
+                logger.error(
+                    "Invalid scheme %s for RSA harness, skipped %s", scheme, name
+                )
+                continue
 
-    # To de-clutter the path, remove the CWD.
-    sys.path.remove(str(Path.cwd()))
+            case [op, *_]:
+                logger.error(
+                    "Invalid operation %s for RSA harness, skipped %s", op, name
+                )
+                continue
 
-    return results_dict
-
-
-def run_wrapper(
-    language: Wrapper,
-    scheme: Scheme,
-    hash_algorithm: Hash,
-    mgf_hash: Hash | None = None,
-    run_sign: bool = True,
-    run_verify: bool = True,
-) -> ResultsDict:
-    """Runs the corresponding wrapper.
-
-    Args:
-        language: The language of the wrapper to run.
-        scheme: The RSA signature scheme to test.
-        hash_algorithm: The hash algorithm used.
-        mgf_hash: (RSASSA-PSS only) The hash algorithm to use with MGF1.
-        run_sign: Whether to test signature generation.
-        run_verify: Whether to test signature verification.
-
-    Returns:
-        The results of :func:`test_sign`, :func:`test_verify_pss`, or
-        :func:`test_verify_pkcs` depending on the options used.
-    """
-    match language:
-        case Wrapper.PYTHON:
-            return _run_rsa_python_wrapper(
-                scheme, hash_algorithm, mgf_hash, run_sign, run_verify
-            )
-        case _:
-            raise ValueError("Unsupported language %s" % language)
+    return results
