@@ -45,6 +45,13 @@ ROOT_DIR = Path("tests/harness")
         "MLKEM",
         "SHA",
         "SHAKE",
+        pytest.param(
+            "SLHDSA_openssl", marks=pytest.mark.skip(reason="Requires OpenSSL >=3.5.0")
+        ),
+        pytest.param(
+            "SLHDSA_openssl_prehash",
+            marks=pytest.mark.skip(reason="Requires OpenSSL >=3.5.0"),
+        ),
     ],
 )
 def test_harness(primitive: str):

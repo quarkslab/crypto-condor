@@ -676,7 +676,7 @@ def slhdsa(
 
     match wrapper.suffix:
         case ".py":
-            results = SLHDSA.test_wrapper_python(wrapper, compliance, resilience)
+            results = SLHDSA.test_harness_python(wrapper, compliance, resilience)
         case _:
             console.print(
                 "There is no SLH-DSA runner defined for %s wrappers" % wrapper.suffix

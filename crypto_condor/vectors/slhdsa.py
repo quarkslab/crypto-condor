@@ -66,3 +66,8 @@ class Paramset(strenum.StrEnum):
     def from_name(cls, pset_hash: str, pset_strength: str):
         """Creates instance from a function name."""
         return cls(f"{pset_hash.upper()}-{pset_strength}")
+
+    @property
+    def harness_name(self) -> str:
+        """Returns the name as used in harnesses."""
+        return self._value_.lower().replace("-", "_")

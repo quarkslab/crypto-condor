@@ -4,7 +4,6 @@ import importlib
 import inspect
 import json
 import logging
-import sys
 from pathlib import Path
 from typing import Protocol
 
@@ -13,14 +12,22 @@ import cffi
 import strenum
 from rich.progress import track
 
-from crypto_condor.primitives.common import Results, ResultsDict, TestInfo, TestType
+from crypto_condor.primitives.common import (
+    Results,
+    ResultsDict,
+    TestInfo,
+    TestType,
+    _load_python_harness,
+)
 from crypto_condor.vectors._slhdsa.slhdsa_pb2 import (
     SlhdsaTest,
     SlhdsaVectors,
 )
 from crypto_condor.vectors.slhdsa import Paramset
 
-# --------------------------- Module --------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Module
+# -------------------------------------------------------------------------------------
 
 logger = logging.getLogger(__name__)
 
@@ -39,14 +46,16 @@ def __dir__():  # pragma: no cover
         test_invariant.__name__,
         # Runners
         test_wrapper.__name__,
-        test_wrapper_python.__name__,
+        test_harness_python.__name__,
         test_lib.__name__,
         # Imported
         Paramset.__name__,
     ]
 
 
-# --------------------------- Enums ---------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Enums
+# -------------------------------------------------------------------------------------
 
 
 class Wrapper(strenum.StrEnum):
@@ -63,7 +72,9 @@ class Operation(strenum.StrEnum):
     SIGVER = "sigver"
 
 
-# --------------------------- Vectors -------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Internal functions
+# -------------------------------------------------------------------------------------
 
 
 def _load_vectors(
@@ -110,7 +121,9 @@ def _load_vectors(
     return vectors
 
 
-# --------------------------- Protocols -----------------------------------------------
+# -------------------------------------------------------------------------------------
+# Protocols
+# -------------------------------------------------------------------------------------
 
 
 class Keygen(Protocol):
@@ -174,7 +187,9 @@ class Verify(Protocol):
         ...
 
 
-# --------------------------- Dataclasses----------------------------------------------
+# -------------------------------------------------------------------------------------
+# Dataclasses
+# -------------------------------------------------------------------------------------
 
 
 @attrs.define
@@ -294,7 +309,9 @@ ret_valid_sig = {self.ret_valid_sig if self.ret_valid_sig is not None else "<non
 """
 
 
-# --------------------------- Test functions ------------------------------------------
+# -------------------------------------------------------------------------------------
+# Test functions
+# -------------------------------------------------------------------------------------
 
 
 def test_sign(
@@ -542,150 +559,170 @@ def test_invariant(
     return rd
 
 
-# --------------------------- Runners -------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Harness parsers
+# -------------------------------------------------------------------------------------
 
 
-def test_wrapper_python(
-    wrapper: Path, compliance: bool, resilience: bool
+@attrs.define
+class KeygenOpts:
+    """Key generation options."""
+
+    paramset: Paramset
+
+    @classmethod
+    def parse(cls, opts: list[str]):
+        """Parses options from the name of a harness function."""
+        if len(opts) != 2:
+            logger.error("Invalid number of options (expected 2)")
+            return None
+        try:
+            paramset = Paramset.from_name(opts[0], opts[1])
+        except ValueError as error:
+            logger.error("Invalid option: %s", str(error))
+            return None
+        return cls(paramset)
+
+
+@attrs.define
+class SignOpts:
+    """Signing options."""
+
+    paramset: Paramset
+    prehash: bool
+    deterministic: bool
+
+    @classmethod
+    def parse(cls, opts: list[str]):
+        """Parses options from the name of a harness function."""
+        if len(opts) < 3 or len(opts) > 4:
+            logger.error("Invalid number of options (expected 3 or 4)")
+            return None
+        try:
+            paramset = Paramset.from_name(opts[0], opts[1])
+        except ValueError as error:
+            logger.error("Invalid option: %s", str(error))
+            return None
+
+        if opts[2] not in {"prehash", "pure"}:
+            logger.error("Invalid variant %s (expected pure or prehash)", opts[2])
+            return None
+
+        prehash = opts[2] == "prehash"
+        deterministic = (len(opts) == 4) and (opts[3] == "det")
+
+        return cls(paramset, prehash, deterministic)
+
+
+@attrs.define
+class VerOpts:
+    """Verification options."""
+
+    paramset: Paramset
+    prehash: bool
+
+    @classmethod
+    def parse(cls, opts: list[str]):
+        """Parses options from the name of a harness function."""
+        if len(opts) != 3:
+            logger.error("Invalid number of options (expected 3)")
+            return None
+        try:
+            paramset = Paramset.from_name(opts[0], opts[1])
+        except ValueError as error:
+            logger.error("Invalid option: %s", str(error))
+            return None
+
+        if opts[2] not in {"prehash", "pure"}:
+            logger.error("Invalid variant %s (expected pure or prehash)", opts[1])
+            return None
+
+        prehash = opts[2] == "prehash"
+
+        return cls(paramset, prehash)
+
+
+# -------------------------------------------------------------------------------------
+# Python harness
+# -------------------------------------------------------------------------------------
+
+
+def test_harness_python(
+    harness: Path, compliance: bool, resilience: bool
 ) -> ResultsDict:
     """Tests a SLH-DSA Python wrapper.
 
     Args:
-        wrapper:
-            A path to the wrapper to test.
+        harness:
+            Path to the harness to test.
         compliance:
             Whether to use compliance test vectors.
         resilience:
             Whether to use resilience test vectors.
     """
-    logger.info("Running Python SLH-DSA wrapper: '%s'", str(wrapper.name))
-    sys.path.insert(0, str(wrapper.parent.absolute()))
-    already_imported = wrapper.stem in sys.modules.keys()
-    try:
-        slhdsa_wrapper = importlib.import_module(wrapper.stem)
-    except ModuleNotFoundError as error:
-        logger.error("Can't import wrapper: '%s'", str(error))
-        raise
-    if already_imported:
-        logger.debug("Reloading SLH-DSA wrapper: '%s'", wrapper.stem)
-        slhdsa_wrapper = importlib.reload(slhdsa_wrapper)
+    results = ResultsDict()
+    if (slhdsa_harness := _load_python_harness(harness)) is None:
+        return results
 
-    rd = ResultsDict()
-
-    for func, _ in inspect.getmembers(slhdsa_wrapper, inspect.isfunction):
-        # Initialise variables
-        prehash = False
-        deterministic = False
-        err = False
-
-        # A first match to parse the paramset and optional suffixes.
-        match func.split("_"):
-            case [
-                "CC",
-                "SLHDSA",
-                pset_hash,
-                pset_strength,
-                ("keygen" | "sign" | "verify" | "invariant"),
-                ("pure" | "prehash") as variant,
-                *optional,
-            ]:
-                try:
-                    paramset = Paramset.from_name(pset_hash, pset_strength)
-                except ValueError:
-                    logger.error(
-                        "Invalid parameter set %s_%s in function %s",
-                        pset_hash,
-                        pset_strength,
-                        func,
-                    )
-                    err = True
-
-                if variant == "prehash":
-                    prehash = True
-
-                # We use a catch-all for the options to manage both the case of no
-                # options given or one-or-more options given.
-                # That said, we expect at most one option, so log an error if there are
-                # more than one,
-                if len(optional) > 1:
-                    logger.error(
-                        "Too many options at the end of function name %s", func
-                    )
-                    err = True
-                else:
-                    # Iterating through a list works even if its empty, skipping a
-                    # length check to determine if it's safe to access or pop the item.
-                    for option in optional:
-                        if option == "det":
-                            deterministic = True
-                        else:
-                            logger.error(
-                                "Invalid option %s in function %s", option, func
-                            )
-                            err = True
-            case _:
-                logger.error("Invalid CC_SLHDSA function %s", func)
-                continue
-
-        if err:
-            logger.error("Failed to parse function name %s", func)
+    for name, func in inspect.getmembers(slhdsa_harness, inspect.isfunction):
+        if not name.startswith("CC_SLHDSA_"):
             continue
+        logger.info("Harness function found: %s", name)
 
-        wrapper_func = getattr(slhdsa_wrapper, func)
-
-        # Since we determined the value of the parameters, we can catch all options
-        # after the operation and just rely on our parsed parameters from above, except
-        # for invariant, since we need to determine the names of the functions to test.
-        # Technically, the `variant` is already set, but let's avoid obscure errors of
-        # unbound variables and parse it again.
-        match func.split("_"):
-            case [
-                "CC",
-                "SLHDSA",
-                pset_hash,
-                pset_strength,
-                "keygen",
-                ("pure" | "prehash"),
-            ]:
+        match name.split("_")[2:]:
+            case ["keygen", *opts]:
+                # TODO: add keygen test.
                 pass
-            case ["CC", "SLHDSA", pset_hash, pset_strength, "sign", *_]:
-                rd |= test_sign(wrapper_func, paramset, prehash, deterministic)
-            case ["CC", "SLHDSA", pset_hash, pset_strength, "verify", *_]:
-                rd |= test_verify(wrapper_func, paramset, prehash)
-            case [
-                "CC",
-                "SLHDSA",
-                pset_hash,
-                pset_strength,
-                "invariant",
-                ("pure" | "prehash") as variant,
-            ]:
-                # Find a suitable signing function, using the hedged variant first.
-                sign_name = f"CC_SLHDSA_{pset_hash}_{pset_strength}_sign_{variant}"
-                sign_func = getattr(slhdsa_wrapper, sign_name, None)
-                if sign_func is None:
-                    det_sign_name = (
-                        f"CC_SLHDSA_{pset_hash}_{pset_strength}_sign_{variant}_det"
-                    )
-                    sign_func = getattr(slhdsa_wrapper, det_sign_name, None)
-                    if sign_func is None:
-                        logger.error(
-                            "Could not find a suitable signing function for %s", func
-                        )
-                        logger.info("Hint: expected %s or %s", sign_name, det_sign_name)
-                        continue
-                # No deterministic version of verifying.
-                ver_name = f"CC_SLHDSA_{pset_hash}_{pset_strength}_verify_{variant}"
-                ver_func = getattr(slhdsa_wrapper, ver_name, None)
-                if ver_func is None:
-                    logger.error(
-                        "Could not find a suitable verifyin function for %s", func
-                    )
-                    logger.info("Hint: expected %s", ver_name)
-                    continue
-                rd |= test_invariant(sign_func, ver_func, paramset, prehash)
 
-    return rd
+            case ["sign", *opts]:
+                if (parsed := SignOpts.parse(opts)) is None:
+                    continue
+                results |= test_sign(
+                    func, parsed.paramset, parsed.prehash, parsed.deterministic
+                )
+
+            case ["verify", *opts]:
+                if (parsed := VerOpts.parse(opts)) is None:
+                    continue
+                results |= test_verify(func, parsed.paramset, parsed.prehash)
+
+            case ["invariant", *opts]:
+                if (parsed := VerOpts.parse(opts)) is None:
+                    continue
+                sign_name = "CC_SLHDSA_sign_{}_{}".format(
+                    parsed.paramset.harness_name,
+                    "prehash" if parsed.prehash else "pure",
+                )
+                ver_name = "CC_SLHDSA_ver_{}_{}".format(
+                    parsed.paramset.harness_name,
+                    "prehash" if parsed.prehash else "pure",
+                )
+
+                if (sign_func := getattr(slhdsa_harness, sign_name, None)) is None:
+                    det_sign_name = sign_name + "_det"
+                    if (
+                        sign_func := getattr(slhdsa_harness, det_sign_name, None)
+                    ) is None:
+                        logger.error(
+                            "Could not find a suitable signing function for %s (expected %s or %s)",  # noqa: E501
+                            name,
+                            sign_name,
+                            det_sign_name,
+                        )
+                        continue
+                if (ver_func := getattr(slhdsa_harness, ver_name, None)) is None:
+                    logger.error(
+                        "Could not find a suitable verifying function for %s (expected %s)",  # noqa: E501
+                        name,
+                        ver_name,
+                    )
+                    continue
+
+                results |= test_invariant(
+                    sign_func, ver_func, parsed.paramset, parsed.prehash
+                )
+
+    return results
 
 
 def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDict:
@@ -708,12 +745,14 @@ def test_wrapper(wrapper: Path, compliance: bool, resilience: bool) -> ResultsDi
 
     match wrapper.suffix:
         case ".py":
-            return test_wrapper_python(wrapper, compliance, resilience)
+            return test_harness_python(wrapper, compliance, resilience)
         case _:
             raise ValueError(f"No runner for '{wrapper.suffix}' wrappers")
 
 
-# --------------------------- Harness -------------------------------------------------
+# -------------------------------------------------------------------------------------
+# C harness
+# -------------------------------------------------------------------------------------
 
 
 def _test_harness_sign(
@@ -910,136 +949,70 @@ def test_lib(
     """
     logger.info("Found harness functions: %s", ", ".join(functions))
 
-    rd = ResultsDict()
+    results = ResultsDict()
 
-    for func in functions:
-        # Initialise variables
-        prehash = False
-        deterministic = False
-        err = False
-
-        # A first match to parse the paramset and optional suffixes.
-        match func.split("_"):
-            case [
-                "CC",
-                "SLHDSA",
-                pset_hash,
-                pset_strength,
-                ("keygen" | "sign" | "verify" | "invariant"),
-                ("pure" | "prehash") as variant,
-                *optional,
-            ]:
-                try:
-                    paramset = Paramset.from_name(pset_hash, pset_strength)
-                except ValueError:
-                    logger.error(
-                        "Invalid parameter set %s_%s in function %s",
-                        pset_hash,
-                        pset_strength,
-                        func,
-                    )
-                    err = True
-
-                if variant == "prehash":
-                    prehash = True
-
-                # We use a catch-all for the options to manage both the case of no
-                # options given or one-or-more options given.
-                # That said, we expect at most one option, so log an error if there are
-                # more than one,
-                if len(optional) > 1:
-                    logger.error(
-                        "Too many options at the end of function name %s", func
-                    )
-                    err = True
-                else:
-                    # Iterating through a list works even if its empty, skipping a
-                    # length check to determine if it's safe to access or pop the item.
-                    for option in optional:
-                        if option == "det":
-                            deterministic = True
-                        else:
-                            logger.error(
-                                "Invalid option %s in function %s", option, func
-                            )
-                            err = True
-            case _:
-                logger.error("Invalid CC_SLHDSA function %s", func)
-                continue
-
-        if err:
-            logger.error("Failed to parse function name %s", func)
+    for name in functions:
+        if not name.startswith("CC_SLHDSA_"):
             continue
+        logger.info("Harness function found: %s", name)
 
-        # Since we determined the value of the parameters, we can catch all options
-        # after the operation and just rely on our parsed parameters from above, except
-        # for invariant, since we need to determine the names of the functions to test.
-        # Technically, the `variant` is already set, but let's avoid obscure errors of
-        # unbound variables and parse it again.
-        match func.split("_"):
-            case [
-                "CC",
-                "SLHDSA",
-                pset_hash,
-                pset_strength,
-                "keygen",
-                ("pure" | "prehash"),
-            ]:
+        match name.split("_")[2:]:
+            case ["keygen", *opts]:
+                # TODO: add keygen test.
                 pass
-            case [
-                "CC",
-                "SLHDSA",
-                pset_hash,
-                pset_strength,
-                "sign",
-                ("pure" | "prehash"),
-                *_,
-            ]:
-                rd |= _test_harness_sign(
-                    ffi, lib, func, paramset, prehash, deterministic
+            case ["sign", *opts]:
+                if (parsed := SignOpts.parse(opts)) is None:
+                    continue
+                results |= _test_harness_sign(
+                    ffi,
+                    lib,
+                    name,
+                    parsed.paramset,
+                    parsed.prehash,
+                    parsed.deterministic,
                 )
-            case [
-                "CC",
-                "SLHDSA",
-                pset_hash,
-                pset_strength,
-                "verify",
-                ("pure" | "prehash"),
-            ]:
-                rd |= _test_harness_verify(ffi, lib, func, paramset, prehash)
-            case [
-                "CC",
-                "SLHDSA",
-                pset_hash,
-                pset_strength,
-                "invariant",
-                ("pure" | "prehash"),
-            ]:
-                # Find a suitable signing function, using the hedged variant first.
-                sign_name = f"CC_SLHDSA_{pset_hash}_{pset_strength}_sign_{variant}"
+
+            case ["verify", *opts]:
+                if (parsed := VerOpts.parse(opts)) is None:
+                    continue
+                results |= _test_harness_verify(
+                    ffi, lib, name, parsed.paramset, parsed.prehash
+                )
+
+            case ["invariant", *opts]:
+                if (parsed := VerOpts.parse(opts)) is None:
+                    continue
+                sign_name = "CC_SLHDSA_sign_{}_{}".format(
+                    parsed.paramset.harness_name,
+                    "prehash" if parsed.prehash else "pure",
+                )
+                ver_name = "CC_SLHDSA_verify_{}_{}".format(
+                    parsed.paramset.harness_name,
+                    "prehash" if parsed.prehash else "pure",
+                )
                 if sign_name not in functions:
-                    det_sign_name = (
-                        f"CC_SLHDSA_{pset_hash}_{pset_strength}_sign_{variant}_det"
-                    )
+                    det_sign_name = sign_name + "_det"
                     if det_sign_name not in functions:
                         logger.error(
-                            "Could not find a suitable signing function for %s", func
+                            "Could not find a suitable signing function for %s (expected %s or %s)",  # noqa: E501
+                            name,
+                            sign_name,
+                            det_sign_name,
                         )
                         logger.info("Hint: expected %s or %s", sign_name, det_sign_name)
                         continue
                     else:
                         sign_name = det_sign_name
-                # No deterministic version of verifying.
-                ver_name = f"CC_SLHDSA_{pset_hash}_{pset_strength}_verify_{variant}"
                 if ver_name not in functions:
                     logger.error(
-                        "Could not find a suitable verifying function for %s", func
+                        "Could not find a suitable verifying function for %s (expected %s)",  # noqa: E501
+                        name,
+                        ver_name,
                     )
-                    logger.info("Hint: expected %s", ver_name)
                     continue
 
-                rd |= _test_harness_invariant(
-                    ffi, lib, sign_name, ver_name, paramset, prehash
+                results |= _test_harness_invariant(
+                    ffi, lib, sign_name, ver_name, parsed.paramset, parsed.prehash
                 )
 
-    return rd
+    return results
