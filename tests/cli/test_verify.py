@@ -399,7 +399,8 @@ class TestSha:
         for vectors in all_vectors:
             for test in vectors.tests:
                 if failed > 0:
-                    md = SHA._sha(algo, random.randbytes(256)).hex()
+                    md = random.randbytes(algo.digest_size // 8).hex()
+                    failed -= 1
                 else:
                     md = test.md.hex()
                 data.append(f"{test.msg.hex()}/{md}")
