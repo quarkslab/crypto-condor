@@ -14,6 +14,8 @@ TestU01 constants
 .. autodata:: TESTU01_REC
 """
 
+import hashlib
+
 from strenum import StrEnum
 
 # -------------------------------------------------------------------------------------
@@ -155,3 +157,19 @@ class CommonHash(StrEnum):
                 f"{name} ({newname}) is not supported by the current primitive"
             )
         return cls(newname)
+
+    def digest(self, data: bytes) -> bytes:
+        """Hashes ``data`` with hashlib."""
+        match str(self):
+            case "SHA-1" | "SHA-224" | "SHA-256" | "SHA-384" | "SHA-512":
+                h = getattr(hashlib, self.harness_name)
+                return h(data).digest()
+            case "SHA3-224" | "SHA3-256" | "SHA3-384" | "SHA3-512":
+                h = getattr(hashlib, self.harness_name.replace("sha3", "sha3_"))
+                return h(data).digest()
+            case "SHA-512/224":
+                return hashlib.new("sha512_224", data).digest()
+            case "SHA-512/256":
+                return hashlib.new("sha512_256", data).digest()
+            case _:
+                raise ValueError()  # To appease mypy.

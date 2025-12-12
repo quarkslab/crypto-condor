@@ -11,17 +11,6 @@ from typing import Protocol
 import attrs
 import cffi
 import strenum
-from Crypto.Hash import (
-    SHA1,
-    SHA3_224,
-    SHA3_256,
-    SHA3_384,
-    SHA3_512,
-    SHA224,
-    SHA256,
-    SHA384,
-    SHA512,
-)
 from rich.progress import track
 
 from crypto_condor.primitives.common import (
@@ -56,7 +45,9 @@ def __dir__():  # pragma: no cover
     ]
 
 
-# --------------------------- Enums ---------------------------------------------------
+# -------------------------------------------------------------------------------------
+# Enums
+# -------------------------------------------------------------------------------------
 
 
 class Wrapper(strenum.StrEnum):
@@ -65,7 +56,9 @@ class Wrapper(strenum.StrEnum):
     PYTHON = "Python"
 
 
-# --------------------------- Protocols -----------------------------------------------
+# -------------------------------------------------------------------------------------
+# Protocols
+# -------------------------------------------------------------------------------------
 
 
 class HashFunction(Protocol):
@@ -86,7 +79,9 @@ class HashFunction(Protocol):
         ...  # pragma: no cover (protocol)
 
 
-# --------------------------- Dataclasses ---------------------------------------------
+# -------------------------------------------------------------------------------------
+# Dataclasses
+# -------------------------------------------------------------------------------------
 
 
 @attrs.define
@@ -157,47 +152,9 @@ reference md = {self.ref_md.hex()}
 """
 
 
-# --------------------------- Internal ------------------------------------------------
-
-
-def _sha(algorithm: Hash, msg: bytes) -> bytes:
-    """Hashes a message.
-
-    Args:
-        algorithm: The hash algorithm to use.
-        msg: The message to hash.
-
-    Returns:
-        The digest.
-
-    Notes:
-        For internal use, uses :mod:`Crypto.Hash`.
-    """
-    match str(algorithm):
-        case "SHA-1":
-            return SHA1.new(msg).digest()
-        case "SHA-224":
-            return SHA224.new(msg).digest()
-        case "SHA-256":
-            return SHA256.new(msg).digest()
-        case "SHA-384":
-            return SHA384.new(msg).digest()
-        case "SHA-512":
-            return SHA512.new(msg).digest()
-        case "SHA-512/224":
-            return SHA512.new(msg, "224").digest()
-        case "SHA-512/256":
-            return SHA512.new(msg, "256").digest()
-        case "SHA3-224":
-            return SHA3_224.new(msg).digest()
-        case "SHA3-256":
-            return SHA3_256.new(msg).digest()
-        case "SHA3-384":
-            return SHA3_384.new(msg).digest()
-        case "SHA3-512":
-            return SHA3_512.new(msg).digest()
-        case _:  # pragma: no cover (mypy)
-            raise ValueError("Unknown hash algorithm %s" % str(algorithm))
+# -------------------------------------------------------------------------------------
+# Internal functions
+# -------------------------------------------------------------------------------------
 
 
 def _load_vectors(algo: Hash) -> list[ShaVectors]:
@@ -231,7 +188,9 @@ def _load_vectors(algo: Hash) -> list[ShaVectors]:
     return vectors
 
 
-# --------------------------- Test functions ------------------------------------------
+# -------------------------------------------------------------------------------------
+# Test functions
+# -------------------------------------------------------------------------------------
 
 
 def test(
@@ -604,7 +563,7 @@ def test_output_digest(filename: str, algorithm: Hash) -> ResultsDict:
         >>> with open(filename, "w") as file:
         ...     for i in range(20):
         ...         message = random.randbytes(64)
-        ...         digest = SHA._sha(algorithm, message)
+        ...         digest = algorithm.digest(message)
         ...         line = f"{message.hex()}/{digest.hex()}\n"
         ...         _ = file.write(line)
 
@@ -633,7 +592,7 @@ def test_output_digest(filename: str, algorithm: Hash) -> ResultsDict:
             case _ as args:
                 info.fail(f"Failed to parse line {tid}, got {len(args)} arguments")
                 continue
-        ref_md = _sha(algorithm, msg)
+        ref_md = algorithm.digest(msg)
         data = VerifyData(msg, md, ref_md)
         if md == ref_md:
             info.ok(data)
@@ -644,7 +603,9 @@ def test_output_digest(filename: str, algorithm: Hash) -> ResultsDict:
     return res
 
 
-# --------------------------- Lib hook functions --------------------------------------
+# -------------------------------------------------------------------------------------
+# C harness
+# -------------------------------------------------------------------------------------
 
 
 def _test_lib_digest(
