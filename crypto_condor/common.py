@@ -51,7 +51,7 @@ class CommonHash(StrEnum):
     ...     SHA3_256 = "SHA3-256"
     ...     SHA3_384 = "SHA3-384"
     ...     SHA3_512 = "SHA3-512"
-    >>> assert Hash.from_name("sha256") == Hash.SHA_256
+    >>> assert Hash.from_name("sha3256") == Hash.SHA3_256
 
     Methods are valid for SHA-1 and the SHA-2 and SHA-3 families:
 
