@@ -244,8 +244,16 @@ def parse_wycheproof_sigver(path: Path) -> None:
         data = json.load(file)
 
     # Use the parameters from the same group, as all groups in a file use the same set.
-    curve = Curve.from_name(data["testGroups"][0]["key"]["curve"])
-    algo = Hash.from_name(data["testGroups"][0]["sha"])
+    _curve: str = data["testGroups"][0]["key"]["curve"]
+    _hash: str = data["testGroups"][0]["sha"]
+
+    # Remove capitalisation from brainpool curves.
+    _curve = _curve.replace("lP", "lp")
+    curve = Curve.from_name(_curve)
+
+    # Modify name to match harness name.
+    _hash = _hash.replace("SHA-", "sha").replace("SHA3-", "sha3")
+    algo = Hash.from_name(_hash)
 
     vectors = EcdsaSigVerVectors(
         source="Wycheproof",

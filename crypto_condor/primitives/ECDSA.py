@@ -1830,8 +1830,8 @@ def test_harness_python(
             case ["signthenver", *opts]:
                 if (parsed := SignVerOpts.parse(opts)) is None:
                     continue
-                sign_name = f"CC_ECDSA_sign_{str(parsed.curve)}_{str(parsed.algo)}_{str(parsed.skenc)}"  # noqa: E501
-                ver_name = f"CC_ECDSA_verify_{str(parsed.curve)}_{str(parsed.algo)}_{str(parsed.pkenc)}"  # noqa: E501
+                sign_name = f"CC_ECDSA_sign_{parsed.curve.harness_name}_{parsed.algo.harness_name}_{str(parsed.skenc)}"  # noqa: E501
+                ver_name = f"CC_ECDSA_verify_{parsed.curve.harness_name}_{parsed.algo.harness_name}_{str(parsed.pkenc)}"  # noqa: E501
                 if (sign_func := getattr(ecdsa_harness, sign_name, None)) is None:
                     logger.error("Did not find %s to test sign-then-verify", sign_name)
                     continue

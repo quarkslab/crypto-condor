@@ -6,6 +6,12 @@ Common hash function
 .. autoenum:: CommonHash
     :members:
 
+Common elliptic curves
+----------------------
+
+.. autoenum:: CommonCurve
+    :members:
+
 TestU01 constants
 -----------------
 
@@ -91,7 +97,7 @@ class CommonHash(StrEnum):
         SHA3_512 = "sha3512"
 
 
-    :meth:`from_name` will parsed any valid hash function, but will raise `ValueError`
+    :meth:`from_name` will parse any valid hash function, but will raise `ValueError`
     if the hash function is not in the derived enum.
     """
 
@@ -143,7 +149,7 @@ class CommonHash(StrEnum):
         match name:
             case "sha1" | "sha224" | "sha256" | "sha384" | "sha512":
                 newname = name.replace("sha", "SHA-")
-            case "sha3256" | "sha3384" | "sha3512":
+            case "sha3224" | "sha3256" | "sha3384" | "sha3512":
                 newname = name.replace("sha3", "SHA3-")
             case "sha512224":
                 newname = "SHA-512/224"
@@ -173,3 +179,119 @@ class CommonHash(StrEnum):
                 return hashlib.new("sha512_256", data).digest()
             case _:
                 raise ValueError()  # To appease mypy.
+
+
+# -------------------------------------------------------------------------------------
+# CommonCurve
+# -------------------------------------------------------------------------------------
+
+
+class CommonCurve(StrEnum):
+    """Available elliptic curves.
+
+    CommonCurve, like :enum:`CommonHash`, only defines methods and not enum members.
+    This allows other classes to inherit the methods while defining their own set of
+    supported curves.
+
+    For example, to create an enum that only allows NIST P-curves:
+
+    >>> from crypto_condor.common import CommonCurve
+    >>> class Curve(CommonCurve):
+    ...     P224 = "P-224"
+    ...     P256 = "P-256"
+    ...     P384 = "P-384"
+    ...     P521 = "P-521"
+    >>> assert Curve.from_name("p256") == Curve.P256
+
+    The following curves are supported:
+
+    .. code:: Python
+
+        P224 = "P-224"
+        P256 = "P-256"
+        P384 = "P-384"
+        P521 = "P-521"
+        B283 = "B-283"
+        B409 = "B-409"
+        B571 = "B-571"
+        SECP256K1 = "secp256k1"
+        BRAINPOOLP256R1 = "brainpoolP256r1"
+        BRAINPOOLP384R1 = "brainpoolP384r1"
+        BRAINPOOLP512R1 = "brainpoolP512r1"
+
+    Harnesses use compact names, with no capitalisation or symbols:
+
+    .. code:: Python
+
+        P224 = "p224"
+        P256 = "p256"
+        P384 = "p384"
+        P521 = "p521"
+        B283 = "b283"
+        B409 = "b409"
+        B571 = "b571"
+        SECP256K1 = "secp256k1"
+        BRAINPOOLP256R1 = "brainpoolp256r1"
+        BRAINPOOLP384R1 = "brainpoolp384r1"
+        BRAINPOOLP512R1 = "brainpoolp512r1"
+
+    :meth:`from_name` will parse any valid curve but will raise `ValueError` if the
+    curve is not in the derived enum.
+    """
+
+    def __init__(self, value):
+        """Override __init__ to add custom properties."""
+        self._value_ = value
+        match value:
+            case "P-224" | "P-256" | "P-384" | "P-521":
+                self._key_size_ = int(value[2:])
+            case "secp256k1":
+                self._key_size_ = 256
+            case "brainpoolP256r1" | "brainpoolP384r1" | "brainpoolP512r1":
+                self._key_size_ = int(value[10:13])
+            case "B-283" | "B-409" | "B-571":
+                self._key_size_ = int(value[2:])
+            case _:
+                raise ValueError(f"Unexpected enum value {value}")
+        self._harness_name_ = value.lower().replace("-", "")
+
+    @property
+    def key_size(self) -> int:
+        """Returns the size of the keys in bits."""
+        return self._key_size_
+
+    @property
+    def harness_name(self) -> str:
+        """Returns the name of the hash function as used in harnesses."""
+        return self._harness_name_
+
+    @classmethod
+    def from_name(cls, name: str):
+        """Returns a new instance from a harness name.
+
+        See the description of :enum:`CommonCurve` for a list of valid names.
+
+        Raises:
+            ValueError:
+                If the name is invalid or if the curve is not a member of the current
+                enum.
+        """
+        match name:
+            case "p224" | "p256" | "p384" | "p521":
+                newname = name.replace("p", "P-")
+            case "secp224r1" | "secp256r1" | "secp384r1" | "secp521r1":
+                # Undocumented valid name, mainly for parsing test vectors.
+                newname = "P-" + name.removeprefix("secp").removesuffix("r1")
+            case "b283" | "b409" | "b571":
+                newname = name.replace("b", "B-")
+            case "brainpoolp256r1" | "brainpoolp384r1" | "brainpoolp512r1":
+                newname = name.replace("lp", "lP")
+            case "secp256k1":
+                newname = name
+            case _:
+                raise ValueError(f"Invalid curve name: {name}")
+        if newname not in cls:
+            raise ValueError(
+                f"{name} ({newname}) is not supported by the current primitive"
+            )
+        return cls(newname)

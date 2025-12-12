@@ -19,28 +19,28 @@ int generic_verify(const char *format, const char *digest, const uint8_t *pk,
 
 /* Test signing with DER keys */
 
-int CC_ECDSA_sign_P256_SHA256_DER(uint8_t *sig, size_t *sig_size,
+int CC_ECDSA_sign_p256_sha256_DER(uint8_t *sig, size_t *sig_size,
                                   const uint8_t *sk, const size_t sk_size,
                                   const uint8_t *msg, const size_t msg_size) {
   return generic_sign("DER", "SHA-256", sig, sig_size, sk, sk_size, msg,
                       msg_size);
 }
 
-int CC_ECDSA_sign_P384_SHA384_DER(uint8_t *sig, size_t *sig_size,
+int CC_ECDSA_sign_p384_sha384_DER(uint8_t *sig, size_t *sig_size,
                                   const uint8_t *sk, const size_t sk_size,
                                   const uint8_t *msg, const size_t msg_size) {
   return generic_sign("DER", "SHA-384", sig, sig_size, sk, sk_size, msg,
                       msg_size);
 }
 
-int CC_ECDSA_sign_P521_SHA512_DER(uint8_t *sig, size_t *sig_size,
+int CC_ECDSA_sign_p521_sha512_DER(uint8_t *sig, size_t *sig_size,
                                   const uint8_t *sk, const size_t sk_size,
                                   const uint8_t *msg, const size_t msg_size) {
   return generic_sign("DER", "SHA-512", sig, sig_size, sk, sk_size, msg,
                       msg_size);
 }
 
-int CC_ECDSA_sign_P256_SHA512224_DER(uint8_t *sig, size_t *sig_size,
+int CC_ECDSA_sign_p256_sha512224_DER(uint8_t *sig, size_t *sig_size,
                                      const uint8_t *sk, const size_t sk_size,
                                      const uint8_t *msg,
                                      const size_t msg_size) {
@@ -48,7 +48,7 @@ int CC_ECDSA_sign_P256_SHA512224_DER(uint8_t *sig, size_t *sig_size,
                       msg_size);
 }
 
-int CC_ECDSA_sign_P256_SHA512256_DER(uint8_t *sig, size_t *sig_size,
+int CC_ECDSA_sign_p256_sha512256_DER(uint8_t *sig, size_t *sig_size,
                                      const uint8_t *sk, const size_t sk_size,
                                      const uint8_t *msg,
                                      const size_t msg_size) {
@@ -58,14 +58,14 @@ int CC_ECDSA_sign_P256_SHA512256_DER(uint8_t *sig, size_t *sig_size,
 
 /* Test signing with PEM keys */
 
-int CC_ECDSA_sign_P256_SHA256_PEM(uint8_t *sig, size_t *sig_size,
+int CC_ECDSA_sign_p256_sha256_PEM(uint8_t *sig, size_t *sig_size,
                                   const uint8_t *sk, const size_t sk_size,
                                   const uint8_t *msg, const size_t msg_size) {
   return generic_sign("PEM", "SHA-256", sig, sig_size, sk, sk_size, msg,
                       msg_size);
 }
 
-int CC_ECDSA_sign_P521_SHA512_PEM(uint8_t *sig, size_t *sig_size,
+int CC_ECDSA_sign_p521_sha512_PEM(uint8_t *sig, size_t *sig_size,
                                   const uint8_t *sk, const size_t sk_size,
                                   const uint8_t *msg, const size_t msg_size) {
   return generic_sign("PEM", "SHA-512", sig, sig_size, sk, sk_size, msg,
@@ -74,28 +74,28 @@ int CC_ECDSA_sign_P521_SHA512_PEM(uint8_t *sig, size_t *sig_size,
 
 /* Test verifying with DER keys */
 
-int CC_ECDSA_verify_P256_SHA256_DER(const uint8_t *pk, const size_t pk_size,
+int CC_ECDSA_verify_p256_sha256_DER(const uint8_t *pk, const size_t pk_size,
                                     const uint8_t *msg, const size_t msg_size,
                                     const uint8_t *sig, const size_t sig_size) {
   return generic_verify("DER", "SHA-256", pk, pk_size, msg, msg_size, sig,
                         sig_size);
 }
 
-int CC_ECDSA_verify_P384_SHA384_DER(const uint8_t *pk, const size_t pk_size,
+int CC_ECDSA_verify_p384_sha384_DER(const uint8_t *pk, const size_t pk_size,
                                     const uint8_t *msg, const size_t msg_size,
                                     const uint8_t *sig, const size_t sig_size) {
   return generic_verify("DER", "SHA-384", pk, pk_size, msg, msg_size, sig,
                         sig_size);
 }
 
-int CC_ECDSA_verify_P521_SHA512_DER(const uint8_t *pk, const size_t pk_size,
+int CC_ECDSA_verify_p521_sha512_DER(const uint8_t *pk, const size_t pk_size,
                                     const uint8_t *msg, const size_t msg_size,
                                     const uint8_t *sig, const size_t sig_size) {
   return generic_verify("DER", "SHA-512", pk, pk_size, msg, msg_size, sig,
                         sig_size);
 }
 
-int CC_ECDSA_verify_P256_SHA512224_DER(const uint8_t *pk, const size_t pk_size,
+int CC_ECDSA_verify_p256_sha512224_DER(const uint8_t *pk, const size_t pk_size,
                                        const uint8_t *msg,
                                        const size_t msg_size,
                                        const uint8_t *sig,
@@ -104,7 +104,7 @@ int CC_ECDSA_verify_P256_SHA512224_DER(const uint8_t *pk, const size_t pk_size,
                         sig_size);
 }
 
-int CC_ECDSA_verify_P256_SHA512256_DER(const uint8_t *pk, const size_t pk_size,
+int CC_ECDSA_verify_p256_sha512256_DER(const uint8_t *pk, const size_t pk_size,
                                        const uint8_t *msg,
                                        const size_t msg_size,
                                        const uint8_t *sig,
@@ -115,14 +115,14 @@ int CC_ECDSA_verify_P256_SHA512256_DER(const uint8_t *pk, const size_t pk_size,
 
 /* Test verifying with PEM keys */
 
-int CC_ECDSA_verify_P256_SHA256_PEM(const uint8_t *pk, const size_t pk_size,
+int CC_ECDSA_verify_p256_sha256_PEM(const uint8_t *pk, const size_t pk_size,
                                     const uint8_t *msg, const size_t msg_size,
                                     const uint8_t *sig, const size_t sig_size) {
   return generic_verify("PEM", "SHA-256", pk, pk_size, msg, msg_size, sig,
                         sig_size);
 }
 
-int CC_ECDSA_verify_P521_SHA512_PEM(const uint8_t *pk, const size_t pk_size,
+int CC_ECDSA_verify_p521_sha512_PEM(const uint8_t *pk, const size_t pk_size,
                                     const uint8_t *msg, const size_t msg_size,
                                     const uint8_t *sig, const size_t sig_size) {
   return generic_verify("PEM", "SHA-512", pk, pk_size, msg, msg_size, sig,

@@ -10,7 +10,7 @@ For more options, run:
 """
 
 
-def CC_ECDSA_sign_P256_SHA256_DER(sk: bytes, msg: bytes) -> bytes:
+def CC_ECDSA_sign_p256_sha256_DER(sk: bytes, msg: bytes) -> bytes:
     """Signs a message with ECDSA.
 
     This example will use the P-256 curve, SHA-256 hash function, and DER-encoded keys.
@@ -27,7 +27,7 @@ def CC_ECDSA_sign_P256_SHA256_DER(sk: bytes, msg: bytes) -> bytes:
     raise NotImplementedError
 
 
-def CC_ECDSA_verify_P256_SHA256_DER(pk: bytes, msg: bytes, sig: bytes) -> bool:
+def CC_ECDSA_verify_p256_sha256_DER(pk: bytes, msg: bytes, sig: bytes) -> bool:
     """Verifies an ECDSA signature.
 
     This example will use the P-256 curve, SHA-256 hash function, and DER-encoded keys.

@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
 
-def CC_ECDSA_sign_P256_SHA256_DER(sk: bytes, msg: bytes) -> bytes:
+def CC_ECDSA_sign_p256_sha256_DER(sk: bytes, msg: bytes) -> bytes:
     """Signature example.
 
     Signing over P-256, using SHA-256, and DER-encoded keys.
@@ -19,7 +19,7 @@ def CC_ECDSA_sign_P256_SHA256_DER(sk: bytes, msg: bytes) -> bytes:
     return key.sign(msg, ec.ECDSA(hashes.SHA256()))  # type: ignore
 
 
-def CC_ECDSA_sign_P521_SHA256_DER(sk: bytes, msg: bytes) -> bytes:
+def CC_ECDSA_sign_p521_sha256_DER(sk: bytes, msg: bytes) -> bytes:
     """Signature example.
 
     Same as above, using P-521. Note that DER-encoded keys contain information on the
@@ -29,7 +29,7 @@ def CC_ECDSA_sign_P521_SHA256_DER(sk: bytes, msg: bytes) -> bytes:
     return key.sign(msg, ec.ECDSA(hashes.SHA256()))  # type: ignore
 
 
-def CC_ECDSA_sign_P521_SHA512256_DER(sk: bytes, msg: bytes) -> bytes:
+def CC_ECDSA_sign_p521_sha512256_DER(sk: bytes, msg: bytes) -> bytes:
     """Signature example.
 
     This also works for truncated hashes like SHA-512/256. Since slashes aren't accepted
@@ -39,7 +39,7 @@ def CC_ECDSA_sign_P521_SHA512256_DER(sk: bytes, msg: bytes) -> bytes:
     return key.sign(msg, ec.ECDSA(hashes.SHA512_256()))  # type: ignore
 
 
-def CC_ECDSA_sign_P521_SHA512256_INT(sk: bytes, msg: bytes) -> bytes:
+def CC_ECDSA_sign_p521_sha512256_INT(sk: bytes, msg: bytes) -> bytes:
     """Signature example.
 
     We can also use other private key encodings. In this case INT corresponds to the
@@ -50,7 +50,7 @@ def CC_ECDSA_sign_P521_SHA512256_INT(sk: bytes, msg: bytes) -> bytes:
     return key.sign(msg, ec.ECDSA(hashes.SHA512_256()))  # type: ignore
 
 
-def CC_ECDSA_sign_P521_SHA512256_PEM(sk: bytes, msg: bytes) -> bytes:
+def CC_ECDSA_sign_p521_sha512256_PEM(sk: bytes, msg: bytes) -> bytes:
     """Signature example.
 
     Finally, we can use PEM keys too.
@@ -59,7 +59,7 @@ def CC_ECDSA_sign_P521_SHA512256_PEM(sk: bytes, msg: bytes) -> bytes:
     return key.sign(msg, ec.ECDSA(hashes.SHA512_256()))  # type: ignore
 
 
-def CC_ECDSA_verify_P256_SHA256_DER(pk: bytes, msg: bytes, sig: bytes) -> bool:
+def CC_ECDSA_verify_p256_sha256_DER(pk: bytes, msg: bytes, sig: bytes) -> bool:
     """Verification example.
 
     The same naming principle applies to signature verification.
@@ -82,7 +82,7 @@ def CC_ECDSA_verify_P256_SHA256_DER(pk: bytes, msg: bytes, sig: bytes) -> bool:
         return False
 
 
-def CC_ECDSA_signthenver_P256_SHA256_DER() -> bool:
+def CC_ECDSA_signthenver_p256_sha256_DER() -> bool:
     """Signing then verifying example.
 
     This is a simple function to tell crypto-condor to test signing and verifying
