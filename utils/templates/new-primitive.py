@@ -1,6 +1,6 @@
 """Module for PLACEHOLDER."""
 
-from importlib import resources
+import importlib.resources
 import inspect
 import json
 import logging
@@ -71,7 +71,7 @@ def _load_vectors(paramset: Paramset, compliance: bool, resilience: bool) -> lis
     Returns:
         A list of vectors.
     """
-    vectors_dir = resources.files("crypto_condor") / "vectors/_LCPLACEHOLDER"
+    vectors_dir = importlib.resources.files("crypto_condor") / "vectors/_LCPLACEHOLDER"
     vectors = list()
 
     sources_file = vectors_dir / "LCPLACEHOLDER.json"
