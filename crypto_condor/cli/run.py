@@ -4,7 +4,6 @@ import logging
 from pathlib import Path
 from typing import Annotated, Optional
 
-import strenum
 import typer
 
 from crypto_condor.primitives import (
@@ -31,22 +30,6 @@ app = typer.Typer(
     no_args_is_help=True,
     context_settings={"max_content_width": console.width},
 )
-
-
-# --------------------------- Enums ---------------------------------------------------
-
-
-class AesStrKeyLength(strenum.StrEnum):
-    """Workaround for using IntEnum with Typer.
-
-    Typer/Click don't handle ints as choices from an enum, so mimic the real enum with
-    str values and convert back when calling the function.
-    """
-
-    ALL = "0"
-    AES128 = "128"
-    AES192 = "192"
-    AES256 = "256"
 
 
 # --------------------------- Common arguments ----------------------------------------
