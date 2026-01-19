@@ -61,7 +61,7 @@ Its signature must be:
 .. c:function:: int MLKEM_decaps(\
     uint8_t *ss, size_t sslen,\
     const uint8_t *ct, size_t ctlen,\
-    const uint8_t *pk, size_t pklen)
+    const uint8_t *sk, size_t sklen)
 
     :param ss: **[Out]** A buffer to store the decapsulated shared secret.
     :param sslen: **[In]** The size of the shared secret buffer.
