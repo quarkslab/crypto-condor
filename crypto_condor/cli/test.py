@@ -28,7 +28,9 @@ app.add_typer(run.app, name="wrapper")
 app.add_typer(verify.app, name="output")
 
 
-def _list_functions(path: Path, included: list[str] | None, excluded: list[str] | None):
+def _list_functions_lib(
+    path: Path, included: list[str] | None, excluded: list[str] | None
+):
     if included is None:
         included = []
     if excluded is None:
@@ -70,6 +72,43 @@ def _list_functions(path: Path, included: list[str] | None, excluded: list[str] 
         for func in sorted(diff):
             table.add_row(func)
         console.print(table)
+
+
+def _list_functions(rootdir: Path):
+    files = harness.list_files(rootdir)
+    func_dict: dict[str, str] = dict()
+
+    for file in files:
+        match file.suffix:
+            case ".py":
+                func_dict[str(file)] = harness.list_functions_python(file)
+            case ".so" | ".dylib":
+                func_dict[str(file)] = harness.list_functions_lib(file)
+
+    table = Table(box=box.SIMPLE)
+    table.add_column("Files")
+    table.add_column("Functions")
+
+    for name, functions in func_dict.items():
+        first = True
+        for func in functions:
+            if first:
+                table.add_row(name, func)
+                first = False
+            else:
+                table.add_row("", func)
+
+    console.print(table)
+
+
+def _list_files(rootdir: Path):
+    files = harness.list_files(rootdir)
+
+    table = Table(box=box.SIMPLE)
+    table.add_column("cctest files")
+    for file in files:
+        table.add_row(str(file))
+    console.print(table)
 
 
 _hook_help = """Test a shared library harness.
@@ -145,7 +184,7 @@ def test_harness(
             If True, lists all functions in the harness and exits.
     """
     if list_functions:
-        _list_functions(Path(lib), included, excluded)
+        _list_functions_lib(Path(lib), included, excluded)
         raise typer.Exit(0)
 
     if included and excluded:
@@ -165,3 +204,64 @@ def test_harness(
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
+
+
+@app.command("dir", help="FIXME", no_args_is_help=True)
+def test_dir(
+    root_dir: Annotated[
+        Path,
+        typer.Argument(
+            help="The directory to search for CC test files", show_default=False
+        ),
+    ],
+    results_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Directory to save test results, current directory by default",
+            file_okay=False,
+        ),
+    ] = None,
+    compliance: Annotated[bool, _compliance] = True,
+    resilience: Annotated[bool, _resilience] = True,
+    list_files: Annotated[
+        bool, typer.Option("--files", help="List all the files discovered and exit.")
+    ] = False,
+    list_functions: Annotated[
+        bool,
+        typer.Option(
+            "--functions",
+            help=(
+                "List harness functions in all files discovered and exit."
+                " Names are not fully validated,"
+                " it only checks that the primitive is supported."
+            ),
+        ),
+    ] = False,
+):
+    """Discovers and tests cctest harnesses.
+
+    Recursively looks for files whose name starts with ``cctest_`` and end in ``.py``,
+    ``.so``, or ``.dylib``, then tests those harnesses.
+    """
+    if list_files:
+        _list_files(root_dir)
+        raise typer.Exit(0)
+    if list_functions:
+        _list_functions(root_dir)
+        raise typer.Exit(0)
+
+    if results_dir is None:
+        logger.info("Results will be saved in the current directory")
+        results_dir = Path.cwd()
+
+    list_results = harness.test_dir(root_dir, compliance, resilience)
+
+    exit_status = 0
+    for file, results in list_results:
+        if not results.check():
+            exit_status = 1
+        console.process_results(
+            results, str(results_dir / f"{file.stem}.txt"), debug_data=False
+        )
+
+    raise typer.Exit(exit_status)

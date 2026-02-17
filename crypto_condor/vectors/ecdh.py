@@ -3,6 +3,7 @@
 import strenum
 
 
+# TODO: use CommonCurve.
 class Curve(strenum.StrEnum):
     """Elliptic curves supported for ECDH."""
 

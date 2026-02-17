@@ -6,6 +6,7 @@ API**. To use this mode, this module provides the :func:`test_lib` function.
 """
 
 import importlib
+import inspect
 import logging
 from collections import defaultdict
 from pathlib import Path
@@ -15,12 +16,15 @@ import _cffi_backend
 import cffi
 import lief
 
-from crypto_condor.primitives.common import ResultsDict
+from crypto_condor.constants import SUPPORTED_PRIMITIVES
+from crypto_condor.primitives.common import ResultsDict, _load_python_harness
 
 logger = logging.getLogger(__name__)
 
 
-# --------------------------- Functions -----------------------------------------------
+# -------------------------------------------------------------------------------------
+# Utils
+# -------------------------------------------------------------------------------------
 
 
 def list_functions(
@@ -74,6 +78,81 @@ def list_functions(
             functions["other"].append(name)
 
     return functions
+
+
+def list_functions_lib(harness: Path) -> list[str]:
+    """Lists all functions from a shared lib that look like harness functions.
+
+    It lists all functions starting with ``CC_`` and a valid primitive. Uses :mod:`lief`
+    to parse the symbols.
+
+    Args:
+        harness:
+            A path to a shared lib file.
+
+    Returns:
+        A list of function names.
+    """
+    functions = []
+
+    lief_lib = lief.parse(harness.read_bytes())
+    if lief_lib is None:
+        return functions
+
+    for name in set(
+        [
+            func.name
+            for func in lief_lib.exported_functions  # type: ignore
+            if isinstance(func.name, str)
+        ]
+    ):
+        try:
+            prefix, primitive, *_ = name.split("_")
+        except ValueError:
+            continue
+        if prefix == "CC" and primitive in SUPPORTED_PRIMITIVES:
+            functions.append(name)
+
+    return functions
+
+
+def list_functions_python(harness: Path) -> list[str]:
+    """Lists all functions from a Python file that look like harness functions.
+
+    It lists all functions starting with ``CC_`` and a valid primitive. The current
+    strategy is to load the harness as it would be for testing.
+
+    Args:
+        harness:
+            A path to a Python file.
+
+    Returns:
+        A list of function names.
+    """
+    functions = []
+
+    if (loaded_harness := _load_python_harness(harness)) is None:
+        return functions
+
+    for name, _ in inspect.getmembers(loaded_harness, inspect.isfunction):
+        try:
+            prefix, primitive, *_ = name.split("_")
+        except ValueError:
+            continue
+        if prefix == "CC" and primitive in SUPPORTED_PRIMITIVES:
+            functions.append(name)
+
+    return functions
+
+
+def list_files(rootdir: Path) -> list[Path]:
+    """Recursively finds all ``cctest`` files in a directory."""
+    return list(rootdir.glob("**/cctest_*.py")) + list(rootdir.glob("**/cctest_*.so"))
+
+
+# -------------------------------------------------------------------------------------
+# C harness
+# -------------------------------------------------------------------------------------
 
 
 def test_harness(
@@ -174,3 +253,51 @@ def test_harness(
             logging.error("Error running CC_%s functions: %s", prim_name, str(error))
 
     return results
+
+
+# -------------------------------------------------------------------------------------
+# Python harness
+# -------------------------------------------------------------------------------------
+
+
+def test_python_harness(file: Path, compliance: bool, resilience: bool) -> ResultsDict:
+    """FIXME."""
+    results = ResultsDict()
+    harness = _load_python_harness(file)
+
+    primitives: set[str] = set()
+
+    for name, _ in inspect.getmembers(harness, inspect.isfunction):
+        match name.split("_"):
+            case ["CC", primitive, *_]:
+                primitives.add(primitive)
+
+    for primitive in primitives:
+        try:
+            module = importlib.import_module(f"crypto_condor.primitives.{primitive}")
+            results |= module.test_harness_python(file, compliance, resilience)
+        except ModuleNotFoundError:
+            logger.error(f"No primitive {primitive}")
+        except Exception:
+            logger.exception("Caught exception")
+
+    return results
+
+
+# -------------------------------------------------------------------------------------
+# Auto-discovery
+# -------------------------------------------------------------------------------------
+
+
+def test_dir(
+    rootdir: Path, compliance: bool, resilience: bool
+) -> list[tuple[Path, ResultsDict]]:
+    list_results = list()
+    files = list_files(rootdir)
+    for file in files:
+        if file.suffix == ".py":
+            results = test_python_harness(file, compliance, resilience)
+        elif file.suffix == ".so":
+            results = test_harness(file, compliance=compliance, resilience=resilience)
+        list_results += [(file, results)]
+    return list_results

@@ -15,16 +15,12 @@ from crypto_condor.primitives import (
 )
 from crypto_condor.primitives.common import Console
 
-# --------------------------- Module --------------------------------------------------
-
 logger = logging.getLogger(__name__)
 console = Console()
 
-_run_help = """Run a wrapper.
+_run_help = r"""Test a crypto-condor wrapper.
 
-To get a wrapper, use [cyan]crypto-condor-cli get-wrapper[/]. After filling it, use this command to run it.
-
-Don't change the name of the files provided: the subcommands have a list of files to run or import depending on the primitive and languages select.
+To get a template for a primitive, use [cyan]crypto-condor-cli get-wrapper \[primitive][/]. After completing it, use this command to test it.
 """  # noqa: E501
 app = typer.Typer(
     help=_run_help,
@@ -159,7 +155,7 @@ def ecdsa(
 
     from crypto_condor.primitives import ECDSA
 
-    results = ECDSA.test_harness(file, compliance, resilience)
+    results = ECDSA.test_harness_python(file, compliance, resilience)
 
     if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
@@ -200,7 +196,7 @@ def sha(
             When saving the results to a file, whether to add the debug data.
     """
     try:
-        results = SHA.test_wrapper(Path(wrapper), compliance, resilience)
+        results = SHA.test_harness_python(Path(wrapper), compliance, resilience)
     except ValueError as error:
         logger.error(error)
         raise typer.Exit(1) from error
@@ -396,7 +392,7 @@ def hmac(
     from crypto_condor.primitives import HMAC
 
     try:
-        rd = HMAC.test_wrapper(Path(wrapper), compliance, resilience)
+        rd = HMAC.test_harness_python(Path(wrapper), compliance, resilience)
     except (FileNotFoundError, ValueError) as error:
         console.print(str(error))
         raise typer.Exit(1) from error
@@ -434,7 +430,7 @@ def ecdh(
     from crypto_condor.primitives import ECDH
 
     try:
-        results = ECDH.test_wrapper(wrapper, compliance, resilience)
+        results = ECDH.test_harness_python(wrapper, compliance, resilience)
     except (FileNotFoundError, ModuleNotFoundError) as error:
         raise typer.Exit(1) from error
     if console.process_results(results, filename, no_save, debug):
@@ -562,8 +558,8 @@ def hqc(
     path = Path(wrapper)
     if not path.is_file():
         raise FileNotFoundError(f"HQC wrapper not found: {filename}")
-    rd = HQC.test_wrapper(path, compliance, resilience)
-    if console.process_results(rd, filename, no_save, debug):
+    results = HQC.test_harness_python(path, compliance, resilience)
+    if console.process_results(results, filename, no_save, debug):
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
@@ -648,7 +644,7 @@ def ed25519(
     from crypto_condor.primitives import ed25519
 
     out = filename or None
-    rd = ed25519.test_harness(wrapper, compliance, resilience)
+    rd = ed25519.test_harness_python(wrapper, compliance, resilience)
 
     if console.process_results(rd, out, debug_data=debug):
         raise typer.Exit(0)
@@ -686,7 +682,7 @@ def x25519(
     from crypto_condor.primitives import x25519
 
     out = filename or None
-    rd = x25519.test_harness(wrapper, compliance, resilience)
+    rd = x25519.test_harness_python(wrapper, compliance, resilience)
 
     if console.process_results(rd, out, debug_data=debug):
         raise typer.Exit(0)
