@@ -6,6 +6,7 @@ from typing import Annotated, Optional
 
 import typer
 
+from crypto_condor.cli.common import _compliance, _resilience
 from crypto_condor.primitives import (
     MLDSA,
     MLKEM,
@@ -39,12 +40,6 @@ _language = typer.Argument(
 )
 _mode = typer.Argument(
     help="The mode of operation.", show_default=False, case_sensitive=False
-)
-_compliance = typer.Option(
-    "--compliance/--no-compliance", help="Use compliance test vectors."
-)
-_resilience = typer.Option(
-    "--resilience/--no-resilience", help="Use resilience test vectors."
 )
 _encrypt = typer.Option("--encrypt/--no-encrypt", help="Test the encryption function.")
 _decrypt = typer.Option("--decrypt/--no-decrypt", help="Test the decryption function.")

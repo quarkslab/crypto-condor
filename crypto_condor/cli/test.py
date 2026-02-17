@@ -10,6 +10,7 @@ from rich.table import Table
 
 from crypto_condor import harness
 from crypto_condor.cli import run, verify
+from crypto_condor.cli.common import _compliance, _resilience
 from crypto_condor.primitives.common import Console
 
 logger = logging.getLogger(__name__)
