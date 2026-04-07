@@ -361,6 +361,18 @@ class Decrypt(Protocol):
         ...  # pragma: no cover (nothing to cover)
 
 
+class EncryptAead(Protocol):
+    def __call__(
+        self, key: bytes, pt: bytes, iv: bytes, aad: bytes = b"", mac_len: int = 0
+    ) -> tuple[bytes, bytes]: ...
+
+
+class DecryptAead(Protocol):
+    def __call__(
+        self, key: bytes, ct: bytes, iv: bytes, mac: bytes, aad: bytes = b""
+    ) -> bytes: ...
+
+
 # ---------------------- Dataclasses---------------------------------------------
 
 

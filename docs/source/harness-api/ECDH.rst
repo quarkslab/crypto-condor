@@ -1,6 +1,8 @@
 ECDH harness
 ============
 
+.. currentmodule:: crypto_condor.primitives.ECDH
+
 Key exchange with public point
 ------------------------------
 
@@ -21,8 +23,19 @@ Where ``curve`` is one of:
 
    OpenSSL 3.0 does not support ``B`` or ``K`` curves, so they are untested in harness mode.
 
-Function signature
-^^^^^^^^^^^^^^^^^^
+Python harness
+^^^^^^^^^^^^^^
+
+.. autoprotocol:: ExchangePoint
+   :noindex:
+
+Example
+"""""""
+
+.. literalinclude:: ../../../crypto_condor/resources/wrappers/AES/Python-examples/1/aes_wrapper_example.py
+
+C harness
+^^^^^^^^^
 
 .. c:function:: int ECDH_exchange_point(uint8_t ss[512], size_t *ss_size, const uint8_t *secret, const size_t secret_size, const uint8_t *point, const size_t point_size)
 
@@ -39,7 +52,7 @@ Function signature
    :retval 0: An error occurred.
 
 Example
-^^^^^^^
+"""""""
 
 To test that the harness integration is working correctly, we use the following OpenSSL harness:
 
@@ -80,8 +93,19 @@ Where ``curve`` is one of:
 
    OpenSSL 3.0 does not support ``B`` or ``K`` curves, so they are untested in harness mode.
 
-Function signature
-^^^^^^^^^^^^^^^^^^
+Python harness
+^^^^^^^^^^^^^^
+
+.. autoprotocol:: ExchangeX509
+    :noindex:
+
+Example
+"""""""
+
+.. literalinclude:: ../../../crypto_condor/resources/wrappers/AES/Python-examples/1/aes_wrapper_example.py
+
+C harness
+^^^^^^^^^
 
 .. c:function:: int ECDH_exchange_x509(uint8_t ss[512], size_t *ss_size, const uint8_t *secret, const size_t secret_size, const uint8_t *pub, const size_t pub_size)
 
@@ -98,7 +122,7 @@ Function signature
    :retval 0: An error occurred.
 
 Example
-^^^^^^^
+"""""""
 
 To test that the harness integration is working correctly, we use the following OpenSSL harness:
 

@@ -1,6 +1,16 @@
 Harness API
 ===========
 
+Inspired by fuzzing harnesses, |cc| defines an API to interact with
+implementations of cryptographic primitives.
+
+To interact with implementations of cryptographic primitives, |cc| defines an
+API of harnesses. These functions are composed of a name that encodes the
+primitive to test and its options, and the function signature.
+
+These harnesses are supported by |cc| test modes (...), and is meant to be a
+reference for other tools.
+
 Inspired by fuzzing harnesses, |cc| can test implementation wrapped in a shared library.
 
 .. figure:: harness.png
@@ -32,7 +42,7 @@ Supported primitives
     :maxdepth: 1
 
     AES <AES>
-    ChaCha20
+    ChaCha20 <ChaCha20>
     ECDH <ECDH>
     ECDSA
     HMAC <HMAC>

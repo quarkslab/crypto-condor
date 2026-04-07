@@ -22,7 +22,13 @@ hash functions are covered by both sources:
     "SHA3-512", :red:`N`, :green:`Y`
 """
 
+from typing import Protocol
+
 from crypto_condor.common import CommonHash
+
+# -------------------------------------------------------------------------------------
+# Enums
+# -------------------------------------------------------------------------------------
 
 
 class Hash(CommonHash):
@@ -37,3 +43,16 @@ class Hash(CommonHash):
     SHA3_256 = "SHA3-256"
     SHA3_384 = "SHA3-384"
     SHA3_512 = "SHA3-512"
+
+
+# -------------------------------------------------------------------------------------
+# Protocols
+# -------------------------------------------------------------------------------------
+
+
+class Digest(Protocol):
+    def __call__(self, key: bytes, msg: bytes) -> bytes: ...
+
+
+class Verify(Protocol):
+    def __call__(self, key: bytes, msg: bytes, mac: bytes): ...

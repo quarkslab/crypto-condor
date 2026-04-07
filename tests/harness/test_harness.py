@@ -67,3 +67,7 @@ def test_harness(primitive: str):
 
     console.print_results(rd)
     assert rd.check(fail_if_empty=True)
+
+
+def test_python_harness(python_harness: Path):
+    print(python_harness)

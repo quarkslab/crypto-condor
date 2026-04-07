@@ -1,14 +1,29 @@
-# ChaCha20
+# ChaCha20 harness
 
-## Encrypt
+```{currentmodule} crypto_condor.primitives.ChaCha20
+```
 
-To test a function that encrypts with ChaCha20 only, its name must conform to the following convention:
+## Encryption
+
+### Naming convention
 
 ```
 CC_ChaCha20_encrypt
 ```
 
-Its signature must be:
+### Python harness
+
+```{eval-rst}
+.. autoprotocol:: Encrypt
+    :noindex:
+```
+
+#### Example
+
+```{literalinclude} ../../../crypto_condor/resources/wrappers/AES/Python-examples/1/aes_wrapper_example.py
+```
+
+### C harness
 
 ```{eval-rst}
 .. c:function:: int CC_ChaCha20_encrypt(\
@@ -28,7 +43,7 @@ Its signature must be:
     :retval 0: Failed to encrypt.
 ```
 
-### Example
+#### Example
 
 ```{literalinclude} ../../../tests/harness/chacha20_openssl_encrypt.harness.c
 :language: c
@@ -46,13 +61,27 @@ Then test with:
 crypto-condor-cli test harness chacha20_openssl_encrypt.so
 ```
 
-## Decrypt
+## Decryption
 
-To test a function that decrypts with ChaCha20 only, its name must conform to the following convention:
+### Naming convention
 
 ```
 CC_ChaCha20_decrypt
 ```
+
+### Python harness
+
+```{eval-rst}
+.. autoprotocol:: Decrypt
+    :noindex:
+```
+
+#### Example
+
+```{literalinclude} ../../../crypto_condor/resources/wrappers/AES/Python-examples/1/aes_wrapper_example.py
+```
+
+### C harness
 
 Its signature must be:
 
@@ -74,7 +103,7 @@ Its signature must be:
     :retval 0: Failed to decrypt.
 ```
 
-### Example
+#### Example
 
 ```{literalinclude} ../../../tests/harness/chacha20_openssl_decrypt.harness.c
 :language: c
@@ -92,13 +121,27 @@ Then test with:
 crypto-condor-cli test harness chacha20_openssl_decrypt.so
 ```
 
-## Encrypt with Poly1305
+## Authenticated encryption with Poly1305
 
-To test a function that encrypts with ChaCha20-Poly1305, its name must conform to the following convention:
+### Naming convention
 
 ```
 CC_ChaCha20_encrypt_poly
 ```
+
+### Python harness
+
+```{eval-rst}
+.. autoprotocol:: EncryptPoly
+    :noindex:
+```
+
+#### Example
+
+```{literalinclude} ../../../crypto_condor/resources/wrappers/AES/Python-examples/1/aes_wrapper_example.py
+```
+
+### C harness
 
 Its signature must be:
 
@@ -123,7 +166,7 @@ Its signature must be:
     :retval 0: Failed to encrypt.
 ```
 
-### Example
+#### Example
 
 ```{literalinclude} ../../../tests/harness/chacha20_poly1305_openssl_encrypt.harness.c
 :language: c
@@ -141,14 +184,27 @@ Then test with:
 crypto-condor-cli test harness chacha20_poly1305_openssl_encrypt.so
 ```
 
+## Authenticated decryption with Poly1305
 
-## Decrypt with Poly1305
-
-To test a function that decrypts with ChaCha20-Poly1305, its name must conform to the following convention:
+### Naming convention
 
 ```
 CC_ChaCha20_poly1305_decrypt
 ```
+
+### Python harness
+
+```{eval-rst}
+.. autoprotocol:: DecryptPoly
+    :noindex:
+```
+
+#### Example
+
+```{literalinclude} ../../../crypto_condor/resources/wrappers/AES/Python-examples/1/aes_wrapper_example.py
+```
+
+### C harness
 
 Its signature must be:
 
@@ -174,7 +230,7 @@ Its signature must be:
     :retval -1: Failed to decrypt.
 ```
 
-### Example
+#### Example
 
 ```{literalinclude} ../../../tests/harness/chacha20_poly1305_openssl_decrypt.harness.c
 :language: c
@@ -191,4 +247,3 @@ Then test with:
 ```bash
 crypto-condor-cli test harness chacha20_poly1305_openssl_decrypt.so
 ```
-
