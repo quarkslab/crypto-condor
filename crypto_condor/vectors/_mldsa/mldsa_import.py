@@ -5,11 +5,15 @@
     testing and packaging, has hard-coded filenames, and uses relative paths.
 """
 
+import copy
+import json
+from collections import defaultdict
 from pathlib import Path
 
 from crypto_condor.vectors._mldsa.mldsa_pb2 import MldsaVectors
 
 VECTORS_DIR = Path("crypto_condor/vectors/_mldsa")
+FIPS204_DIR = VECTORS_DIR / "fips204"
 
 SIG_SIZE = {"ML-DSA-44": 2420, "ML-DSA-65": 3309, "ML-DSA-87": 4627}
 
@@ -76,6 +80,224 @@ def parse_nistkat(in_filename: str):
     file.write_bytes(vectors.SerializeToString())
 
 
+def _load_fips204_json(
+    category: str, paramset: str
+) -> tuple[list[tuple[dict, dict]], list[dict]]:
+    """Loads and merges all ML-DSA FIPS JSONs for a given category.
+
+    Args:
+        category: One of "keyGen", "sigGen", "sigVer".
+        paramset: One of "ML-DSA-44", "ML-DSA-65", "ML-DSA-87".
+
+    Returns:
+        A tuple (merged_tests, test_groups) where merged_tests is a list of
+        (test_dict, group_dict) tuples and test_groups is the list of all group dicts.
+    """
+    dir_name = f"ML-DSA-{category}-FIPS204"
+    prompt_file = FIPS204_DIR / dir_name / "prompt.json"
+    internal_file = FIPS204_DIR / dir_name / "internalProjection.json"
+    results_file = FIPS204_DIR / dir_name / "expectedResults.json"
+
+    with open(prompt_file) as f:
+        prompt_data = json.load(f)
+    with open(internal_file) as f:
+        internal_data = json.load(f)
+    with open(results_file) as f:
+        results_data = json.load(f)
+
+    merged = []
+    for ptg in prompt_data["testGroups"]:
+        if ptg["parameterSet"] != paramset:
+            continue
+
+        tgid = ptg["tgId"]
+
+        itg = None
+        for tg in internal_data["testGroups"]:
+            if tg["tgId"] == tgid:
+                itg = tg["tests"]
+                break
+
+        rtg = None
+        for tg in results_data["testGroups"]:
+            if tg["tgId"] == tgid:
+                rtg = tg["tests"]
+                break
+
+        for pt in ptg["tests"]:
+            tcid = pt["tcId"]
+            for t in itg:
+                if t["tcId"] == tcid:
+                    pt.update(t)
+            for t in rtg:
+                if t["tcId"] == tcid:
+                    pt.update(t)
+            merged.append((pt, ptg))
+
+    return merged, prompt_data["testGroups"]
+
+
+def parse_fips204_keygen(paramset: str):
+    """Parses keyGen vectors from FIPS 204 ACVP JSON.
+
+    Args:
+        paramset: One of "ML-DSA-44", "ML-DSA-65", "ML-DSA-87".
+    """
+    merged, _ = _load_fips204_json("keyGen", paramset)
+
+    vectors = MldsaVectors()
+    vectors.source = "NIST FIPS KAT"
+    vectors.source_desc = "NIST ACVP test vectors for ML-DSA (FIPS 204)"
+    vectors.source_url = "https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.42/gen-val/json-files/ML-DSA-keyGen-FIPS204"
+    vectors.compliance = True
+    vectors.paramset = paramset
+    vectors.category = "keyGen"
+
+    for entry, _ in merged:
+        test = vectors.tests.add()
+        test.id = entry["tcId"]
+        test.type = "valid"
+        test.seed = bytes.fromhex(entry["seed"])
+        test.pk = bytes.fromhex(entry["pk"])
+        test.sk = bytes.fromhex(entry["sk"])
+
+    out_file = VECTORS_DIR / "pb2" / f"fips204-keygen-{paramset}.pb2"
+    out_file.write_bytes(vectors.SerializeToString())
+
+
+def parse_fips204_siggen(paramset: str):
+    """Parses sigGen vectors from FIPS 204 ACVP JSON.
+
+    Creates separate pb2 files for pure and prehash variants.
+    Only includes external interface tests.
+
+    Args:
+        paramset: One of "ML-DSA-44", "ML-DSA-65", "ML-DSA-87".
+    """
+    merged, _ = _load_fips204_json("sigGen", paramset)
+
+    pure_vectors = MldsaVectors()
+    pure_vectors.source = "NIST FIPS KAT"
+    pure_vectors.source_desc = "NIST ACVP test vectors for ML-DSA (FIPS 204)"
+    pure_vectors.source_url = "https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.42/gen-val/json-files/ML-DSA-sigGen-FIPS204"
+    pure_vectors.compliance = True
+    pure_vectors.paramset = paramset
+    pure_vectors.category = "sigGen"
+    pure_vectors.prehash = False
+
+    prehash_vectors = copy.deepcopy(pure_vectors)
+    prehash_vectors.prehash = True
+
+    for entry, group in merged:
+        # Filter: only external interface
+        if group.get("signatureInterface", "external") != "external":
+            continue
+        if group.get("externalMu", False):
+            continue
+
+        is_prehash = group.get("preHash", "pure") == "preHash"
+        vectors = prehash_vectors if is_prehash else pure_vectors
+
+        test = vectors.tests.add()
+        test.id = entry["tcId"]
+        test.type = "valid"
+        test.pk = bytes.fromhex(entry["pk"])
+        test.msg = bytes.fromhex(entry["message"])
+        test.ctx = bytes.fromhex(entry["context"])
+
+        test.sk = bytes.fromhex(entry["sk"])
+
+        if "rnd" in entry:
+            test.rnd = bytes.fromhex(entry["rnd"])
+        else:
+            test.rnd = bytes.fromhex("00" * 32)
+
+        test.deterministic = group.get("deterministic", False)
+        test.preHash = is_prehash
+        test.signatureInterface = group.get("signatureInterface", "external")
+        test.externalMu = group.get("externalMu", False)
+        test.hashAlg = entry.get("hashAlg", "")
+
+        test.sig = bytes.fromhex(entry["signature"])
+
+    pure_out = VECTORS_DIR / "pb2" / f"fips204-siggen-{paramset}.pb2"
+    pure_out.write_bytes(pure_vectors.SerializeToString())
+
+    prehash_out = VECTORS_DIR / "pb2" / f"fips204-siggen-{paramset}_prehash.pb2"
+    prehash_out.write_bytes(prehash_vectors.SerializeToString())
+
+
+def parse_fips204_sigver(paramset: str):
+    """Parses sigVer vectors from FIPS 204 ACVP JSON.
+
+    Creates separate pb2 files for pure and prehash variants.
+    Only includes external interface tests.
+
+    Args:
+        paramset: One of "ML-DSA-44", "ML-DSA-65", "ML-DSA-87".
+    """
+    merged, _ = _load_fips204_json("sigVer", paramset)
+
+    pure_vectors = MldsaVectors()
+    pure_vectors.source = "NIST FIPS KAT"
+    pure_vectors.source_desc = "NIST ACVP test vectors for ML-DSA (FIPS 204)"
+    pure_vectors.source_url = "https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.42/gen-val/json-files/ML-DSA-sigVer-FIPS204"
+    pure_vectors.compliance = True
+    pure_vectors.paramset = paramset
+    pure_vectors.category = "sigVer"
+    pure_vectors.prehash = False
+
+    prehash_vectors = copy.deepcopy(pure_vectors)
+    prehash_vectors.prehash = True
+
+    for entry, group in merged:
+        # Filter: only external interface
+        if group.get("signatureInterface", "external") != "external":
+            continue
+        if group.get("externalMu", False):
+            continue
+
+        is_prehash = group.get("preHash", "pure") == "preHash"
+        vectors = prehash_vectors if is_prehash else pure_vectors
+
+        test = vectors.tests.add()
+        test.id = entry["tcId"]
+        test.type = "valid" if entry["testPassed"] else "invalid"
+        test.pk = bytes.fromhex(entry["pk"])
+        test.msg = bytes.fromhex(entry["message"])
+        test.ctx = bytes.fromhex(entry["context"])
+
+        test.sig = bytes.fromhex(entry["signature"])
+
+        test.preHash = is_prehash
+        test.signatureInterface = group.get("signatureInterface", "external")
+        test.externalMu = group.get("externalMu", False)
+        test.hashAlg = entry.get("hashAlg", "")
+
+    pure_out = VECTORS_DIR / "pb2" / f"fips204-sigver-{paramset}.pb2"
+    pure_out.write_bytes(pure_vectors.SerializeToString())
+
+    prehash_out = VECTORS_DIR / "pb2" / f"fips204-sigver-{paramset}_prehash.pb2"
+    prehash_out.write_bytes(prehash_vectors.SerializeToString())
+
+
+def generate_json() -> None:
+    """Generates the JSON file categorizing test vectors."""
+    pb2_dir = VECTORS_DIR / "pb2"
+    vectors: dict[str, list[str]] = defaultdict(list)
+
+    for file in sorted(pb2_dir.iterdir()):
+        if file.name == ".gitkeep":
+            continue
+        _vec = MldsaVectors()
+        _vec.ParseFromString(file.read_bytes())
+        vectors[_vec.paramset].append(file.name)
+
+    out = VECTORS_DIR / "mldsa.json"
+    with out.open("w") as fp:
+        json.dump(vectors, fp, indent=4, sort_keys=True)
+
+
 if __name__ == "__main__":
     pb2_dir = VECTORS_DIR / "pb2"
     pb2_dir.mkdir(exist_ok=True)
@@ -87,6 +309,15 @@ if __name__ == "__main__":
     ]
     for filename in nistkat_files:
         parse_nistkat(filename)
+
+    # Parse FIPS 204 ACVP vectors
+    paramsets = ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"]
+    for paramset in paramsets:
+        parse_fips204_keygen(paramset)
+        parse_fips204_siggen(paramset)
+        parse_fips204_sigver(paramset)
+
+    generate_json()
 
     imported_marker = VECTORS_DIR / "mldsa.imported"
     imported_marker.touch()

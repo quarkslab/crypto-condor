@@ -10,6 +10,8 @@ The external dependencies are (not including Python packages):
 - GNU Make and gcc (or clang for MacOS).
 - [protoc](https://grpc.io/docs/protoc-installation/), the protobuf compiler.
 
+Notable system dependencies on Debian: `apt install libffi-dev libtool libssl-dev pandoc`
+
 To configure the Python dependencies and the repo:
 
 - Run `make install` to create the virtual environment and install the development dependencies.

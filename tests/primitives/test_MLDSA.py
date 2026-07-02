@@ -15,7 +15,7 @@ console = Console()
 def test_sign(paramset: MLDSA.Paramset):
     """Tests internal signing function."""
 
-    def _sign(sk: bytes, msg: bytes, ctx: bytes) -> bytes:
+    def _sign(sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
         return MLDSA._sign(paramset, sk, msg, ctx)
 
     rd = MLDSA.test_sign(_sign, paramset)
@@ -23,13 +23,57 @@ def test_sign(paramset: MLDSA.Paramset):
 
 
 @pytest.mark.parametrize("paramset", MLDSA.Paramset)
+def test_sign_prehash(paramset: MLDSA.Paramset):
+    """Tests prehash signing with FIPS 204 vectors."""
+
+    def _sign(sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
+        return MLDSA._sign_prehash(paramset, sk, msg, ctx, ph)
+
+    rd = MLDSA.test_sign(_sign, paramset, prehash=True)
+    assert rd.check()
+
+
+@pytest.mark.parametrize("paramset", MLDSA.Paramset)
 def test_verify(paramset: MLDSA.Paramset):
     """Tests internal verifying function."""
 
-    def _verify(pk: bytes, msg: bytes, sig: bytes, ctx: bytes):
+    def _verify(pk: bytes, msg: bytes, sig: bytes, ctx: bytes, ph: str = ""):
         return MLDSA._verify(paramset, pk, msg, sig, ctx)
 
     rd = MLDSA.test_verify(_verify, paramset)
+    assert rd.check()
+
+
+@pytest.mark.parametrize("paramset", MLDSA.Paramset)
+def test_verify_prehash(paramset: MLDSA.Paramset):
+    """Tests prehash verification with FIPS 204 vectors."""
+
+    def _verify(pk: bytes, msg: bytes, sig: bytes, ctx: bytes, ph: str = ""):
+        return MLDSA._verify_prehash(paramset, pk, msg, sig, ctx, ph)
+
+    rd = MLDSA.test_verify(_verify, paramset, prehash=True)
+    assert rd.check()
+
+
+@pytest.mark.parametrize("paramset", MLDSA.Paramset)
+def test_sign_deterministic(paramset: MLDSA.Paramset):
+    """Tests deterministic signing against FIPS 204 vectors."""
+
+    def _sign(sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
+        return MLDSA._sign_deterministic(paramset, sk, msg, ctx)
+
+    rd = MLDSA.test_sign_deterministic(_sign, paramset)
+    assert rd.check()
+
+
+@pytest.mark.parametrize("paramset", MLDSA.Paramset)
+def test_sign_deterministic_prehash(paramset: MLDSA.Paramset):
+    """Tests deterministic prehash signing against FIPS 204 vectors."""
+
+    def _sign(sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
+        return MLDSA._sign_prehash(paramset, sk, msg, ctx, ph)
+
+    rd = MLDSA.test_sign_deterministic(_sign, paramset, prehash=True)
     assert rd.check()
 
 

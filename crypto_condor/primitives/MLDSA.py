@@ -1,5 +1,6 @@
 """Module for testing ML-DSA implementations."""
 
+import hashlib
 import importlib
 import json
 import logging
@@ -34,10 +35,13 @@ def __dir__():  # pragma: no cover
         # Enums
         Paramset.__name__,
         # Protocols
+        KeyGen.__name__,
         Sign.__name__,
         Verify.__name__,
         # Test functions
+        test_keygen.__name__,
         test_sign.__name__,
+        test_sign_deterministic.__name__,
         test_verify.__name__,
         # Runners
         run_python_wrapper.__name__,
@@ -102,6 +106,25 @@ class Wrapper(strenum.StrEnum):
     """Supported wrapper languages."""
 
     PYTHON = "Python"
+
+
+# Hash algorithm OIDs for prehash prefix (DER-encoded: 0x06 || 0x09 || 9 bytes OID).
+# https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration#Hash
+_HASHALGS_PREFIX = [0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02]
+HASH_ALGORITHMS: dict[str, bytes] = {
+    "SHA2-224": bytes(_HASHALGS_PREFIX + [0x04]),
+    "SHA2-256": bytes(_HASHALGS_PREFIX + [0x01]),
+    "SHA2-384": bytes(_HASHALGS_PREFIX + [0x02]),
+    "SHA2-512": bytes(_HASHALGS_PREFIX + [0x03]),
+    "SHA2-512/224": bytes(_HASHALGS_PREFIX + [0x05]),
+    "SHA2-512/256": bytes(_HASHALGS_PREFIX + [0x06]),
+    "SHA3-224": bytes(_HASHALGS_PREFIX + [0x07]),
+    "SHA3-256": bytes(_HASHALGS_PREFIX + [0x08]),
+    "SHA3-384": bytes(_HASHALGS_PREFIX + [0x09]),
+    "SHA3-512": bytes(_HASHALGS_PREFIX + [0x0A]),
+    "SHAKE-128": bytes(_HASHALGS_PREFIX + [0x0B]),
+    "SHAKE-256": bytes(_HASHALGS_PREFIX + [0x0C]),
+}
 
 
 # --------------------------- Reference implementation --------------------------------
@@ -280,6 +303,64 @@ def _sign(paramset: Paramset, sk: bytes, msg: bytes, ctx: bytes) -> bytes:
     return bytes(c_sig)
 
 
+def _sign_deterministic(paramset: Paramset, sk: bytes, msg: bytes, ctx: bytes) -> bytes:
+    """Signs deterministically using the internal implementation.
+
+    Args:
+        paramset: The parameter set to use.
+        sk: The secret key.
+        msg: The message to sign.
+        ctx: The context string. Can be an empty bytestring.
+
+    Returns:
+        The signature.
+
+    .. attention:: Internal use only
+
+        This implementation is for testing with crypto-condor, and is not exposed for
+        production use.
+    """
+    fname = f"pqcrystals_dilithium{paramset.dilithium}_ref_signature_internal"
+    ffi = cffi.FFI()
+    ffi.cdef(
+        f"""
+        int {fname}(uint8_t *sig, size_t *siglen,
+                    const uint8_t *m, size_t mlen,
+                    const uint8_t *pre, size_t prelen,
+                    const uint8_t rnd[32],
+                    const uint8_t *sk);
+        """
+    )
+
+    lib_dir = SHARED_LIB_DIR or _get_shared_lib_dir()
+    match sys.platform:
+        case "linux":
+            lib_path = lib_dir / f"{str(paramset)}-ref.so"
+        case "darwin":
+            lib_path = lib_dir / f"{str(paramset)}-ref.dylib"
+        case _:
+            raise ValueError(
+                f"Unsupported platform {sys.platform}, can't get appdata directory"
+            )
+    lib = ffi.dlopen(str(lib_path.absolute()))
+
+    # Construct prefix: pre = (0, ctxlen, ctx)
+    pre = bytes([0, len(ctx)]) + ctx
+
+    c_sk = ffi.new("uint8_t[]", sk)
+    c_msg = ffi.new("uint8_t[]", msg)
+    c_pre = ffi.new("uint8_t[]", pre)
+    c_rnd = ffi.new("uint8_t[32]", b"\x00" * 32)
+
+    c_sig = ffi.new(f"uint8_t[{paramset.sig_size}]")
+    c_siglen = ffi.new("size_t *")
+
+    func = getattr(lib, fname)
+    func(c_sig, c_siglen, c_msg, len(msg), c_pre, len(pre), c_rnd, c_sk)
+
+    return bytes(c_sig)
+
+
 def _verify(paramset: Paramset, pk: bytes, msg: bytes, sig: bytes, ctx: bytes) -> bool:
     """Verifies a signature with the internal implementation.
 
@@ -324,18 +405,176 @@ def _verify(paramset: Paramset, pk: bytes, msg: bytes, sig: bytes, ctx: bytes) -
     return ret == 0
 
 
+def _hash_message(ph: str, msg: bytes) -> bytes:
+    """Hashes a message using the specified hash algorithm.
+
+    Args:
+        ph: The hash algorithm name (e.g. "SHA2-512", "SHAKE-256").
+        msg: The message to hash.
+
+    Returns:
+        The hash digest.
+    """
+    if ph.startswith("SHAKE-128"):
+        return hashlib.shake_128(msg).digest(32)
+    elif ph.startswith("SHAKE-256"):
+        return hashlib.shake_256(msg).digest(64)
+    else:
+        # Map ACVP hash name to hashlib name
+        hash_name = ph.replace("SHA2-", "sha")
+        hash_name = hash_name.replace("SHA3-", "sha3_")
+        hash_name = hash_name.replace("-", "_")
+        hash_name = hash_name.replace("/", "_").lower()
+        return hashlib.new(hash_name, msg).digest()
+
+
+def _build_prehash_prefix(ctx: bytes, ph: str) -> bytes:
+    """Builds the prehash prefix for ML-DSA.
+
+    The prefix is: 0x01 || ctxlen || ctx || OID(hash)
+    See FIPS 204, Algo 4, line 23 (HashML-DSA.Sign)
+
+    Args:
+        ctx: The context string.
+        ph: The hash algorithm name.
+
+    Returns:
+        The prehash prefix bytes.
+    """
+    oid = HASH_ALGORITHMS.get(ph)
+    if oid is None:
+        raise ValueError(f"Unknown hash algorithm: {ph}")
+    return bytes([1, len(ctx)]) + ctx + oid
+
+
+def _verify_prehash(
+    paramset: Paramset, pk: bytes, msg: bytes, sig: bytes, ctx: bytes, ph: str
+) -> bool:
+    """Verifies a prehash signature using the internal implementation.
+
+    Args:
+        paramset: The parameter set to use.
+        pk: The public key.
+        msg: The message that was signed.
+        sig: The signature to verify.
+        ctx: The context string.
+        ph: The hash algorithm name.
+
+    Returns:
+        True if the signature is valid, False otherwise.
+    """
+    h = _hash_message(ph, msg)
+    pre = _build_prehash_prefix(ctx, ph)
+
+    fname = f"pqcrystals_dilithium{paramset.dilithium}_ref_verify_internal"
+    ffi = cffi.FFI()
+    ffi.cdef(
+        f"""
+        int {fname}(const uint8_t *sig, size_t siglen,
+                     const uint8_t *m, size_t mlen,
+                     const uint8_t *pre, size_t prelen,
+                     const uint8_t *pk);
+        """
+    )
+
+    lib_dir = SHARED_LIB_DIR or _get_shared_lib_dir()
+    match sys.platform:
+        case "linux":
+            lib_path = lib_dir / f"{str(paramset)}-ref.so"
+        case "darwin":
+            lib_path = lib_dir / f"{str(paramset)}-ref.dylib"
+        case _:
+            raise ValueError(
+                f"Unsupported platform {sys.platform}, can't get appdata directory"
+            )
+    lib = ffi.dlopen(str(lib_path.absolute()))
+
+    c_pk = ffi.new("uint8_t[]", pk)
+    c_h = ffi.new("uint8_t[]", h)
+    c_sig = ffi.new("uint8_t[]", sig)
+    c_pre = ffi.new("uint8_t[]", pre)
+
+    func = getattr(lib, fname)
+    ret = func(c_sig, len(sig), c_h, len(h), c_pre, len(pre), c_pk)
+
+    return ret == 0
+
+
+def _sign_prehash(
+    paramset: Paramset, sk: bytes, msg: bytes, ctx: bytes, ph: str
+) -> bytes:
+    """Signs deterministically in prehash mode using the internal implementation.
+
+    Args:
+        paramset: The parameter set to use.
+        sk: The secret key.
+        msg: The message to sign.
+        ctx: The context string. Can be an empty bytestring.
+        ph: The hash algorithm name.
+
+    Returns:
+        The signature.
+    """
+    h = _hash_message(ph, msg)
+    pre = _build_prehash_prefix(ctx, ph)
+
+    fname = f"pqcrystals_dilithium{paramset.dilithium}_ref_signature_internal"
+    ffi = cffi.FFI()
+    ffi.cdef(
+        f"""
+        int {fname}(uint8_t *sig, size_t *siglen,
+                    const uint8_t *m, size_t mlen,
+                    const uint8_t *pre, size_t prelen,
+                    const uint8_t rnd[32],
+                    const uint8_t *sk);
+        """
+    )
+
+    lib_dir = SHARED_LIB_DIR or _get_shared_lib_dir()
+    match sys.platform:
+        case "linux":
+            lib_path = lib_dir / f"{str(paramset)}-ref.so"
+        case "darwin":
+            lib_path = lib_dir / f"{str(paramset)}-ref.dylib"
+        case _:
+            raise ValueError(
+                f"Unsupported platform {sys.platform}, can't get appdata directory"
+            )
+    lib = ffi.dlopen(str(lib_path.absolute()))
+
+    c_sk = ffi.new("uint8_t[]", sk)
+    c_h = ffi.new("uint8_t[]", h)
+    c_pre = ffi.new("uint8_t[]", pre)
+    c_rnd = ffi.new("uint8_t[32]", b"\x00" * 32)
+
+    c_sig = ffi.new(f"uint8_t[{paramset.sig_size}]")
+    c_siglen = ffi.new("size_t *")
+
+    func = getattr(lib, fname)
+    func(c_sig, c_siglen, c_h, len(h), c_pre, len(pre), c_rnd, c_sk)
+
+    return bytes(c_sig)
+
+
 # --------------------------- Vectors -------------------------------------------------
 
 
-def _load_vectors(paramset: Paramset) -> list[MldsaVectors]:
+def _load_vectors(
+    paramset: Paramset, category: str = "", prehash: bool = False
+) -> list[MldsaVectors]:
     """Loads vectors for a given parameter set.
 
     Args:
         paramset:
             The parameter set to load vectors of.
+        category:
+            Optional category filter. One of "keyGen", "sigGen", "sigVer".
+            If empty, loads all vectors.
+        prehash:
+            If True, load prehash variant vectors. If False, load pure variant.
 
     Returns:
-        A dictionary of vectors, indexed by the name of their source.
+        A list of vectors.
     """
     vectors_dir = importlib.resources.files("crypto_condor") / "vectors/_mldsa"
     vectors = list()
@@ -352,6 +591,20 @@ def _load_vectors(paramset: Paramset) -> list[MldsaVectors]:
             _vec.ParseFromString(vectors_file.read_bytes())
         except Exception:
             logger.exception("Failed to load ML-DSA vectors from %s", str(filename))
+
+        if category:
+            if _vec.category != category:
+                continue
+        else:
+            # When no category filter, skip category-specific vectors
+            # (e.g., FIPS 204 keyGen/sigGen/sigVer) to avoid duplicates
+            if _vec.category:
+                continue
+
+        # Filter by prehash flag
+        if _vec.prehash != prehash:
+            continue
+
         vectors.append(_vec)
 
     return vectors
@@ -363,13 +616,16 @@ def _load_vectors(paramset: Paramset) -> list[MldsaVectors]:
 class Sign(Protocol):
     """Represents an ML-DSA signing function."""
 
-    def __call__(self, sk: bytes, msg: bytes, ctx: bytes) -> bytes:
+    def __call__(self, sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
         """Signs a message.
 
         Args:
             sk: The secret key to use.
             msg: The message to sign.
             ctx: The context string. Can be an empty bytestring.
+            ph: For the prehash variant, the name of the hash function (e.g.
+                ``"SHA2-512"``). For the pure variant, it is an empty string and
+                should be ignored.
 
         Returns:
             The signature.
@@ -380,7 +636,9 @@ class Sign(Protocol):
 class Verify(Protocol):
     """Represents an ML-DSA signature verification function."""
 
-    def __call__(self, pk: bytes, msg: bytes, sig: bytes, ctx: bytes) -> bool:
+    def __call__(
+        self, pk: bytes, msg: bytes, sig: bytes, ctx: bytes, ph: str = ""
+    ) -> bool:
         """Verifies an ML-DSA signature.
 
         Args:
@@ -388,9 +646,27 @@ class Verify(Protocol):
             msg: The message that was signed.
             sig: The signature to verify.
             ctx: The context string.
+            ph: For the prehash variant, the name of the hash function (e.g.
+                ``"SHA2-512"``). For the pure variant, it is an empty string and
+                should be ignored.
 
         Returns:
             True if the signature is valid, False otherwise.
+        """
+        ...  # pragma: no cover (protocol)
+
+
+class KeyGen(Protocol):
+    """Represents an ML-DSA key generation function."""
+
+    def __call__(self, seed: bytes) -> tuple[bytes, bytes]:
+        """Generates an ML-DSA key pair from a seed.
+
+        Args:
+            seed: The seed for key generation (32 bytes).
+
+        Returns:
+            A tuple (pk, sk) containing the public and secret key.
         """
         ...  # pragma: no cover (protocol)
 
@@ -405,23 +681,31 @@ class SignData:
     Args:
         sk: The secret key.
         msg: The message.
-        sm: The signed message.
         ctx: The context string.
-        ret_sm: The signed message returned by the implementation.
+        ph: The hash function for prehash mode.
+        sig: The signature.
+        ret_sig: The signature returned by the implementation.
     """
 
     sk: bytes
     msg: bytes
     ctx: bytes
     sig: bytes
+    ph: str | None = None
     ret_sig: bytes | None = None
+
+    @classmethod
+    def from_test(cls, test: MldsaTest):
+        """Creates a new instance from a test."""
+        return cls(test.sk, test.msg, test.ctx, test.sig, test.hashAlg)
 
     def __str__(self) -> str:
         """Returns a string representation."""
         return f"""sk = {self.sk.hex()}
 msg = {self.msg.hex() if self.msg else "<empty>"}
 ctx = {self.ctx.hex() if self.ctx else "<empty>"}
-sig = {self.ctx.hex()}
+sig = {self.sig.hex()}
+ph = {self.ph if self.ph is not None else "<none>"}
 ret_sig = {self.ret_sig.hex() if self.ret_sig is not None else "<none>"}
 """
 
@@ -432,14 +716,24 @@ class VerifyData:
 
     Args:
         pk: The public key.
-        sm: The signed message.
+        msg: The message.
+        sig: The signature.
         ctx: The context string.
+        ph: The hash function for prehash mode.
+        ret_valid_sig: Whether the signature is considered valid by the implementation.
     """
 
     pk: bytes
     msg: bytes
     sig: bytes
     ctx: bytes
+    ph: str | None = None
+    ret_valid_sig: bool | None = None
+
+    @classmethod
+    def from_test(cls, test: MldsaTest):
+        """Creates a new instance from a test."""
+        return cls(test.pk, test.msg, test.sig, test.ctx, test.hashAlg)
 
     def __str__(self) -> str:
         """Returns a string representation."""
@@ -447,13 +741,15 @@ class VerifyData:
 msg = {self.msg.hex() if self.msg else "<empty>"}
 sig = {self.sig.hex()}
 ctx = {self.ctx.hex() if self.ctx is not None else "<empty>"}
+ph = {self.ph if self.ph is not None else "<none>"}
+ret_valid_sig = {self.ret_valid_sig if self.ret_valid_sig is not None else "<none>"}
 """
 
 
 # --------------------------- Test functions ------------------------------------------
 
 
-def test_sign(sign: Sign, paramset: Paramset) -> ResultsDict:
+def test_sign(sign: Sign, paramset: Paramset, prehash: bool = False) -> ResultsDict:
     """Tests a function that signs with ML-DSA.
 
     Signs messages with the given function. As by default ML-DSA uses a "hedged",
@@ -465,6 +761,7 @@ def test_sign(sign: Sign, paramset: Paramset) -> ResultsDict:
     Args:
         sign: The function to test.
         paramset: The parameter set to test.
+        prehash: If True, test the prehash variant.
 
     Returns:
         A dictionary of results. It is empty if the internal decapsulation failed to
@@ -472,24 +769,31 @@ def test_sign(sign: Sign, paramset: Paramset) -> ResultsDict:
     """
     rd = ResultsDict()
 
-    param_vectors = _load_vectors(paramset)
+    param_vectors = _load_vectors(paramset, "sigGen", prehash)
     if not param_vectors:
-        logger.error("no ml-dsa test vectors for %s", str(paramset))
+        logger.error(
+            "no ML-DSA sigGen test vectors for %s (%s version)",
+            str(paramset),
+            "prehash" if prehash else "pure",
+        )
         return rd
+
+    prehash_str = "prehash" if prehash else "pure"
 
     test: MldsaTest
     for vectors in param_vectors:
-        results = Results.new("Test ML-DSA signing", ["paramset"])
+        results = Results.new("Test ML-DSA signing", ["paramset", "prehash"])
         results.add_notes(vectors.notes)
 
         for test in track(
-            vectors.tests, rf"\[{paramset}]\[{vectors.source}] Testing signing"
+            vectors.tests, rf"\[{paramset}]\[{vectors.source}] "
+            rf"Testing {prehash_str} hedged signing"
         ):
             info = TestInfo.new_from_test(test, vectors.compliance)
-            data = SignData(test.sk, test.msg, test.sig, test.ctx)
+            data = SignData.from_test(test)
 
             try:
-                ret_sig = sign(test.sk, test.msg, test.ctx)
+                ret_sig = sign(test.sk, test.msg, test.ctx, test.hashAlg)
             except NotImplementedError:
                 logger.warning("%s Sign not implemented, skipped", str(paramset))
                 return rd
@@ -513,7 +817,14 @@ def test_sign(sign: Sign, paramset: Paramset) -> ResultsDict:
 
             # Verify the signature.
             try:
-                is_valid_sig = _verify(paramset, test.pk, test.msg, ret_sig, test.ctx)
+                if prehash:
+                    is_valid_sig = _verify_prehash(
+                        paramset, test.pk, test.msg, ret_sig, test.ctx, test.hashAlg
+                    )
+                else:
+                    is_valid_sig = _verify(
+                        paramset, test.pk, test.msg, ret_sig, test.ctx
+                    )
             except Exception as error:
                 logger.debug(
                     "Caught exception while verifying signature", exc_info=True
@@ -528,55 +839,65 @@ def test_sign(sign: Sign, paramset: Paramset) -> ResultsDict:
                 case (True, TestType.VALID):
                     info.ok(data)
                 case (False, TestType.VALID):
-                    info.fail("Signatures do not match", data)
+                    info.fail("Reference refused signature", data)
                 case _:
-                    # We currently don't have other type of tests for sign.
-                    pass
+                    raise ValueError(
+                        f"Invalid test result {is_valid_sig} for {test.type} test"
+                    )
             results.add(info)
 
-        rd.add(results, ["paramset"])
+        rd.add(results, ["paramset", "prehash"])
 
     return rd
 
 
-def test_verify(verify: Verify, paramset: Paramset) -> ResultsDict:
+def test_verify(
+    verify: Verify, paramset: Paramset, prehash: bool = False
+) -> ResultsDict:
     """Tests a function that verified ML-DSA signatures.
 
     Verifies signatures with the given function. The test passes if valid signatures are
-    accepted.
+    accepted and invalid signatures are rejected.
 
     Args:
         verify: The function to test.
         paramset: The parameter set to test.
+        prehash: If True, test the prehash variant.
 
     Returns:
-        A dictionary of results. It is empty if the internal decapsulation failed to
+        A dictionary of results. It is empty if the verification failed to
         run, or the implementation raised NotImplementedError.
     """
     rd = ResultsDict()
 
-    param_vectors = _load_vectors(paramset)
+    param_vectors = _load_vectors(paramset, "sigVer", prehash)
     if not param_vectors:
         logger.error(
-            "No ML-DSA test vectors for %s",
+            "No ML-DSA sigVer test vectors for %s (%s version)",
             str(paramset),
+            "prehash" if prehash else "pure",
         )
         return rd
 
+    prehash_str = "prehash" if prehash else "pure"
+
     test: MldsaTest
     for vectors in param_vectors:
-        results = Results.new("Test ML-DSA signature verification", ["paramset"])
+        results = Results.new(
+            "Test ML-DSA signature verification", ["paramset", "prehash"]
+        )
         results.add_notes(vectors.notes)
 
         for test in track(
             vectors.tests,
-            rf"\[{paramset}]\[{vectors.source}] Testing signature verification",
+            rf"\[{paramset}]\[{vectors.source}] "
+            rf"Testing {prehash_str} signature verification",
         ):
             info = TestInfo.new_from_test(test, vectors.compliance)
-            data = VerifyData(test.pk, test.msg, test.sig, test.ctx)
+            data = VerifyData.from_test(test)
 
             try:
-                ret_valid = verify(test.pk, test.msg, test.sig, test.ctx)
+                ret_valid = verify(test.pk, test.msg, test.sig, test.ctx, test.hashAlg)
             except NotImplementedError:
                 logger.warning("%s Verify not implemented, skipped", str(paramset))
                 return rd
@@ -591,12 +912,162 @@ def test_verify(verify: Verify, paramset: Paramset) -> ResultsDict:
                     info.ok(data)
                 case (False, TestType.VALID):
                     info.fail("Valid signature rejected", data)
+                case (True, TestType.INVALID):
+                    info.fail("Invalid signature accepted", data)
+                case (False, TestType.INVALID):
+                    info.ok(data)
                 case _:
-                    # we currently don't have other type of tests for encaps
-                    pass
+                    raise ValueError(
+                        f"Invalid test result {ret_valid} for {test.type} test"
+                    )
+            results.add(info)
+
+        rd.add(results, ["paramset", "prehash"])
+
+    return rd
+
+
+def test_keygen(keygen: KeyGen, paramset: Paramset) -> ResultsDict:
+    """Tests a function that generates ML-DSA key pairs.
+
+    Calls the keygen function with each test vector's seed and compares the
+    resulting public and secret keys with the expected values.
+
+    Args:
+        keygen: The function to test.
+        paramset: The parameter set to test.
+
+    Returns:
+        A dictionary of results.
+    """
+    rd = ResultsDict()
+
+    param_vectors = _load_vectors(paramset, "keyGen")
+    if not param_vectors:
+        logger.error("No ML-DSA keyGen test vectors for %s", str(paramset))
+        return rd
+
+    test: MldsaTest
+    for vectors in param_vectors:
+        results = Results.new("Test ML-DSA key generation", ["paramset"])
+        results.add_notes(vectors.notes)
+
+        for test in track(
+            vectors.tests, rf"\[{paramset}]\[{vectors.source}] Testing key generation"
+        ):
+            info = TestInfo.new_from_test(test, vectors.compliance)
+
+            try:
+                pk, sk = keygen(test.seed)
+            except NotImplementedError:
+                logger.warning("%s KeyGen not implemented, skipped", str(paramset))
+                return rd
+            except Exception as error:
+                logger.debug("Caught exception", exc_info=True)
+                info.fail(f"Exception raised: {str(error)}")
+                results.add(info)
+                continue
+
+            if pk != test.pk:
+                info.fail("Public key mismatch")
+                results.add(info)
+                continue
+
+            if sk != test.sk:
+                info.fail("Secret key mismatch")
+                results.add(info)
+                continue
+
+            info.ok()
             results.add(info)
 
         rd.add(results, ["paramset"])
+
+    return rd
+
+
+def test_sign_deterministic(
+    sign: Sign, paramset: Paramset, prehash: bool = False
+) -> ResultsDict:
+    """Tests a function that signs with ML-DSA using deterministic signing.
+
+    For deterministic signing (rnd = 00*32), the signature is directly compared
+    with the expected value from the test vector.
+
+    Args:
+        sign: The function to test.
+        paramset: The parameter set to test.
+        prehash: If True, test the prehash variant.
+
+    Returns:
+        A dictionary of results.
+    """
+    rd = ResultsDict()
+
+    param_vectors = _load_vectors(paramset, "sigGen", prehash)
+    if not param_vectors:
+        logger.error(
+            "No ML-DSA sigGen test vectors for %s (%s version)",
+            str(paramset),
+            "prehash" if prehash else "pure",
+        )
+        return rd
+
+    prehash_str = "prehash" if prehash else "pure"
+
+    test: MldsaTest
+    for vectors in param_vectors:
+        results = Results.new(
+            "Test ML-DSA deterministic signing", ["paramset", "prehash"]
+        )
+        results.add_notes(vectors.notes)
+
+        for test in track(
+            vectors.tests,
+            rf"\[{paramset}]\[{vectors.source}] "
+            rf"Testing {prehash_str} deterministic signing",
+        ):
+            # Only test deterministic vectors with external message
+            if not test.deterministic or test.externalMu:
+                continue
+
+            info = TestInfo.new_from_test(test, vectors.compliance)
+            data = SignData.from_test(test)
+
+            try:
+                ret_sig = sign(test.sk, test.msg, test.ctx, test.hashAlg)
+            except NotImplementedError:
+                logger.warning("%s Sign not implemented, skipped", str(paramset))
+                return rd
+            except Exception as error:
+                logger.debug("Caught exception", exc_info=True)
+                info.fail(f"Exception raised: {str(error)}", data)
+                results.add(info)
+                continue
+
+            data.ret_sig = ret_sig
+
+            if len(ret_sig) != paramset.sig_size:
+                info.fail(
+                    f"Wrong signature size returned (got {len(ret_sig)},"
+                    f" expected {paramset.sig_size})",
+                    data,
+                )
+                results.add(info)
+                continue
+
+            if ret_sig != test.sig:
+                info.fail(
+                    "Deterministic signature mismatch",
+                    data,
+                )
+                results.add(info)
+                continue
+
+            info.ok(data)
+            results.add(info)
+
+        rd.add(results, ["paramset", "prehash"])
 
     return rd
 
@@ -697,17 +1168,61 @@ def run_python_wrapper(
     rd = ResultsDict()
     for symbol in dir(mldsa_wrapper):
         match symbol.split("_"):
-            case ["CC", "MLDSA", _pset, ("sign" | "verify") as op]:
-                logger.info("Found CC_MLKEM function %s", symbol)
+            case ["CC", "MLDSA", _pset, "keygen"]:
+                logger.info("Found CC_MLDSA function %s", symbol)
                 try:
                     paramset = Paramset(f"ML-DSA-{_pset}")
                 except ValueError:
                     logger.error("Unknown parameter set ML-DSA-%s for ML-DSA", _pset)
                     continue
-                if op == "sign":
-                    rd |= test_sign(getattr(mldsa_wrapper, symbol), paramset)
+
+                rd |= test_keygen(getattr(mldsa_wrapper, symbol), paramset)
+            case [
+                "CC",
+                "MLDSA",
+                _pset,
+                ("sign" | "verify") as op,
+                ("pure" | "prehash") as variant,
+            ]:
+                logger.info("Found CC_MLDSA function %s", symbol)
+                try:
+                    paramset = Paramset(f"ML-DSA-{_pset}")
+                except ValueError:
+                    logger.error("Unknown parameter set ML-DSA-%s for ML-DSA", _pset)
+                    continue
+
+                if variant == "pure":
+                    prehash = False
                 else:
-                    rd |= test_verify(getattr(mldsa_wrapper, symbol), paramset)
+                    prehash = True
+
+                if op == "sign":
+                    rd |= test_sign(getattr(mldsa_wrapper, symbol), paramset, prehash)
+                else:
+                    rd |= test_verify(getattr(mldsa_wrapper, symbol), paramset, prehash)
+            case [
+                "CC",
+                "MLDSA",
+                _pset,
+                "sign",
+                "deterministic",
+                ("pure" | "prehash") as variant,
+            ]:
+                logger.info("Found CC_MLDSA function %s", symbol)
+                try:
+                    paramset = Paramset(f"ML-DSA-{_pset}")
+                except ValueError:
+                    logger.error("Unknown parameter set ML-DSA-%s for ML-DSA", _pset)
+                    continue
+
+                if variant == "pure":
+                    prehash = False
+                else:
+                    prehash = True
+
+                rd |= test_sign_deterministic(
+                    getattr(mldsa_wrapper, symbol), paramset, prehash
+                )
             case ["CC", "MLDSA", *_]:
                 logger.warning("Ignored unknown CC_MLDSA function %s", symbol)
             case _:
@@ -720,68 +1235,235 @@ def run_python_wrapper(
 
 
 def _test_harness_sign(
-    ffi: cffi.FFI, lib, function: str, paramset: Paramset
+    ffi: cffi.FFI, lib, function: str, paramset: Paramset, prehash: bool = False
 ) -> ResultsDict:
     logger.info("Testing harness function %s", function)
 
-    ffi.cdef(
-        f"""void {function}(uint8_t *sig, size_t siglen,
-                         const uint8_t *msg, size_t msglen,
-                         const uint8_t *ctx, size_t ctxlen,
-                         const uint8_t *sk, size_t sklen);"""
-    )
+    if prehash:
+        ffi.cdef(
+            f"""void {function}(uint8_t *sig, size_t siglen,
+                             const uint8_t *msg, size_t msglen,
+                             const uint8_t *ctx, size_t ctxlen,
+                             const uint8_t *sk, size_t sklen,
+                             const char *ph, size_t phlen);""",
+            override=True,
+        )
+    else:
+        ffi.cdef(
+            f"""void {function}(uint8_t *sig, size_t siglen,
+                             const uint8_t *msg, size_t msglen,
+                             const uint8_t *ctx, size_t ctxlen,
+                             const uint8_t *sk, size_t sklen);"""
+        )
     sign = getattr(lib, function)
 
     # Object sizes are fixed in ML-DSA.
     c_sig = ffi.new(f"uint8_t[{paramset.sig_size}]")
 
-    def _sign(sk: bytes, msg: bytes, ctx: bytes) -> bytes:
-        c_sk = ffi.new("uint8_t[]", sk)
-        c_msg = ffi.new("uint8_t[]", msg)
-        c_ctx = ffi.new("uint8_t[]", ctx)
-        sign(
-            c_sig,
-            paramset.sig_size,
-            c_msg,
-            len(msg),
-            c_ctx,
-            len(ctx),
-            c_sk,
-            paramset.sk_size,
-        )
-        return bytes(c_sig)
+    if prehash:
 
-    return test_sign(_sign, paramset)
+        def _sign(sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
+            c_sk = ffi.new("uint8_t[]", sk)
+            c_msg = ffi.new("uint8_t[]", msg)
+            c_ctx = ffi.new("uint8_t[]", ctx)
+            c_ph = ffi.new("char[]", ph.encode("utf-8"))
+            sign(
+                c_sig,
+                paramset.sig_size,
+                c_msg,
+                len(msg),
+                c_ctx,
+                len(ctx),
+                c_sk,
+                paramset.sk_size,
+                c_ph,
+                len(ph),
+            )
+            return bytes(c_sig)
+    else:
+
+        def _sign(sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
+            c_sk = ffi.new("uint8_t[]", sk)
+            c_msg = ffi.new("uint8_t[]", msg)
+            c_ctx = ffi.new("uint8_t[]", ctx)
+            sign(
+                c_sig,
+                paramset.sig_size,
+                c_msg,
+                len(msg),
+                c_ctx,
+                len(ctx),
+                c_sk,
+                paramset.sk_size,
+            )
+            return bytes(c_sig)
+
+    return test_sign(_sign, paramset, prehash=prehash)
 
 
 def _test_harness_verify(
+    ffi: cffi.FFI, lib, function: str, paramset: Paramset, prehash: bool = False
+) -> ResultsDict:
+    logger.info("Testing harness function %s", function)
+
+    if prehash:
+        ffi.cdef(
+            f"""int {function}(const uint8_t *sig, size_t siglen,
+                              const uint8_t *msg, size_t msglen,
+                              const uint8_t *ctx, size_t ctxlen,
+                              const uint8_t *pk, size_t pklen,
+                              const char *ph, size_t phlen);""",
+            override=True,
+        )
+    else:
+        ffi.cdef(
+            f"""int {function}(const uint8_t *sig, size_t siglen,
+                              const uint8_t *msg, size_t msglen,
+                              const uint8_t *ctx, size_t ctxlen,
+                              const uint8_t *pk, size_t pklen);"""
+        )
+    verify = getattr(lib, function)
+
+    if prehash:
+
+        def _verify(
+            pk: bytes, msg: bytes, sig: bytes, ctx: bytes, ph: str = ""
+        ) -> bool:
+            c_pk = ffi.new("uint8_t[]", pk)
+            c_msg = ffi.new("uint8_t[]", msg)
+            c_sig = ffi.new("uint8_t[]", sig)
+            c_ctx = ffi.new("uint8_t[]", ctx)
+            c_ph = ffi.new("char[]", ph.encode("utf-8"))
+
+            r = verify(
+                c_sig,
+                len(sig),
+                c_msg,
+                len(msg),
+                c_ctx,
+                len(ctx),
+                c_pk,
+                len(pk),
+                c_ph,
+                len(ph),
+            )
+            if r == 0:
+                return True
+            elif r == -1:
+                return False
+            else:
+                raise ValueError(f"Error: verify returned {r} (expected 0 or -1)")
+    else:
+
+        def _verify(
+            pk: bytes,
+            msg: bytes,
+            sig: bytes,
+            ctx: bytes,
+            ph: str = "",
+        ) -> bool:
+            c_pk = ffi.new("uint8_t[]", pk)
+            c_msg = ffi.new("uint8_t[]", msg)
+            c_sig = ffi.new("uint8_t[]", sig)
+            c_ctx = ffi.new("uint8_t[]", ctx)
+
+            r = verify(c_sig, len(sig), c_msg, len(msg), c_ctx, len(ctx), c_pk, len(pk))
+            if r == 0:
+                return True
+            elif r == -1:
+                return False
+            else:
+                raise ValueError(f"Error: verify returned {r} (expected 0 or -1)")
+
+    return test_verify(_verify, paramset, prehash=prehash)
+
+
+def _test_harness_keygen(
     ffi: cffi.FFI, lib, function: str, paramset: Paramset
 ) -> ResultsDict:
     logger.info("Testing harness function %s", function)
 
     ffi.cdef(
-        f"""int {function}(const uint8_t *sig, size_t siglen,
-                          const uint8_t *msg, size_t msglen,
-                          const uint8_t *ctx, size_t ctxlen,
-                          const uint8_t *pk, size_t pklen);"""
+        f"""void {function}(uint8_t *pk, size_t pklen,
+                          uint8_t *sk, size_t sklen,
+                          const uint8_t *seed, size_t seedlen);"""
     )
-    verify = getattr(lib, function)
+    keygen = getattr(lib, function)
 
-    def _verify(pk: bytes, msg: bytes, sig: bytes, ctx: bytes) -> bool:
-        c_pk = ffi.new("uint8_t[]", pk)
-        c_msg = ffi.new("uint8_t[]", msg)
-        c_sig = ffi.new("uint8_t[]", sig)
-        c_ctx = ffi.new("uint8_t[]", ctx)
+    def _keygen(seed: bytes) -> tuple[bytes, bytes]:
+        c_pk = ffi.new(f"uint8_t[{paramset.pk_size}]")
+        c_sk = ffi.new(f"uint8_t[{paramset.sk_size}]")
+        c_seed = ffi.new("uint8_t[]", seed)
+        keygen(c_pk, paramset.pk_size, c_sk, paramset.sk_size, c_seed, len(seed))
+        return bytes(c_pk), bytes(c_sk)
 
-        r = verify(c_sig, len(sig), c_msg, len(msg), c_ctx, len(ctx), c_pk, len(pk))
-        if r == 0:
-            return True
-        elif r == -1:
-            return False
-        else:
-            raise ValueError(f"Error: verify returned {r} (expected 0 or -1)")
+    return test_keygen(_keygen, paramset)
 
-    return test_verify(_verify, paramset)
+
+def _test_harness_sign_deterministic(
+    ffi: cffi.FFI, lib, function: str, paramset: Paramset, prehash: bool = False
+) -> ResultsDict:
+    logger.info("Testing harness function %s", function)
+
+    if prehash:
+        ffi.cdef(
+            f"""void {function}(uint8_t *sig, size_t siglen,
+                              const uint8_t *msg, size_t msglen,
+                              const uint8_t *ctx, size_t ctxlen,
+                              const uint8_t *sk, size_t sklen,
+                              const char *ph, size_t phlen);""",
+            override=True,
+        )
+    else:
+        ffi.cdef(
+            f"""void {function}(uint8_t *sig, size_t siglen,
+                              const uint8_t *msg, size_t msglen,
+                              const uint8_t *ctx, size_t ctxlen,
+                              const uint8_t *sk, size_t sklen);"""
+        )
+    sign = getattr(lib, function)
+
+    c_sig = ffi.new(f"uint8_t[{paramset.sig_size}]")
+
+    if prehash:
+
+        def _sign(sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
+            c_sk = ffi.new("uint8_t[]", sk)
+            c_msg = ffi.new("uint8_t[]", msg)
+            c_ctx = ffi.new("uint8_t[]", ctx)
+            c_ph = ffi.new("char[]", ph.encode("utf-8"))
+            sign(
+                c_sig,
+                paramset.sig_size,
+                c_msg,
+                len(msg),
+                c_ctx,
+                len(ctx),
+                c_sk,
+                paramset.sk_size,
+                c_ph,
+                len(ph),
+            )
+            return bytes(c_sig)
+    else:
+
+        def _sign(sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
+            c_sk = ffi.new("uint8_t[]", sk)
+            c_msg = ffi.new("uint8_t[]", msg)
+            c_ctx = ffi.new("uint8_t[]", ctx)
+            sign(
+                c_sig,
+                paramset.sig_size,
+                c_msg,
+                len(msg),
+                c_ctx,
+                len(ctx),
+                c_sk,
+                paramset.sk_size,
+            )
+            return bytes(c_sig)
+
+    return test_sign_deterministic(_sign, paramset, prehash=prehash)
 
 
 def test_lib(
@@ -807,7 +1489,7 @@ def test_lib(
 
     for function in functions:
         match function.split("_"):
-            case ["CC", "MLDSA", pset, ("sign" | "verify") as op]:
+            case ["CC", "MLDSA", pset, "keygen"]:
                 try:
                     paramset = Paramset(f"ML-DSA-{pset}")
                 except ValueError:
@@ -815,10 +1497,56 @@ def test_lib(
                         "Unknown param set %s, skipped function %s", pset, function
                     )
                     continue
-                if op == "sign":
-                    rd |= _test_harness_sign(ffi, lib, function, paramset)
+
+                rd |= _test_harness_keygen(ffi, lib, function, paramset)
+            case [
+                "CC",
+                "MLDSA",
+                pset,
+                ("sign" | "verify") as op,
+                ("pure" | "prehash") as variant,
+            ]:
+                try:
+                    paramset = Paramset(f"ML-DSA-{pset}")
+                except ValueError:
+                    logger.error(
+                        "Unknown param set %s, skipped function %s", pset, function
+                    )
+                    continue
+
+                if variant == "pure":
+                    prehash = False
                 else:
-                    rd |= _test_harness_verify(ffi, lib, function, paramset)
+                    prehash = True
+
+                if op == "sign":
+                    rd |= _test_harness_sign(ffi, lib, function, paramset, prehash)
+                else:
+                    rd |= _test_harness_verify(ffi, lib, function, paramset, prehash)
+            case [
+                "CC",
+                "MLDSA",
+                pset,
+                "sign",
+                "deterministic",
+                ("pure" | "prehash") as variant,
+            ]:
+                try:
+                    paramset = Paramset(f"ML-DSA-{pset}")
+                except ValueError:
+                    logger.error(
+                        "Unknown param set %s, skipped function %s", pset, function
+                    )
+                    continue
+
+                if variant == "pure":
+                    prehash = False
+                else:
+                    prehash = True
+
+                rd |= _test_harness_sign_deterministic(
+                    ffi, lib, function, paramset, prehash
+                )
             case _:
                 logger.warning("Ignored unknown CC_MLDSA function %s", function)
     return rd
