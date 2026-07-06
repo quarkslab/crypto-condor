@@ -9,6 +9,7 @@ The external dependencies are (not including Python packages):
 - [poetry](https://python-poetry.org/).
 - GNU Make and gcc (or clang for MacOS).
 - [protoc](https://grpc.io/docs/protoc-installation/), the protobuf compiler.
+- [Gnu Libtool](https://www.gnu.org/software/libtool/) (`sudo apt install libtool`)
 
 To configure the Python dependencies and the repo:
 
