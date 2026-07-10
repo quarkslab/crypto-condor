@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "MlDsaSignTestVector": {
+      "type": "object",
+      "properties": {
+        "tcId": {
+          "type": "integer",
+          "description": "Identifier of the test case"
+        },
+        "comment": {
+          "type": "string",
+          "description": "A brief description of the test case"
+        },
+        "msg": {
+          "type": "string",
+          "format": "HexBytes",
+          "description": "[optional] The message to sign (if omitted, mu is provided to use with Sign_internal)"
+        },
+        "ctx": {
+          "type": "string",
+          "format": "HexBytes",
+          "description": "[optional] The additional context string (if omitted, the context input is empty)"
+        },
+        "rnd": {
+          "type": "string",
+          "format": "HexBytes",
+          "description": "[optional] The 32-byte random value (if omitted, implicitly all zeroes for deterministic signing)"
+        },
+        "mu": {
+          "type": "string",
+          "format": "HexBytes",
+          "description": "[optional] The 64-byte μ value (omitted in case of expected failure)"
+        },
+        "sig": {
+          "type": "string",
+          "format": "HexBytes",
+          "description": "The encoded signature (empty in case of expected failure)"
+        },
+        "result": {
+          "$ref": "common.json#/definitions/Result"
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of flags"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["tcId", "comment", "sig", "result", "flags"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result": {
+                "const": "valid"
+              }
+            }
+          },
+          "then": {
+            "required": ["mu"]
+          }
+        },
+        {
+          "if": {
+            "required": ["rnd"]
+          },
+          "then": {
+            "properties": {
+              "flags": { "contains": { "const": "Randomized" } }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "flags": { "contains": { "const": "Internal" } }
+            },
+            "required": ["flags"]
+          },
+          "then": {
+            "properties": { "msg": false }
+          }
+        }
+      ]
+    }
+  }
+}

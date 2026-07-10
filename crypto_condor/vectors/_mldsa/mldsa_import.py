@@ -11,9 +11,21 @@ from collections import defaultdict
 from pathlib import Path
 
 from crypto_condor.vectors._mldsa.mldsa_pb2 import MldsaVectors
+from crypto_condor.vectors.wycheproof.models.mldsa_sign_noseed import (
+    Model as MlDsaSignNoSeedModel,
+)
+from crypto_condor.vectors.wycheproof.models.mldsa_verify import (
+    Model as MlDsaVerifyModel,
+)
 
 VECTORS_DIR = Path("crypto_condor/vectors/_mldsa")
 FIPS204_DIR = VECTORS_DIR / "fips204"
+WYCHEPROOF_DIR = VECTORS_DIR / "wycheproof"
+
+WYCHEPROOF_SOURCE_URL = (
+    "https://github.com/C2SP/wycheproof/tree/"
+    "ee7b4f7e611928cbe163dc6f5e54527bfd166f34/testvectors_v1"
+)
 
 SIG_SIZE = {"ML-DSA-44": 2420, "ML-DSA-65": 3309, "ML-DSA-87": 4627}
 
@@ -281,6 +293,112 @@ def parse_fips204_sigver(paramset: str):
     prehash_out.write_bytes(prehash_vectors.SerializeToString())
 
 
+def parse_wycheproof_sign_noseed(paramset: str):
+    """Parses sign (noseed) vectors from Wycheproof.
+
+    Uses pydantic models for JSON validation.
+
+    Args:
+        paramset: One of "ML-DSA-44", "ML-DSA-65", "ML-DSA-87".
+    """
+    ps_lower = paramset.lower().replace("-", "_").replace("ml_dsa", "mldsa")
+    in_file = WYCHEPROOF_DIR / f"{ps_lower}_sign_noseed_test.json"
+
+    model = MlDsaSignNoSeedModel.model_validate_json(in_file.read_text())
+
+    vectors = MldsaVectors()
+    vectors.source = "Wycheproof"
+    vectors.source_desc = "Wycheproof ML-DSA sign (noseed) test vectors"
+    vectors.source_url = WYCHEPROOF_SOURCE_URL
+    vectors.compliance = False
+    vectors.paramset = paramset
+    vectors.category = "sigGen"
+    vectors.prehash = False
+
+    for group in model.testGroups:
+        for test in group.tests:
+            # Skip External mu
+            if "Internal" in test.flags:
+                continue
+
+            t = vectors.tests.add()
+            t.id = test.tcId
+            t.type = test.result.value
+            t.comment = test.comment
+            t.flags.extend(test.flags)
+
+            t.msg = bytes.fromhex(test.msg)
+
+            if group.publicKey is not None:
+                t.pk = bytes.fromhex(group.publicKey)
+
+            t.sk = bytes.fromhex(group.privateKey)
+
+            if test.ctx is not None:
+                t.ctx = bytes.fromhex(test.ctx)
+
+            t.sig = bytes.fromhex(test.sig)
+
+            if test.rnd is not None:
+                t.rnd = bytes.fromhex(test.rnd)
+                t.deterministic = False
+            else:
+                t.deterministic = True
+
+            t.externalMu = False
+            t.signatureInterface = "external"
+            t.hashAlg = ""
+
+    out_file = VECTORS_DIR / "pb2" / f"wycheproof-sign-noseed-{paramset}.pb2"
+    out_file.write_bytes(vectors.SerializeToString())
+
+
+def parse_wycheproof_verify(paramset: str):
+    """Parses verify vectors from Wycheproof.
+
+    Uses pydantic models for JSON validation.
+
+    Args:
+        paramset: One of "ML-DSA-44", "ML-DSA-65", "ML-DSA-87".
+    """
+    ps_lower = paramset.lower().replace("-", "_").replace("ml_dsa", "mldsa")
+    in_file = WYCHEPROOF_DIR / f"{ps_lower}_verify_test.json"
+
+    model = MlDsaVerifyModel.model_validate_json(in_file.read_text())
+
+    vectors = MldsaVectors()
+    vectors.source = "Wycheproof"
+    vectors.source_desc = "Wycheproof ML-DSA verify test vectors"
+    vectors.source_url = WYCHEPROOF_SOURCE_URL
+    vectors.compliance = False
+    vectors.paramset = paramset
+    vectors.category = "sigVer"
+    vectors.prehash = False
+
+    for group in model.testGroups:
+        for test in group.tests:
+            t = vectors.tests.add()
+            t.id = test.tcId
+            t.type = test.result.value
+            t.comment = test.comment
+            t.flags.extend(test.flags)
+
+            t.msg = bytes.fromhex(test.msg)
+            t.pk = bytes.fromhex(group.publicKey)
+
+            if test.ctx is not None:
+                t.ctx = bytes.fromhex(test.ctx)
+
+            t.sig = bytes.fromhex(test.sig)
+
+            t.externalMu = False
+            t.signatureInterface = "external"
+            t.hashAlg = ""
+
+    out_file = VECTORS_DIR / "pb2" / f"wycheproof-verify-{paramset}.pb2"
+    out_file.write_bytes(vectors.SerializeToString())
+
+
 def generate_json() -> None:
     """Generates the JSON file categorizing test vectors."""
     pb2_dir = VECTORS_DIR / "pb2"
@@ -310,12 +428,14 @@ if __name__ == "__main__":
     for filename in nistkat_files:
         parse_nistkat(filename)
 
-    # Parse FIPS 204 ACVP vectors
     paramsets = ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"]
     for paramset in paramsets:
         parse_fips204_keygen(paramset)
         parse_fips204_siggen(paramset)
         parse_fips204_sigver(paramset)
+
+        parse_wycheproof_sign_noseed(paramset)
+        parse_wycheproof_verify(paramset)
 
     generate_json()
 

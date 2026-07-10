@@ -5,7 +5,9 @@
         "fips204-siggen-ML-DSA-44_prehash.pb2",
         "fips204-sigver-ML-DSA-44.pb2",
         "fips204-sigver-ML-DSA-44_prehash.pb2",
-        "nistkat-ML-DSA-44.pb2"
+        "nistkat-ML-DSA-44.pb2",
+        "wycheproof-sign-noseed-ML-DSA-44.pb2",
+        "wycheproof-verify-ML-DSA-44.pb2"
     ],
     "ML-DSA-65": [
         "fips204-keygen-ML-DSA-65.pb2",
@@ -13,7 +15,9 @@
         "fips204-siggen-ML-DSA-65_prehash.pb2",
         "fips204-sigver-ML-DSA-65.pb2",
         "fips204-sigver-ML-DSA-65_prehash.pb2",
-        "nistkat-ML-DSA-65.pb2"
+        "nistkat-ML-DSA-65.pb2",
+        "wycheproof-sign-noseed-ML-DSA-65.pb2",
+        "wycheproof-verify-ML-DSA-65.pb2"
     ],
     "ML-DSA-87": [
         "fips204-keygen-ML-DSA-87.pb2",
@@ -21,6 +25,8 @@
         "fips204-siggen-ML-DSA-87_prehash.pb2",
         "fips204-sigver-ML-DSA-87.pb2",
         "fips204-sigver-ML-DSA-87_prehash.pb2",
-        "nistkat-ML-DSA-87.pb2"
+        "nistkat-ML-DSA-87.pb2",
+        "wycheproof-sign-noseed-ML-DSA-87.pb2",
+        "wycheproof-verify-ML-DSA-87.pb2"
     ]
 }

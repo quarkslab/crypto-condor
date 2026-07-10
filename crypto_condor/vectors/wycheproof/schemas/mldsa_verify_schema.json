@@ -1,0 +1,110 @@
+{
+  "type": "object",
+  "definitions": {
+    "MlDsaVerifyTestGroup": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": ["MlDsaVerify"]
+        },
+        "publicKey": {
+          "type": "string",
+          "format": "HexBytes",
+          "description": "Encoded ML-DSA public key"
+        },
+        "publicKeyDer": {
+          "type": "string",
+          "format": "Der",
+          "description": "Public key as a DER-encoded SubjectPublicKeyInfo"
+        },
+        "tests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MlDsaVerifyTestVector"
+          }
+        },
+        "source": {
+          "$ref": "common.json#/definitions/Source"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type", "publicKey", "publicKeyDer", "tests"]
+    },
+    "MlDsaVerifyTestVector": {
+      "type": "object",
+      "properties": {
+        "tcId": {
+          "type": "integer",
+          "description": "Identifier of the test case"
+        },
+        "comment": {
+          "type": "string",
+          "description": "A brief description of the test case"
+        },
+        "msg": {
+          "type": "string",
+          "format": "HexBytes",
+          "description": "The message to verify"
+        },
+        "ctx": {
+          "type": "string",
+          "format": "HexBytes",
+          "description": "[optional] The additional context string (empty if not provided)"
+        },
+        "sig": {
+          "type": "string",
+          "format": "HexBytes",
+          "description": "The encoded signature"
+        },
+        "result": {
+          "$ref": "common.json#/definitions/Result"
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of flags"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["tcId", "comment", "msg", "sig", "result", "flags"]
+    }
+  },
+  "properties": {
+    "algorithm": {
+      "type": "string",
+      "description": "the primitive tested in the test file"
+    },
+    "generatorVersion": {
+      "type": "string",
+      "description": "DEPRECATED: prefer \"source\" property in test group",
+      "deprecated": true
+    },
+    "header": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "additional documentation"
+    },
+    "notes": {
+      "$ref": "common.json#/definitions/Notes"
+    },
+    "numberOfTests": {
+      "type": "integer",
+      "description": "the number of test vectors in this test"
+    },
+    "schema": {
+      "enum": ["mldsa_verify_schema.json"]
+    },
+    "testGroups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/MlDsaVerifyTestGroup"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": ["algorithm", "header", "notes", "numberOfTests", "schema", "testGroups"]
+}

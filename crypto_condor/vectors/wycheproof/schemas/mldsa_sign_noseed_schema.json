@@ -1,0 +1,72 @@
+{
+  "type": "object",
+  "definitions": {
+    "MlDsaSignNoSeedTestGroup": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": ["MlDsaSign"]
+        },
+        "privateKey": {
+          "type": "string",
+          "format": "HexBytes",
+          "description": "Encoded ML-DSA private key"
+        },
+        "publicKey": {
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "HexBytes"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Encoded ML-DSA public key derived from the private key, or null if the private key is invalid"
+        },
+        "tests": {
+          "type": "array",
+          "items": {
+            "$ref": "mldsa_sign_common.json#/definitions/MlDsaSignTestVector"
+          }
+        },
+        "source": {
+          "$ref": "common.json#/definitions/Source"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type", "privateKey", "publicKey", "tests", "source"]
+    }
+  },
+  "properties": {
+    "algorithm": {
+      "type": "string",
+      "description": "the primitive tested in the test file"
+    },
+    "header": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "additional documentation"
+    },
+    "notes": {
+      "$ref": "common.json#/definitions/Notes"
+    },
+    "numberOfTests": {
+      "type": "integer",
+      "description": "the number of test vectors in this test"
+    },
+    "schema": {
+      "enum": ["mldsa_sign_noseed_schema.json"]
+    },
+    "testGroups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/MlDsaSignNoSeedTestGroup"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": ["algorithm", "header", "notes", "numberOfTests", "schema", "testGroups"]
+}

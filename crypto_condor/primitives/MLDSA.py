@@ -560,7 +560,11 @@ def _sign_prehash(
 
 
 def _load_vectors(
-    paramset: Paramset, category: str = "", prehash: bool = False
+    paramset: Paramset,
+    category: str = "",
+    prehash: bool = False,
+    compliance: bool = True,
+    resilience: bool = False,
 ) -> list[MldsaVectors]:
     """Loads vectors for a given parameter set.
 
@@ -572,6 +576,10 @@ def _load_vectors(
             If empty, loads all vectors.
         prehash:
             If True, load prehash variant vectors. If False, load pure variant.
+        compliance:
+            If True, load compliance test vectors.
+        resilience:
+            If True, load resilience test vectors.
 
     Returns:
         A list of vectors.
@@ -605,7 +613,11 @@ def _load_vectors(
         if _vec.prehash != prehash:
             continue
 
-        vectors.append(_vec)
+        # Filter by compliance/resilience
+        if _vec.compliance and compliance:
+            vectors.append(_vec)
+        if not _vec.compliance and resilience:
+            vectors.append(_vec)
 
     return vectors
 
@@ -616,7 +628,9 @@ def _load_vectors(
 class Sign(Protocol):
     """Represents an ML-DSA signing function."""
 
-    def __call__(self, sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
+    def __call__(
+        self, sk: bytes, msg: bytes, ctx: bytes, ph: str = ""
+    ) -> tuple[bool, bytes]:
         """Signs a message.
 
         Args:
@@ -628,7 +642,8 @@ class Sign(Protocol):
                 should be ignored.
 
         Returns:
-            The signature.
+            A tuple (success, signature). success is True if signing succeeded,
+            False if the implementation rejected the input (e.g. invalid key length).
         """
         ...  # pragma: no cover (protocol)
 
@@ -749,7 +764,13 @@ ret_valid_sig = {self.ret_valid_sig if self.ret_valid_sig is not None else "<non
 # --------------------------- Test functions ------------------------------------------
 
 
-def test_sign(sign: Sign, paramset: Paramset, prehash: bool = False) -> ResultsDict:
+def test_sign(
+    sign: Sign,
+    paramset: Paramset,
+    prehash: bool = False,
+    compliance: bool = True,
+    resilience: bool = False,
+) -> ResultsDict:
     """Tests a function that signs with ML-DSA.
 
     Signs messages with the given function. As by default ML-DSA uses a "hedged",
@@ -762,6 +783,8 @@ def test_sign(sign: Sign, paramset: Paramset, prehash: bool = False) -> ResultsD
         sign: The function to test.
         paramset: The parameter set to test.
         prehash: If True, test the prehash variant.
+        compliance: If True, use compliance test vectors.
+        resilience: If True, use resilience test vectors.
 
     Returns:
         A dictionary of results. It is empty if the internal decapsulation failed to
@@ -769,7 +792,7 @@ def test_sign(sign: Sign, paramset: Paramset, prehash: bool = False) -> ResultsD
     """
     rd = ResultsDict()
 
-    param_vectors = _load_vectors(paramset, "sigGen", prehash)
+    param_vectors = _load_vectors(paramset, "sigGen", prehash, compliance, resilience)
     if not param_vectors:
         logger.error(
             "no ML-DSA sigGen test vectors for %s (%s version)",
@@ -793,7 +816,7 @@ def test_sign(sign: Sign, paramset: Paramset, prehash: bool = False) -> ResultsD
             data = SignData.from_test(test)
 
             try:
-                ret_sig = sign(test.sk, test.msg, test.ctx, test.hashAlg)
+                (success, ret_sig) = sign(test.sk, test.msg, test.ctx, test.hashAlg)
             except NotImplementedError:
                 logger.warning("%s Sign not implemented, skipped", str(paramset))
                 return rd
@@ -803,6 +826,21 @@ def test_sign(sign: Sign, paramset: Paramset, prehash: bool = False) -> ResultsD
                 results.add(info)
                 continue
 
+            # Treat failure to sign early
+            match (success, test.type):
+                case (False, TestType.INVALID):
+                    info.ok(data)
+                    continue
+                case (False, TestType.VALID):
+                    info.fail("Failed to generate signature in valid case", data)
+                    continue
+                case (False, _):
+                    raise NotImplementedError(
+                        "Unhandled test type for error in signature generation",
+                        data,
+                    )
+
+            # Now assuming signature generated without error
             data.ret_sig = ret_sig
 
             # Check that sm is the correct length.
@@ -830,7 +868,8 @@ def test_sign(sign: Sign, paramset: Paramset, prehash: bool = False) -> ResultsD
                     "Caught exception while verifying signature", exc_info=True
                 )
                 info.fail(
-                    f"Exception raised, failed to verify signature: {str(error)}", data
+                    f"Exception raised, failed to verify signature: {str(error)}",
+                    data
                 )
                 results.add(info)
                 continue
@@ -840,19 +879,27 @@ def test_sign(sign: Sign, paramset: Paramset, prehash: bool = False) -> ResultsD
                     info.ok(data)
                 case (False, TestType.VALID):
                     info.fail("Reference refused signature", data)
+                case (False, TestType.INVALID):
+                    info.ok(data)
+                case (True, TestType.INVALID):
+                    info.fail("Signature generated in invalid case", data)
                 case _:
                     raise ValueError(
                         f"Invalid test result {is_valid_sig} for {test.type} test"
                     )
             results.add(info)
 
-        rd.add(results, ["paramset", "prehash"])
+        rd.add(results, ["paramset", "prehash"], extra_values=[vectors.source])
 
     return rd
 
 
 def test_verify(
-    verify: Verify, paramset: Paramset, prehash: bool = False
+    verify: Verify,
+    paramset: Paramset,
+    prehash: bool = False,
+    compliance: bool = True,
+    resilience: bool = False,
 ) -> ResultsDict:
     """Tests a function that verified ML-DSA signatures.
 
@@ -863,6 +910,8 @@ def test_verify(
         verify: The function to test.
         paramset: The parameter set to test.
         prehash: If True, test the prehash variant.
+        compliance: If True, use compliance test vectors.
+        resilience: If True, use resilience test vectors.
 
     Returns:
         A dictionary of results. It is empty if the verification failed to
@@ -870,7 +919,7 @@ def test_verify(
     """
     rd = ResultsDict()
 
-    param_vectors = _load_vectors(paramset, "sigVer", prehash)
+    param_vectors = _load_vectors(paramset, "sigVer", prehash, compliance, resilience)
     if not param_vectors:
         logger.error(
             "No ML-DSA sigVer test vectors for %s (%s version)",
@@ -922,12 +971,17 @@ def test_verify(
                     )
             results.add(info)
 
-        rd.add(results, ["paramset", "prehash"])
+        rd.add(results, ["paramset", "prehash"], extra_values=[vectors.source])
 
     return rd
 
 
-def test_keygen(keygen: KeyGen, paramset: Paramset) -> ResultsDict:
+def test_keygen(
+    keygen: KeyGen,
+    paramset: Paramset,
+    compliance: bool = True,
+    resilience: bool = False,
+) -> ResultsDict:
     """Tests a function that generates ML-DSA key pairs.
 
     Calls the keygen function with each test vector's seed and compares the
@@ -936,13 +990,15 @@ def test_keygen(keygen: KeyGen, paramset: Paramset) -> ResultsDict:
     Args:
         keygen: The function to test.
         paramset: The parameter set to test.
+        compliance: If True, use compliance test vectors.
+        resilience: If True, use resilience test vectors.
 
     Returns:
         A dictionary of results.
     """
     rd = ResultsDict()
 
-    param_vectors = _load_vectors(paramset, "keyGen")
+    param_vectors = _load_vectors(paramset, "keyGen", False, compliance, resilience)
     if not param_vectors:
         logger.error("No ML-DSA keyGen test vectors for %s", str(paramset))
         return rd
@@ -981,13 +1037,17 @@ def test_keygen(keygen: KeyGen, paramset: Paramset) -> ResultsDict:
             info.ok()
             results.add(info)
 
-        rd.add(results, ["paramset"])
+        rd.add(results, ["paramset"], extra_values=[vectors.source])
 
     return rd
 
 
 def test_sign_deterministic(
-    sign: Sign, paramset: Paramset, prehash: bool = False
+    sign: Sign,
+    paramset: Paramset,
+    prehash: bool = False,
+    compliance: bool = True,
+    resilience: bool = False,
 ) -> ResultsDict:
     """Tests a function that signs with ML-DSA using deterministic signing.
 
@@ -998,13 +1058,15 @@ def test_sign_deterministic(
         sign: The function to test.
         paramset: The parameter set to test.
         prehash: If True, test the prehash variant.
+        compliance: If True, use compliance test vectors.
+        resilience: If True, use resilience test vectors.
 
     Returns:
         A dictionary of results.
     """
     rd = ResultsDict()
 
-    param_vectors = _load_vectors(paramset, "sigGen", prehash)
+    param_vectors = _load_vectors(paramset, "sigGen", prehash, compliance, resilience)
     if not param_vectors:
         logger.error(
             "No ML-DSA sigGen test vectors for %s (%s version)",
@@ -1035,7 +1097,7 @@ def test_sign_deterministic(
             data = SignData.from_test(test)
 
             try:
-                ret_sig = sign(test.sk, test.msg, test.ctx, test.hashAlg)
+                (success, ret_sig) = sign(test.sk, test.msg, test.ctx, test.hashAlg)
             except NotImplementedError:
                 logger.warning("%s Sign not implemented, skipped", str(paramset))
                 return rd
@@ -1045,6 +1107,21 @@ def test_sign_deterministic(
                 results.add(info)
                 continue
 
+            # Treat failure to sign early
+            match (success, test.type):
+                case (False, TestType.INVALID):
+                    info.ok(data)
+                    continue
+                case (False, TestType.VALID):
+                    info.fail("Failed to generate signature in valid case", data)
+                    continue
+                case (False, _):
+                    raise NotImplementedError(
+                        "Unhandled test type for error in signature generation",
+                        data,
+                    )
+
+            # Now assuming signature generated without error
             data.ret_sig = ret_sig
 
             if len(ret_sig) != paramset.sig_size:
@@ -1067,7 +1144,7 @@ def test_sign_deterministic(
             info.ok(data)
             results.add(info)
 
-        rd.add(results, ["paramset", "prehash"])
+        rd.add(results, ["paramset", "prehash"], extra_values=[vectors.source])
 
     return rd
 
@@ -1176,7 +1253,12 @@ def run_python_wrapper(
                     logger.error("Unknown parameter set ML-DSA-%s for ML-DSA", _pset)
                     continue
 
-                rd |= test_keygen(getattr(mldsa_wrapper, symbol), paramset)
+                rd |= test_keygen(
+                    getattr(mldsa_wrapper, symbol),
+                    paramset,
+                    compliance,
+                    resilience,
+                )
             case [
                 "CC",
                 "MLDSA",
@@ -1197,9 +1279,21 @@ def run_python_wrapper(
                     prehash = True
 
                 if op == "sign":
-                    rd |= test_sign(getattr(mldsa_wrapper, symbol), paramset, prehash)
+                    rd |= test_sign(
+                        getattr(mldsa_wrapper, symbol),
+                        paramset,
+                        prehash,
+                        compliance,
+                        resilience,
+                    )
                 else:
-                    rd |= test_verify(getattr(mldsa_wrapper, symbol), paramset, prehash)
+                    rd |= test_verify(
+                        getattr(mldsa_wrapper, symbol),
+                        paramset,
+                        prehash,
+                        compliance,
+                        resilience,
+                    )
             case [
                 "CC",
                 "MLDSA",
@@ -1221,7 +1315,11 @@ def run_python_wrapper(
                     prehash = True
 
                 rd |= test_sign_deterministic(
-                    getattr(mldsa_wrapper, symbol), paramset, prehash
+                    getattr(mldsa_wrapper, symbol),
+                    paramset,
+                    prehash,
+                    compliance,
+                    resilience,
                 )
             case ["CC", "MLDSA", *_]:
                 logger.warning("Ignored unknown CC_MLDSA function %s", symbol)
@@ -1235,13 +1333,19 @@ def run_python_wrapper(
 
 
 def _test_harness_sign(
-    ffi: cffi.FFI, lib, function: str, paramset: Paramset, prehash: bool = False
+    ffi: cffi.FFI,
+    lib,
+    function: str,
+    paramset: Paramset,
+    prehash: bool = False,
+    compliance: bool = True,
+    resilience: bool = False,
 ) -> ResultsDict:
     logger.info("Testing harness function %s", function)
 
     if prehash:
         ffi.cdef(
-            f"""void {function}(uint8_t *sig, size_t siglen,
+            f"""int {function}(uint8_t *sig, size_t siglen,
                              const uint8_t *msg, size_t msglen,
                              const uint8_t *ctx, size_t ctxlen,
                              const uint8_t *sk, size_t sklen,
@@ -1250,7 +1354,7 @@ def _test_harness_sign(
         )
     else:
         ffi.cdef(
-            f"""void {function}(uint8_t *sig, size_t siglen,
+            f"""int {function}(uint8_t *sig, size_t siglen,
                              const uint8_t *msg, size_t msglen,
                              const uint8_t *ctx, size_t ctxlen,
                              const uint8_t *sk, size_t sklen);"""
@@ -1262,12 +1366,14 @@ def _test_harness_sign(
 
     if prehash:
 
-        def _sign(sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
+        def _sign(
+            sk: bytes, msg: bytes, ctx: bytes, ph: str = ""
+        ) -> tuple[bool, bytes]:
             c_sk = ffi.new("uint8_t[]", sk)
             c_msg = ffi.new("uint8_t[]", msg)
             c_ctx = ffi.new("uint8_t[]", ctx)
             c_ph = ffi.new("char[]", ph.encode("utf-8"))
-            sign(
+            r = sign(
                 c_sig,
                 paramset.sig_size,
                 c_msg,
@@ -1279,14 +1385,24 @@ def _test_harness_sign(
                 c_ph,
                 len(ph),
             )
-            return bytes(c_sig)
+
+            if r == 0:
+                return True, bytes(c_sig)
+            elif r == -1:
+                return False, bytes(c_sig)
+            else:
+                raise ValueError(
+                    f"Error: sign (prehash) returned {r} (expected 0 or -1)"
+                )
     else:
 
-        def _sign(sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
+        def _sign(
+            sk: bytes, msg: bytes, ctx: bytes, ph: str = ""
+        ) -> tuple[bool, bytes]:
             c_sk = ffi.new("uint8_t[]", sk)
             c_msg = ffi.new("uint8_t[]", msg)
             c_ctx = ffi.new("uint8_t[]", ctx)
-            sign(
+            r = sign(
                 c_sig,
                 paramset.sig_size,
                 c_msg,
@@ -1296,13 +1412,28 @@ def _test_harness_sign(
                 c_sk,
                 paramset.sk_size,
             )
-            return bytes(c_sig)
 
-    return test_sign(_sign, paramset, prehash=prehash)
+            if r == 0:
+                return True, bytes(c_sig)
+            elif r == -1:
+                return False, bytes(c_sig)
+            else:
+                raise ValueError(f"Error: sign (pure) returned {r} (expected 0 or -1)")
+
+    return test_sign(
+        _sign, paramset, prehash=prehash,
+        compliance=compliance, resilience=resilience,
+    )
 
 
 def _test_harness_verify(
-    ffi: cffi.FFI, lib, function: str, paramset: Paramset, prehash: bool = False
+    ffi: cffi.FFI,
+    lib,
+    function: str,
+    paramset: Paramset,
+    prehash: bool = False,
+    compliance: bool = True,
+    resilience: bool = False,
 ) -> ResultsDict:
     logger.info("Testing harness function %s", function)
 
@@ -1352,7 +1483,9 @@ def _test_harness_verify(
             elif r == -1:
                 return False
             else:
-                raise ValueError(f"Error: verify returned {r} (expected 0 or -1)")
+                raise ValueError(
+                    f"Error: verify (prehash) returned {r} (expected 0 or -1)"
+                )
     else:
 
         def _verify(
@@ -1373,13 +1506,23 @@ def _test_harness_verify(
             elif r == -1:
                 return False
             else:
-                raise ValueError(f"Error: verify returned {r} (expected 0 or -1)")
+                raise ValueError(
+                    f"Error: verify (pure) returned {r} (expected 0 or -1)"
+                )
 
-    return test_verify(_verify, paramset, prehash=prehash)
+    return test_verify(
+        _verify, paramset, prehash=prehash,
+        compliance=compliance, resilience=resilience,
+    )
 
 
 def _test_harness_keygen(
-    ffi: cffi.FFI, lib, function: str, paramset: Paramset
+    ffi: cffi.FFI,
+    lib,
+    function: str,
+    paramset: Paramset,
+    compliance: bool = True,
+    resilience: bool = False,
 ) -> ResultsDict:
     logger.info("Testing harness function %s", function)
 
@@ -1397,17 +1540,23 @@ def _test_harness_keygen(
         keygen(c_pk, paramset.pk_size, c_sk, paramset.sk_size, c_seed, len(seed))
         return bytes(c_pk), bytes(c_sk)
 
-    return test_keygen(_keygen, paramset)
+    return test_keygen(_keygen, paramset, compliance=compliance, resilience=resilience)
 
 
 def _test_harness_sign_deterministic(
-    ffi: cffi.FFI, lib, function: str, paramset: Paramset, prehash: bool = False
+    ffi: cffi.FFI,
+    lib,
+    function: str,
+    paramset: Paramset,
+    prehash: bool = False,
+    compliance: bool = True,
+    resilience: bool = False,
 ) -> ResultsDict:
     logger.info("Testing harness function %s", function)
 
     if prehash:
         ffi.cdef(
-            f"""void {function}(uint8_t *sig, size_t siglen,
+            f"""int {function}(uint8_t *sig, size_t siglen,
                               const uint8_t *msg, size_t msglen,
                               const uint8_t *ctx, size_t ctxlen,
                               const uint8_t *sk, size_t sklen,
@@ -1416,7 +1565,7 @@ def _test_harness_sign_deterministic(
         )
     else:
         ffi.cdef(
-            f"""void {function}(uint8_t *sig, size_t siglen,
+            f"""int {function}(uint8_t *sig, size_t siglen,
                               const uint8_t *msg, size_t msglen,
                               const uint8_t *ctx, size_t ctxlen,
                               const uint8_t *sk, size_t sklen);"""
@@ -1427,12 +1576,14 @@ def _test_harness_sign_deterministic(
 
     if prehash:
 
-        def _sign(sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
+        def _sign(
+            sk: bytes, msg: bytes, ctx: bytes, ph: str = ""
+        ) -> tuple[bool, bytes]:
             c_sk = ffi.new("uint8_t[]", sk)
             c_msg = ffi.new("uint8_t[]", msg)
             c_ctx = ffi.new("uint8_t[]", ctx)
             c_ph = ffi.new("char[]", ph.encode("utf-8"))
-            sign(
+            r = sign(
                 c_sig,
                 paramset.sig_size,
                 c_msg,
@@ -1440,18 +1591,29 @@ def _test_harness_sign_deterministic(
                 c_ctx,
                 len(ctx),
                 c_sk,
-                paramset.sk_size,
+                len(sk),
                 c_ph,
                 len(ph),
             )
-            return bytes(c_sig)
+
+            if r == 0:
+                return True, bytes(c_sig)
+            elif r == -1:
+                return False, bytes(c_sig)
+            else:
+                raise ValueError(
+                    f"Error: sign_deterministic (prehash) returned {r}"
+                    " (expected 0 or -1)"
+                )
     else:
 
-        def _sign(sk: bytes, msg: bytes, ctx: bytes, ph: str = "") -> bytes:
+        def _sign(
+            sk: bytes, msg: bytes, ctx: bytes, ph: str = ""
+        ) -> tuple[bool, bytes]:
             c_sk = ffi.new("uint8_t[]", sk)
             c_msg = ffi.new("uint8_t[]", msg)
             c_ctx = ffi.new("uint8_t[]", ctx)
-            sign(
+            r = sign(
                 c_sig,
                 paramset.sig_size,
                 c_msg,
@@ -1459,11 +1621,22 @@ def _test_harness_sign_deterministic(
                 c_ctx,
                 len(ctx),
                 c_sk,
-                paramset.sk_size,
+                len(sk),
             )
-            return bytes(c_sig)
 
-    return test_sign_deterministic(_sign, paramset, prehash=prehash)
+            if r == 0:
+                return True, bytes(c_sig)
+            elif r == -1:
+                return False, bytes(c_sig)
+            else:
+                raise ValueError(
+                    f"Error: sign_deterministic (pure) returned {r} (expected 0 or -1)"
+                )
+
+    return test_sign_deterministic(
+        _sign, paramset, prehash=prehash,
+        compliance=compliance, resilience=resilience,
+    )
 
 
 def test_lib(
@@ -1498,7 +1671,10 @@ def test_lib(
                     )
                     continue
 
-                rd |= _test_harness_keygen(ffi, lib, function, paramset)
+                rd |= _test_harness_keygen(
+                    ffi, lib, function, paramset,
+                    compliance, resilience,
+                )
             case [
                 "CC",
                 "MLDSA",
@@ -1520,9 +1696,15 @@ def test_lib(
                     prehash = True
 
                 if op == "sign":
-                    rd |= _test_harness_sign(ffi, lib, function, paramset, prehash)
+                    rd |= _test_harness_sign(
+                        ffi, lib, function, paramset,
+                        prehash, compliance, resilience,
+                    )
                 else:
-                    rd |= _test_harness_verify(ffi, lib, function, paramset, prehash)
+                    rd |= _test_harness_verify(
+                        ffi, lib, function, paramset,
+                        prehash, compliance, resilience,
+                    )
             case [
                 "CC",
                 "MLDSA",
@@ -1545,7 +1727,7 @@ def test_lib(
                     prehash = True
 
                 rd |= _test_harness_sign_deterministic(
-                    ffi, lib, function, paramset, prehash
+                    ffi, lib, function, paramset, prehash, compliance, resilience
                 )
             case _:
                 logger.warning("Ignored unknown CC_MLDSA function %s", function)

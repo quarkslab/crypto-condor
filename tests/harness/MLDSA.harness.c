@@ -9,6 +9,23 @@
 #include "openssl/err.h"
 #include "openssl/core_names.h"
 
+// The harness fails Resilience/InvalidPrivateKey tests for signing
+// This is indeed a failure of the ref, which does not check that s1/s2
+// are within bounds as mandated by the standard
+
+// FIPS 204 Table 2
+#define CRYPTO_PUBLICKEYBYTES_2 1312
+#define CRYPTO_SECRETKEYBYTES_2 2560
+#define CRYPTO_BYTES_2          2420
+
+#define CRYPTO_PUBLICKEYBYTES_3 1952
+#define CRYPTO_SECRETKEYBYTES_3 4032
+#define CRYPTO_BYTES_3          3309
+
+#define CRYPTO_PUBLICKEYBYTES_5 2592
+#define CRYPTO_SECRETKEYBYTES_5 4896
+#define CRYPTO_BYTES_5          4627
+
 static const uint8_t OID_SHA2_224[] = {0x06,0x09,0x60,0x86,0x48,0x01,0x65,0x03,0x04,0x02,0x04};
 static const uint8_t OID_SHA2_256[] = {0x06,0x09,0x60,0x86,0x48,0x01,0x65,0x03,0x04,0x02,0x01};
 static const uint8_t OID_SHA2_384[] = {0x06,0x09,0x60,0x86,0x48,0x01,0x65,0x03,0x04,0x02,0x02};
@@ -280,93 +297,136 @@ void CC_MLDSA_87_keygen(uint8_t *pk, size_t pklen, uint8_t *sk, size_t sklen,
 
 /* SIGN prehash */
 
-void CC_MLDSA_44_sign_prehash(uint8_t *sig, size_t siglen,
+int CC_MLDSA_44_sign_prehash(uint8_t *sig, size_t siglen,
                                const uint8_t *msg, size_t msglen,
                                const uint8_t *ctx, size_t ctxlen,
                                const uint8_t *sk, size_t sklen,
                                const char *ph, size_t phlen) {
-  generic_sign_internal("ML-DSA-44-ref.so",
+  if (sklen != CRYPTO_SECRETKEYBYTES_2)
+    return -1;
+  if (ctxlen > 255)
+    return -1;
+
+  return generic_sign_internal("ML-DSA-44-ref.so",
                        "pqcrystals_dilithium2_ref_signature_internal",
                        sig, siglen, msg, msglen, ctx, ctxlen, sk, sklen, ph, phlen);
 }
 
-void CC_MLDSA_65_sign_prehash(uint8_t *sig, size_t siglen,
+int CC_MLDSA_65_sign_prehash(uint8_t *sig, size_t siglen,
                                const uint8_t *msg, size_t msglen,
                                const uint8_t *ctx, size_t ctxlen,
                                const uint8_t *sk, size_t sklen,
                                const char *ph, size_t phlen) {
-  generic_sign_internal("ML-DSA-65-ref.so",
+  if (sklen != CRYPTO_SECRETKEYBYTES_3)
+    return -1;
+  if (ctxlen > 255)
+    return -1;
+
+  return generic_sign_internal("ML-DSA-65-ref.so",
                        "pqcrystals_dilithium3_ref_signature_internal",
                        sig, siglen, msg, msglen, ctx, ctxlen, sk, sklen, ph, phlen);
 }
 
-void CC_MLDSA_87_sign_prehash(uint8_t *sig, size_t siglen,
+int CC_MLDSA_87_sign_prehash(uint8_t *sig, size_t siglen,
                                const uint8_t *msg, size_t msglen,
                                const uint8_t *ctx, size_t ctxlen,
                                const uint8_t *sk, size_t sklen,
                                const char *ph, size_t phlen) {
-  generic_sign_internal("ML-DSA-87-ref.so",
+  if (sklen != CRYPTO_SECRETKEYBYTES_5)
+    return -1;
+  if (ctxlen > 255)
+    return -1;
+
+  return generic_sign_internal("ML-DSA-87-ref.so",
                        "pqcrystals_dilithium5_ref_signature_internal",
                        sig, siglen, msg, msglen, ctx, ctxlen, sk, sklen, ph, phlen);
 }
 
 /* sign_deterministic */
 
-void CC_MLDSA_44_sign_deterministic_prehash(uint8_t *sig, size_t siglen,
+int CC_MLDSA_44_sign_deterministic_prehash(uint8_t *sig, size_t siglen,
                                const uint8_t *msg, size_t msglen,
                                const uint8_t *ctx, size_t ctxlen,
                                const uint8_t *sk, size_t sklen,
                                const char *ph, size_t phlen) {
-  generic_sign_internal("ML-DSA-44-ref.so",
+  if (sklen != CRYPTO_SECRETKEYBYTES_2)
+    return -1;
+  if (ctxlen > 255)
+    return -1;
+
+  return generic_sign_internal("ML-DSA-44-ref.so",
                        "pqcrystals_dilithium2_ref_signature_internal",
                        sig, siglen, msg, msglen, ctx, ctxlen, sk, sklen, ph, phlen);
 }
 
-void CC_MLDSA_44_sign_deterministic_pure(uint8_t *sig, size_t siglen,
+int CC_MLDSA_44_sign_deterministic_pure(uint8_t *sig, size_t siglen,
                                const uint8_t *msg, size_t msglen,
                                const uint8_t *ctx, size_t ctxlen,
                                const uint8_t *sk, size_t sklen) {
-  generic_sign_internal("ML-DSA-44-ref.so",
+  if (sklen != CRYPTO_SECRETKEYBYTES_2)
+    return -1;
+  if (ctxlen > 255)
+    return -1;
+
+  return generic_sign_internal("ML-DSA-44-ref.so",
                        "pqcrystals_dilithium2_ref_signature_internal",
                        sig, siglen, msg, msglen, ctx, ctxlen, sk, sklen, NULL, 0);
 }
 
-void CC_MLDSA_65_sign_deterministic_prehash(uint8_t *sig, size_t siglen,
+int CC_MLDSA_65_sign_deterministic_prehash(uint8_t *sig, size_t siglen,
                                const uint8_t *msg, size_t msglen,
                                const uint8_t *ctx, size_t ctxlen,
                                const uint8_t *sk, size_t sklen,
                                const char *ph, size_t phlen) {
-  generic_sign_internal("ML-DSA-65-ref.so",
+  if (sklen != CRYPTO_SECRETKEYBYTES_3)
+    return -1;
+  if (ctxlen > 255)
+    return -1;
+
+  return generic_sign_internal("ML-DSA-65-ref.so",
                        "pqcrystals_dilithium3_ref_signature_internal",
                        sig, siglen, msg, msglen, ctx, ctxlen, sk, sklen, ph, phlen);
 }
 
-void CC_MLDSA_65_sign_deterministic_pure(uint8_t *sig, size_t siglen,
+int CC_MLDSA_65_sign_deterministic_pure(uint8_t *sig, size_t siglen,
                                const uint8_t *msg, size_t msglen,
                                const uint8_t *ctx, size_t ctxlen,
-                               const uint8_t *sk, size_t sklen,
-                               const char *ph, size_t phlen) {
-  generic_sign_internal("ML-DSA-65-ref.so",
+                               const uint8_t *sk, size_t sklen) {
+  if (sklen != CRYPTO_SECRETKEYBYTES_3)
+    return -1;
+  if (ctxlen > 255)
+    return -1;
+
+  return generic_sign_internal("ML-DSA-65-ref.so",
                        "pqcrystals_dilithium3_ref_signature_internal",
                        sig, siglen, msg, msglen, ctx, ctxlen, sk, sklen, NULL, 0);
 }
 
-void CC_MLDSA_87_sign_deterministic_prehash(uint8_t *sig, size_t siglen,
+int CC_MLDSA_87_sign_deterministic_prehash(uint8_t *sig, size_t siglen,
                                const uint8_t *msg, size_t msglen,
                                const uint8_t *ctx, size_t ctxlen,
                                const uint8_t *sk, size_t sklen,
                                const char *ph, size_t phlen) {
-  generic_sign_internal("ML-DSA-87-ref.so",
+  if (sklen != CRYPTO_SECRETKEYBYTES_5)
+    return -1;
+  if (ctxlen > 255)
+    return -1;
+
+  return generic_sign_internal("ML-DSA-87-ref.so",
                        "pqcrystals_dilithium5_ref_signature_internal",
                        sig, siglen, msg, msglen, ctx, ctxlen, sk, sklen, ph, phlen);
 }
 
-void CC_MLDSA_87_sign_deterministic_pure(uint8_t *sig, size_t siglen,
+int CC_MLDSA_87_sign_deterministic_pure(uint8_t *sig, size_t siglen,
                                const uint8_t *msg, size_t msglen,
                                const uint8_t *ctx, size_t ctxlen,
-                               const uint8_t *sk, size_t sklen,
-                               const char *ph, size_t phlen) {
-  generic_sign_internal("ML-DSA-87-ref.so",
+                               const uint8_t *sk, size_t sklen) {
+  if (sklen != CRYPTO_SECRETKEYBYTES_5)
+    return -1;
+  if (ctxlen > 255)
+    return -1;
+
+  return generic_sign_internal("ML-DSA-87-ref.so",
                        "pqcrystals_dilithium5_ref_signature_internal",
                        sig, siglen, msg, msglen, ctx, ctxlen, sk, sklen, NULL, 0);
 }
@@ -405,36 +465,55 @@ int CC_MLDSA_87_verify_prehash(const uint8_t *sig, size_t siglen,
 
 /* SIGN pure */
 
-void CC_MLDSA_44_sign_pure(uint8_t *sig, size_t siglen, const uint8_t *msg, size_t msglen, const uint8_t *ctx, size_t ctxlen, const uint8_t *sk, size_t sklen) {
+int CC_MLDSA_44_sign_pure(uint8_t *sig, size_t siglen, const uint8_t *msg, size_t msglen, const uint8_t *ctx, size_t ctxlen, const uint8_t *sk, size_t sklen) {
+  if (sklen != CRYPTO_SECRETKEYBYTES_2)
+    return -1;
+
   void *handle = get_lib_handle("ML-DSA-44-ref.so");
   void (*sign)(uint8_t *, size_t *, const uint8_t *, const size_t, const uint8_t *, const size_t, const uint8_t *);
   sign = get_func(handle, "pqcrystals_dilithium2_ref_signature");
   size_t r_siglen;
   sign(sig, &r_siglen, msg, msglen, ctx, ctxlen, sk);
   dlclose(handle);
+
+  return 0;
 }
 
-void CC_MLDSA_65_sign_pure(uint8_t *sig, size_t siglen, const uint8_t *msg, size_t msglen, const uint8_t *ctx, size_t ctxlen, const uint8_t *sk, size_t sklen) {
+int CC_MLDSA_65_sign_pure(uint8_t *sig, size_t siglen, const uint8_t *msg, size_t msglen, const uint8_t *ctx, size_t ctxlen, const uint8_t *sk, size_t sklen) {
+  if (sklen != CRYPTO_SECRETKEYBYTES_3)
+    return -1;
+
   void *handle = get_lib_handle("ML-DSA-65-ref.so");
   void (*sign)(uint8_t *, size_t *, const uint8_t *, const size_t, const uint8_t *, const size_t, const uint8_t *);
   sign = get_func(handle, "pqcrystals_dilithium3_ref_signature");
   size_t r_siglen;
   sign(sig, &r_siglen, msg, msglen, ctx, ctxlen, sk);
   dlclose(handle);
+
+  return 0;
 }
 
-void CC_MLDSA_87_sign_pure(uint8_t *sig, size_t siglen, const uint8_t *msg, size_t msglen, const uint8_t *ctx, size_t ctxlen, const uint8_t *sk, size_t sklen) {
+int CC_MLDSA_87_sign_pure(uint8_t *sig, size_t siglen, const uint8_t *msg, size_t msglen, const uint8_t *ctx, size_t ctxlen, const uint8_t *sk, size_t sklen) {
+  if (sklen != CRYPTO_SECRETKEYBYTES_5)
+    return -1;
+
   void *handle = get_lib_handle("ML-DSA-87-ref.so");
   void (*sign)(uint8_t *, size_t *, const uint8_t *, const size_t, const uint8_t *, const size_t, const uint8_t *);
   sign = get_func(handle, "pqcrystals_dilithium5_ref_signature");
   size_t r_siglen;
   sign(sig, &r_siglen, msg, msglen, ctx, ctxlen, sk);
   dlclose(handle);
+
+  return 0;
 }
 
 /* VERIFY pure */
 
 int CC_MLDSA_44_verify_pure(const uint8_t *sig, size_t siglen, const uint8_t *msg, size_t msglen, const uint8_t *ctx, size_t ctxlen, const uint8_t *pk, size_t pklen) {
+  // Auto-succeed bad length cases where the API hardcodes length
+  if (pklen != CRYPTO_PUBLICKEYBYTES_2)
+    return -1;
+  
   void *handle = get_lib_handle("ML-DSA-44-ref.so");
   int (*verify)(const uint8_t *, size_t, const uint8_t *, const size_t, const uint8_t *, const size_t, const uint8_t *);
   verify = get_func(handle, "pqcrystals_dilithium2_ref_verify");
@@ -444,6 +523,11 @@ int CC_MLDSA_44_verify_pure(const uint8_t *sig, size_t siglen, const uint8_t *ms
 }
 
 int CC_MLDSA_65_verify_pure(const uint8_t *sig, size_t siglen, const uint8_t *msg, size_t msglen, const uint8_t *ctx, size_t ctxlen, const uint8_t *pk, size_t pklen) {
+  // Auto-succeed bad length cases where the API hardcodes length
+  if (pklen != CRYPTO_PUBLICKEYBYTES_3)
+    return -1;
+
+
   void *handle = get_lib_handle("ML-DSA-65-ref.so");
   int (*verify)(const uint8_t *, size_t, const uint8_t *, const size_t, const uint8_t *, const size_t, const uint8_t *);
   verify = get_func(handle, "pqcrystals_dilithium3_ref_verify");
@@ -453,6 +537,10 @@ int CC_MLDSA_65_verify_pure(const uint8_t *sig, size_t siglen, const uint8_t *ms
 }
 
 int CC_MLDSA_87_verify_pure(const uint8_t *sig, size_t siglen, const uint8_t *msg, size_t msglen, const uint8_t *ctx, size_t ctxlen, const uint8_t *pk, size_t pklen) {
+  // Auto-succeed bad length cases where the API hardcodes length
+  if (pklen != CRYPTO_PUBLICKEYBYTES_5)
+    return -1;
+
   void *handle = get_lib_handle("ML-DSA-87-ref.so");
   int (*verify)(const uint8_t *, size_t, const uint8_t *, const size_t, const uint8_t *, const size_t, const uint8_t *);
   verify = get_func(handle, "pqcrystals_dilithium5_ref_verify");
