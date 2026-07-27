@@ -25,6 +25,13 @@ class MldsaTest(google.protobuf.message.Message):
     SK_FIELD_NUMBER: builtins.int
     SIG_FIELD_NUMBER: builtins.int
     CTX_FIELD_NUMBER: builtins.int
+    SEED_FIELD_NUMBER: builtins.int
+    RND_FIELD_NUMBER: builtins.int
+    DETERMINISTIC_FIELD_NUMBER: builtins.int
+    PREHASH_FIELD_NUMBER: builtins.int
+    SIGNATUREINTERFACE_FIELD_NUMBER: builtins.int
+    EXTERNALMU_FIELD_NUMBER: builtins.int
+    HASHALG_FIELD_NUMBER: builtins.int
     id: builtins.int
     """The test ID, unique in its set of vectors."""
     type: builtins.str
@@ -41,6 +48,20 @@ class MldsaTest(google.protobuf.message.Message):
     """The signature."""
     ctx: builtins.bytes
     """The context string."""
+    seed: builtins.bytes
+    """The seed for key generation (32 bytes)."""
+    rnd: builtins.bytes
+    """The randomness used for signing (32 bytes). 00*32 for deterministic signing."""
+    deterministic: builtins.bool
+    """Whether signing is deterministic."""
+    preHash: builtins.bool
+    """Whether this is a pre-hash variant."""
+    signatureInterface: builtins.str
+    """The signature interface: "external" or "internal"."""
+    externalMu: builtins.bool
+    """Whether external message input is used."""
+    hashAlg: builtins.str
+    """The hash algorithm for prehash mode (e.g. "SHA2-512"). Empty for pure mode."""
     @property
     def flags(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """Flags that categorize this test."""
@@ -57,8 +78,15 @@ class MldsaTest(google.protobuf.message.Message):
         sk: builtins.bytes = ...,
         sig: builtins.bytes = ...,
         ctx: builtins.bytes = ...,
+        seed: builtins.bytes = ...,
+        rnd: builtins.bytes = ...,
+        deterministic: builtins.bool = ...,
+        preHash: builtins.bool = ...,
+        signatureInterface: builtins.str = ...,
+        externalMu: builtins.bool = ...,
+        hashAlg: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["comment", b"comment", "ctx", b"ctx", "flags", b"flags", "id", b"id", "msg", b"msg", "pk", b"pk", "sig", b"sig", "sk", b"sk", "type", b"type"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["comment", b"comment", "ctx", b"ctx", "deterministic", b"deterministic", "externalMu", b"externalMu", "flags", b"flags", "hashAlg", b"hashAlg", "id", b"id", "msg", b"msg", "pk", b"pk", "preHash", b"preHash", "rnd", b"rnd", "seed", b"seed", "sig", b"sig", "signatureInterface", b"signatureInterface", "sk", b"sk", "type", b"type"]) -> None: ...
 
 global___MldsaTest = MldsaTest
 
@@ -91,6 +119,8 @@ class MldsaVectors(google.protobuf.message.Message):
     NOTES_FIELD_NUMBER: builtins.int
     PARAMSET_FIELD_NUMBER: builtins.int
     TESTS_FIELD_NUMBER: builtins.int
+    CATEGORY_FIELD_NUMBER: builtins.int
+    PREHASH_FIELD_NUMBER: builtins.int
     source: builtins.str
     """The source of the test vectors."""
     source_desc: builtins.str
@@ -101,6 +131,10 @@ class MldsaVectors(google.protobuf.message.Message):
     """Whether these are compliance test vectors or not."""
     paramset: builtins.str
     """The ML-DSA parameter set."""
+    category: builtins.str
+    """The test category: "keyGen", "sigGen", or "sigVer"."""
+    prehash: builtins.bool
+    """Whether these vectors are for the prehash variant."""
     @property
     def notes(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """A dictionary of test flags and their description."""
@@ -119,7 +153,9 @@ class MldsaVectors(google.protobuf.message.Message):
         notes: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         paramset: builtins.str = ...,
         tests: collections.abc.Iterable[global___MldsaTest] | None = ...,
+        category: builtins.str = ...,
+        prehash: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["compliance", b"compliance", "notes", b"notes", "paramset", b"paramset", "source", b"source", "source_desc", b"source_desc", "source_url", b"source_url", "tests", b"tests"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["category", b"category", "compliance", b"compliance", "notes", b"notes", "paramset", b"paramset", "prehash", b"prehash", "source", b"source", "source_desc", b"source_desc", "source_url", b"source_url", "tests", b"tests"]) -> None: ...
 
 global___MldsaVectors = MldsaVectors

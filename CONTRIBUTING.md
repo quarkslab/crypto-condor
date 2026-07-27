@@ -14,6 +14,8 @@ The external dependencies are (not including Python packages):
 - `libssl-dev` to run test harnesses against OpenSSL.
 - Pandoc to build the documentation.
 
+Notable system dependencies on Debian: `apt install libffi-dev libtool libssl-dev pandoc`
+
 To configure the Python dependencies and the repo:
 
 - Run `make install` to create the virtual environment and install the development dependencies.

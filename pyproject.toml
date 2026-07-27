@@ -44,6 +44,7 @@ attrs = ">=25.0,<26.0"
 cffi = "^1.16.0"
 strenum = "^0.4.15"
 lief = "~=0.16"
+pydantic = "^2.13.4"
 
 [tool.poetry.group.dev.dependencies]
 black = { extras = ["jupyter"], version = "^24.1.1" }
@@ -55,6 +56,7 @@ mypy = "^1.8.0"
 types-cffi = "^1.16.0.20240331"
 mypy-protobuf = "^3.6.0"
 types-protobuf = "^5.26.0.20240422"
+datamodel-code-generator = "^0.67.0"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = "^7.0.0"
@@ -90,6 +92,10 @@ ignore = [
   "D107", # missing docstring in __init__, we add docstrings to the class
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Ignore lint in auto-generated parsers
+"crypto_condor/vectors/wycheproof/models/*.py" = ["D100", "D101", "Q000", "E501"]
+
 [tool.ruff.format]
 docstring-code-format = true
 
@@ -119,6 +125,7 @@ python_version = "3.10"
 
 exclude = [
   "^crypto_condor/resources/wrappers/",
+  "^crypto_condor/vectors/wycheproof/models/",
   '_import\.py$',
   "^utils/templates/",
 ]

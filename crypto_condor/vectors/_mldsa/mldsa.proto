@@ -22,6 +22,20 @@ message MldsaTest{
 	bytes sig = 8;
 	// The context string.
 	bytes ctx = 9;
+	// The seed for key generation (32 bytes).
+	bytes seed = 10;
+	// The randomness used for signing (32 bytes). 00*32 for deterministic signing.
+	bytes rnd = 11;
+	// Whether signing is deterministic.
+	bool deterministic = 12;
+	// Whether this is a pre-hash variant.
+	bool preHash = 13;
+	// The signature interface: "external" or "internal".
+	string signatureInterface = 14;
+	// Whether external message input is used.
+	bool externalMu = 15;
+	// The hash algorithm for prehash mode (e.g. "SHA2-512"). Empty for pure mode.
+	string hashAlg = 16;
 }
 
 // A set of ML-DSA test vectors.
@@ -41,4 +55,9 @@ message MldsaVectors{
 	string paramset = 6;
 	// The test vectors.
 	repeated MldsaTest tests = 7;
+
+	// The test category: "keyGen", "sigGen", or "sigVer".
+	string category = 8;
+	// Whether these vectors are for the prehash variant.
+	bool prehash = 9;
 }
