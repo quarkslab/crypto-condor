@@ -7,8 +7,12 @@ Be it issues, pull requests, or suggestions, contributions are welcome!
 The external dependencies are (not including Python packages):
 
 - [poetry](https://python-poetry.org/).
-- GNU Make and gcc (or clang for MacOS).
+- GNU Make and GCC (or clang for macOS) to compile TestU01 and ML-KEM/ML-DSA.
+- Git to compile ML-KEM/ML-DSA.
 - [protoc](https://grpc.io/docs/protoc-installation/), the protobuf compiler.
+- `libtool`. `m4`, and `automake` to compile TestU01.
+- `libssl-dev` to run test harnesses against OpenSSL.
+- Pandoc to build the documentation.
 
 To configure the Python dependencies and the repo:
 
