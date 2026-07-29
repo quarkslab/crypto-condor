@@ -78,7 +78,7 @@ To test a function that encrypts with an AEAD mode, the harness function must:
 CC_AES_<mode>_encrypt
 ```
 
-Where `mode` is one of: `CCM`, `GCM`.
+Where `mode` is one of: `CCM`, `GCM`, `KW`, `KW_INV`, `KWP`, `KWP_INV`.
 
 This tests all key lengths. A specific one can be indicated:
 
@@ -103,13 +103,13 @@ Where `length` is one of `128`, `192`, or `256`.
 
     :param ciphertext: **[Out]** An allocated buffer to return the resulting ciphertext.
     :param ciphertext_size: **[In]** The size of ``ciphertext`` in bytes.
-    :param mac: **[Out]** An allocated buffer to return the resulting MAC tag.
+    :param mac: **[Out]** An allocated buffer to return the resulting MAC tag. Not used for KW, KW_INV, KWP and KWP_INV modes.
     :param mac_size: **[In]** The size of ``mac`` in bytes.
     :param plaintext: **[In]** The plaintext to encrypt.
     :param plaintext_size: **[In]** The size of ``plaintext`` in bytes.
     :param key: **[In]** The symmetric key to use.
     :param key_size: **[In]** The size of ``key`` in bytes. Passed even when specifying the key size.
-    :param iv: **[In]** The IV to use. Not used for ECB mode.
+    :param iv: **[In]** The IV to use. Not used for KW, KW_INV, KWP and KWP_INV modes.
     :param iv_size: **[In]** The size of ``iv`` in bytes. 0 if the IV is not used.
     :returns: A status value.
     :retval 1: Operation successful.
@@ -210,7 +210,7 @@ To test a function that decrypts with an AEAD mode, the harness function must:
 CC_AES_<mode>_decrypt
 ```
 
-Where `mode` is one of: `CCM`, `GCM`.
+Where `mode` is one of: `CCM`, `GCM`, `KW`, `KW_INV`, `KWP`, `KWP_INV`.
 
 This tests all key lengths. A specific one can be indicated:
 
@@ -237,11 +237,11 @@ Where `length` is one of `128`, `192`, or `256`.
     :param plaintext_size: **[In]** The size of ``plaintext`` in bytes.
     :param ciphertext: **[In]** The ciphertext to decrypt.
     :param ciphertext_size: **[In]** The size of ``ciphertext`` in bytes.
-    :param mac: **[In]** The MAC tag to verify.
+    :param mac: **[In]** The MAC tag to verify. Not used for KW, KW_INV, KWP and KWP_INV modes.
     :param mac_size: **[In]** The size of ``mac`` in bytes.
     :param key: **[In]** The symmetric key to use.
     :param key_size: **[In]** The size of ``key`` in bytes. Passed even when specifying the key size.
-    :param iv: **[In]** The IV to use. Not used for ECB mode.
+    :param iv: **[In]** The IV to use. Not used for KW, KW_INV, KWP and KWP_INV modes.
     :param iv_size: **[In]** The size of ``iv`` in bytes. 0 if the IV is not used.
     :returns: A status value.
     :retval 1: Operation successful.

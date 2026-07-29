@@ -75,3 +75,32 @@ error:
   EVP_CIPHER_CTX_free(ctx);
   return 0;
 }
+
+int CC_AES_KW_256_decrypt(uint8_t *plaintext, size_t plaintext_size,
+              const uint8_t *ciphertext, size_t ciphertext_size,
+              const uint8_t *key, size_t key_size,
+              const uint8_t *iv, size_t iv_size) {
+  EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+  int len = 0, unwrap_len = 0;
+
+  if (!ctx)
+  goto error;
+
+  if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_wrap(), NULL, key, NULL))
+  goto error;
+
+  if (1 != EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_size))
+  goto error;
+
+  unwrap_len = len;
+  if (1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len))
+  goto error;
+
+  unwrap_len += len;
+  EVP_CIPHER_CTX_free(ctx);
+  return unwrap_len;
+
+error:
+  EVP_CIPHER_CTX_free(ctx);
+  return -1;
+}

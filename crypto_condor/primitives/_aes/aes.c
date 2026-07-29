@@ -554,3 +554,242 @@ void AES_CFB_decrypt_buffer(struct AES_ctx *ctx, uint8_t *buffer, size_t length,
     exit(EXIT_FAILURE);
   }
 }
+
+/*****************************************************************************/
+/* Key Wrap                                                                  */
+/*****************************************************************************/
+
+// Direct implementation of KW and KWP encrypt as per NIST SP 800-38F (for forward and inverse AES ciphers).
+// Notation of RFC 3394 are used.
+static void internal_AES_KW_and_KWP_encrypt_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length, uint8_t is_kwp, uint8_t is_inv, size_t plaintext_length) {
+  if (length < 16 || (length % 8) != 0) {
+      printf("Error: internal_AES_KW_and_KWP_encrypt_buffer: invalid length.\n");
+      exit(EXIT_FAILURE);
+  }
+  size_t n = length / 8 - 1;
+  uint8_t A[8];
+  uint8_t R[n * 8];
+  uint8_t B[16];
+  size_t i, j, k;
+  uint64_t t;
+
+  if (!is_kwp) {
+    // For KW, set A to the default IV and R to the input blocks.
+    memcpy(A, "\xA6\xA6\xA6\xA6\xA6\xA6\xA6\xA6", 8);
+    memcpy(R, buffer, n * 8);
+  } else {
+    // For KWP, construct the IV from magic bytes + plaintext length, then copy the padded plaintext.
+    A[0] = 0xA6; A[1] = 0x59; A[2] = 0x59; A[3] = 0xA6;
+    A[4] = (plaintext_length >> 24) & 0xFF;
+    A[5] = (plaintext_length >> 16) & 0xFF;
+    A[6] = (plaintext_length >> 8) & 0xFF;
+    A[7] = plaintext_length & 0xFF;
+    memcpy(R, buffer, n * 8);
+  }
+
+  for (j = 0; j < 6; j++) {
+    for (i = 0; i < n; i++) {
+        // B = AES(K, A | R[i])
+        memcpy(B, A, 8);
+        memcpy(B + 8, R + i * 8, 8);
+
+        if (!is_inv)
+          AES_ECB_encrypt_buffer(ctx, B, 16);
+        else
+          AES_ECB_decrypt_buffer(ctx, B, 16);
+        
+        // A = MSB(64, B) ^ t where t = (n*j)+i+1
+        // Loop is unrolled for clarity
+        t = (n * j) + (i + 1);
+        A[0] = B[0] ^ ((t >> 56) & 0xFF);
+        A[1] = B[1] ^ ((t >> 48) & 0xFF);
+        A[2] = B[2] ^ ((t >> 40) & 0xFF);
+        A[3] = B[3] ^ ((t >> 32) & 0xFF);
+        A[4] = B[4] ^ ((t >> 24) & 0xFF);
+        A[5] = B[5] ^ ((t >> 16) & 0xFF);
+        A[6] = B[6] ^ ((t >> 8) & 0xFF);
+        A[7] = B[7] ^ (t & 0xFF);
+
+        // R[i] = LSB(64, B)
+        memcpy(R + i * 8, B + 8, 8);
+    }
+  }
+
+  memcpy(buffer, A, 8); // C[0] = A
+  memcpy(buffer + 8, R, n * 8); // C[1]..C[n] = R[1]..R[n]
+}
+
+void AES_KW_encrypt_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length)
+{
+  internal_AES_KW_and_KWP_encrypt_buffer(ctx, buffer, length, 0, 0, length - 8);
+}
+
+void AES_KW_encrypt_inv_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length)
+{
+  internal_AES_KW_and_KWP_encrypt_buffer(ctx, buffer, length, 0, 1, length - 8);
+}
+
+// Direct implementation of KWP encrypt as per NIST SP 800-38F (for forward and inverse AES ciphers).
+static void internal_AES_KWP_encrypt_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length_plaintext, uint8_t is_inv) {
+  if (length_plaintext <= 8) {
+    // For short plaintexts, construct IV + length_plaintext + plaintext + padding and use ECB
+    uint8_t temp_buffer[16];
+    memcpy(temp_buffer, "\xA6\x59\x59\xA6", 4);
+    temp_buffer[4] = (length_plaintext >> 24) & 0xFF;
+    temp_buffer[5] = (length_plaintext >> 16) & 0xFF;
+    temp_buffer[6] = (length_plaintext >> 8) & 0xFF;
+    temp_buffer[7] = length_plaintext & 0xFF;
+
+    memcpy(temp_buffer + 8, buffer, length_plaintext);
+    memset(temp_buffer + 8 + length_plaintext, 0, 8 - length_plaintext);
+    
+    if (!is_inv)
+      AES_ECB_encrypt_buffer(ctx, temp_buffer, 16);
+    else
+      AES_ECB_decrypt_buffer(ctx, temp_buffer, 16);
+    memcpy(buffer, temp_buffer, 16);
+  } else {
+    // For longer plaintexts, pad the plaintext in place and use key wrap
+    size_t padding_len = 8 * ((length_plaintext + 7) / 8) - length_plaintext;
+    memset(buffer + length_plaintext, 0, padding_len); // Add padding to the plaintext in the buffer
+
+    size_t padded_length = length_plaintext + padding_len;
+    internal_AES_KW_and_KWP_encrypt_buffer(ctx, buffer, padded_length + 8, 1, is_inv, length_plaintext);
+  }
+}
+
+void AES_KWP_encrypt_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length_plaintext) {
+  internal_AES_KWP_encrypt_buffer(ctx, buffer, length_plaintext, 0);
+}
+
+void AES_KWP_encrypt_inv_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length_plaintext) {
+  internal_AES_KWP_encrypt_buffer(ctx, buffer, length_plaintext, 1);
+}
+
+// Direct implementation of KW and KWP decrypt as per NIST SP 800-38F (for forward and inverse AES ciphers).
+// Notation of RFC 3394 are used.
+int internal_AES_KW_and_KWP_decrypt_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length, uint8_t is_kwp, uint8_t is_inv) {
+  if (length < 16 || (length % 8) != 0) {
+    printf("error: internal_AES_KW_and_KWP_decrypt_buffer: invalid length.\n");
+    return 0;
+  }
+  size_t n = length / 8 - 1;
+  uint8_t A[8];
+  uint8_t R[n * 8];
+  uint8_t B[16];
+  uint64_t t;
+  int i, j;
+
+  memcpy(A, buffer, 8);
+  memcpy(R, buffer + 8, n * 8);
+
+  for (j = 5; j >= 0; j--) {
+    for (i = (int)n - 1; i >= 0; i--) {
+      // B = AES-1(K, (A ^ t) | R[i])
+      t = (n * j) + (i + 1);
+      B[0] = A[0] ^ ((t >> 56) & 0xFF);
+      B[1] = A[1] ^ ((t >> 48) & 0xFF);
+      B[2] = A[2] ^ ((t >> 40) & 0xFF);
+      B[3] = A[3] ^ ((t >> 32) & 0xFF);
+      B[4] = A[4] ^ ((t >> 24) & 0xFF);
+      B[5] = A[5] ^ ((t >> 16) & 0xFF);
+      B[6] = A[6] ^ ((t >> 8) & 0xFF);
+      B[7] = A[7] ^ (t & 0xFF);
+      memcpy(B + 8, R + i * 8, 8);
+
+      if (!is_inv)
+        AES_ECB_decrypt_buffer(ctx, B, 16);
+      else
+        AES_ECB_encrypt_buffer(ctx, B, 16);
+
+      // A = MSB(64, B)
+      memcpy(A, B, 8);
+      // R[i] = LSB(64, B)
+      memcpy(R + i * 8, B + 8, 8);
+    }
+  }
+  
+  if (!is_kwp) {
+    if (memcmp(A, "\xA6\xA6\xA6\xA6\xA6\xA6\xA6\xA6", 8) != 0)
+      return 0;
+    memcpy(buffer, R, n * 8);
+  } else {
+    if (memcmp(A, "\xA6\x59\x59\xA6", 4) != 0)
+      return 0;
+    memcpy(buffer, A, 8);
+    memcpy(buffer + 8, R, n * 8);
+  }
+  
+  return 1;
+}
+
+int AES_KW_decrypt_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length)
+{
+  return internal_AES_KW_and_KWP_decrypt_buffer(ctx, buffer, length, 0, 0);
+}
+
+int AES_KW_decrypt_inv_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length)
+{
+  return internal_AES_KW_and_KWP_decrypt_buffer(ctx, buffer, length, 0, 1);
+}
+
+// Direct implementation of KWP decrypt as per NIST SP 800-38F (for forward and inverse AES ciphers).
+static int internal_AES_KWP_decrypt_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length, uint8_t is_inv) {
+  size_t pt_len = 0;
+
+  if (length == 16) {
+    if (is_inv)
+      AES_ECB_encrypt_buffer(ctx, buffer, length);
+    else
+      AES_ECB_decrypt_buffer(ctx, buffer, length);
+
+    if (memcmp(buffer, "\xA6\x59\x59\xA6", 4) != 0)
+      return 0;
+
+    pt_len = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
+    
+    if (pt_len == 0 || pt_len > 8)
+      return 0;
+
+    // Validate padding: bytes after plaintext in the 8-byte payload area must be zero
+    for (size_t i = pt_len; i < 8; i++) {
+      if (buffer[8 + i] != 0) {
+        return 0;
+      }
+    }
+
+    memmove(buffer, buffer + 8, pt_len);
+    return pt_len;
+  } else {
+    int decrypt_result = internal_AES_KW_and_KWP_decrypt_buffer(ctx, buffer, length, 1, is_inv);
+    if (decrypt_result == 0)
+      return 0;
+    
+    if (memcmp(buffer, "\xA6\x59\x59\xA6", 4) != 0)
+      return 0;
+
+    pt_len = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
+    
+    size_t r_area_len = length - 8;
+    if (pt_len == 0 || pt_len > r_area_len)
+      return 0;
+
+    // Validate padding: all bytes after plaintext in R area must be zero
+    for (size_t i = pt_len; i < r_area_len; i++) {
+      if (buffer[8 + i] != 0) {
+        return 0;
+      }
+    }
+
+    memmove(buffer, buffer + 8, pt_len);
+    return pt_len;
+  }
+}
+
+int AES_KWP_decrypt_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length) {
+  return internal_AES_KWP_decrypt_buffer(ctx, buffer, length, 0);
+}
+
+int AES_KWP_decrypt_inv_buffer(const struct AES_ctx *ctx, uint8_t *buffer, size_t length) {
+  return internal_AES_KWP_decrypt_buffer(ctx, buffer, length, 1);
+}

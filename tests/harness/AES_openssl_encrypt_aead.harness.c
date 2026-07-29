@@ -77,3 +77,26 @@ error:
   EVP_CIPHER_CTX_free(ctx);
   return 0;
 }
+
+int CC_AES_KW_256_encrypt(uint8_t *wrapped_key, size_t wrapped_key_size,
+              const uint8_t *key_to_wrap, size_t key_size,
+              const uint8_t *key, size_t key_size_wrap) {
+  EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+  int len = 0, final_len = 0;
+
+  if (!ctx)
+  goto error;
+  if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_wrap(), NULL, key, NULL))
+  goto error;
+  if (1 != EVP_EncryptUpdate(ctx, wrapped_key, &len, key_to_wrap, key_size))
+  goto error;
+  if (1 != EVP_EncryptFinal_ex(ctx, wrapped_key + len, &final_len))
+  goto error;
+
+  EVP_CIPHER_CTX_free(ctx);
+  return (len + final_len > 0) ? 1 : -1;
+
+error:
+  EVP_CIPHER_CTX_free(ctx);
+  return -1;
+}
